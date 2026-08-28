@@ -14,6 +14,7 @@ from .const import (
     EVENT_FIRE_INTENSITY_INCREASING,
 )
 from .models import (
+    ConfirmationLevel,
     DistanceTrend,
     FireCluster,
     FireLifecycle,
@@ -109,6 +110,20 @@ def apply_incident_metadata(cluster: FireCluster, incident: dict[str, Any]) -> N
     cluster.place_attribution = _optional_text(
         incident.get("place_attribution")
     )
+    cluster.confirmation_level = ConfirmationLevel(
+        str(
+            incident.get(
+                "confirmation_level", ConfirmationLevel.SINGLE_SOURCE.value
+            )
+        )
+    )
+    cluster.providers = tuple(
+        str(provider)
+        for provider in incident.get("providers", ["eumetsat_lsa_saf"])
+    )
+    cluster.corroborating_detections = int(
+        incident.get("corroborating_detections", 0)
+    )
 
 
 def _nearest_match(
@@ -156,6 +171,9 @@ def _new_incident(cluster: FireCluster) -> dict[str, Any]:
         "maximum_pixel_count": cluster.pixel_count,
         "detections_total": cluster.pixel_count,
         "minimum_distance_km": cluster.distance_km,
+        "confirmation_level": cluster.confirmation_level.value,
+        "providers": list(cluster.providers),
+        "corroborating_detections": cluster.corroborating_detections,
     }
     add_observation_and_update_trends(incident, cluster)
     return incident
@@ -183,6 +201,9 @@ def _update_incident(incident: dict[str, Any], cluster: FireCluster) -> list[str
             "frp_mw": cluster.frp_mw,
             "confidence": cluster.confidence,
             "pixel_count": cluster.pixel_count,
+            "confirmation_level": cluster.confirmation_level.value,
+            "providers": list(cluster.providers),
+            "corroborating_detections": cluster.corroborating_detections,
             "minimum_distance_km": min(
                 float(incident.get("minimum_distance_km", cluster.distance_km)),
                 cluster.distance_km,

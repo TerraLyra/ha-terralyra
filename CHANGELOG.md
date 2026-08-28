@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.0
+
+- Activate optional NASA FIRMS corroboration with the user's personal MAP_KEY.
+- Query bounded NOAA-20 and NOAA-21 VIIRS feeds no more than once every 15
+  minutes and keep FIRMS failures isolated from primary LSA SAF monitoring.
+- Correlate independent detections within explicit 5 km and 6 hour gates.
+- Expose translated source-confirmation states and per-incident provider,
+  confirmation, and corroborating-detection attributes.
+
 ## 0.1.1
 
 - Replace the fire-specific branding with TerraLyra's provider-neutral globe

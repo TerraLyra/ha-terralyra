@@ -38,6 +38,7 @@ async def async_setup_entry(
         FireActivityFrpChangeSensor(entry),
         NewIncidents24hSensor(entry),
         ActiveFireSituationSensor(entry),
+        FireSourceConfirmationSensor(entry),
         FireRiskTodaySensor(entry),
         FireRiskAreaMaximumSensor(entry),
         FireRiskUpdateSensor(entry),
@@ -350,6 +351,55 @@ class ActiveFireSituationSensor(TerraLyraEntity, SensorEntity):
             ),
             "assessed_at": situation.assessed_at.isoformat(),
             "classification": "integration_calculated_situation_indicator",
+        }
+
+
+class FireSourceConfirmationSensor(TerraLyraEntity, SensorEntity):
+    """Expose whether an independent satellite source corroborates active fire."""
+
+    _attr_translation_key = "fire_source_confirmation"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [
+        "disabled",
+        "not_available",
+        "no_active_fire",
+        "single_source",
+        "multi_source",
+    ]
+    _attr_icon = "mdi:satellite-uplink"
+
+    def __init__(self, entry: TerraLyraConfigEntry) -> None:
+        super().__init__(entry)
+        self._attr_unique_id = f"{entry.entry_id}_fire_source_confirmation"
+
+    @property
+    def native_value(self) -> str:
+        data = self.coordinator.data
+        return data.confirmation_level.value if data else "not_available"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data
+        return {
+            "primary_provider": self.coordinator.provider_name,
+            "secondary_provider": self.coordinator.corroboration_provider_name,
+            "secondary_status": (
+                self.coordinator.corroboration_status.value
+                if self.coordinator.corroboration_status is not None
+                else "disabled"
+            ),
+            "secondary_satellite": self.coordinator.corroboration_satellite,
+            "secondary_product_timestamp": (
+                self.coordinator.corroboration_product_timestamp.isoformat()
+                if self.coordinator.corroboration_product_timestamp
+                else None
+            ),
+            "corroborating_detections": (
+                data.corroborating_detections if data else 0
+            ),
+            "correlation_distance_km": 5.0,
+            "correlation_window_hours": 6,
+            "classification": "independent_satellite_source_corroboration",
         }
 
 

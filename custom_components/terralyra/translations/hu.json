@@ -147,6 +147,16 @@
           "unknown": "Ismeretlen"
         }
       },
+      "fire_source_confirmation": {
+        "name": "Független tűzforrás-megerősítés",
+        "state": {
+          "disabled": "Kikapcsolva",
+          "not_available": "Nem érhető el",
+          "no_active_fire": "Nincs aktív tűz",
+          "single_source": "Egyetlen forrás",
+          "multi_source": "Több forrás"
+        }
+      },
       "land_surface_temperature": {
         "name": "Felszínhőmérséklet az otthonnál"
       }

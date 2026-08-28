@@ -7,6 +7,10 @@ import pytest
 
 from custom_components.terralyra.products.firms import FirmsError, parse_firms_csv
 from custom_components.terralyra.providers.firms import FirmsActiveFireProvider
+from custom_components.terralyra.providers.firms import (
+    FirmsMultiSatelliteProvider,
+    monitoring_bounds,
+)
 
 HEADER = (
     "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,"
@@ -81,3 +85,53 @@ async def test_provider_normalizes_without_fabricating_probability() -> None:
     assert detection.classification == "h"
     assert detection.source_resolution_km == pytest.approx(0.375)
     assert "N21" in (detection.source_detection_id or "")
+
+
+class _MultiClient:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    async def async_area(self, **kwargs):
+        self.calls += 1
+        source = kwargs["source"]
+        satellite = "N20" if source == "VIIRS_NOAA20_NRT" else "N21"
+        minute = "1234" if satellite == "N20" else "1235"
+        return parse_firms_csv(
+            _csv(
+                f"46.12345,19.54321,330.44,0.40,0.37,2026-08-28,{minute},"
+                f"{satellite},VIIRS,h,2.0NRT,295.66,8.5,D"
+            ),
+            source=source,
+        )
+
+
+@pytest.mark.asyncio
+async def test_multi_satellite_provider_combines_noaa20_and_noaa21() -> None:
+    client = _MultiClient()
+    provider = FirmsMultiSatelliteProvider(
+        client, west=14, south=43, east=24, north=50
+    )
+    snapshot = await provider.async_fetch_latest()
+    cached = await provider.async_fetch_latest()
+
+    assert snapshot.provider == "nasa_firms"
+    assert snapshot.satellite == "NOAA-20/NOAA-21 VIIRS"
+    assert len(snapshot.detections) == 2
+    assert {item.satellite for item in snapshot.detections} == {"N20", "N21"}
+    assert cached is snapshot
+    assert client.calls == 2
+
+
+def test_monitoring_bounds_are_bounded_and_contain_home() -> None:
+    west, south, east, north = monitoring_bounds(47.5, 19.0, 500)
+
+    assert west < 19.0 < east
+    assert south < 47.5 < north
+    assert east - west <= 20
+    assert north - south <= 20
+
+
+@pytest.mark.parametrize("radius", [0, -1, 501, float("nan")])
+def test_monitoring_bounds_reject_unsafe_radius(radius: float) -> None:
+    with pytest.raises(ValueError):
+        monitoring_bounds(47.5, 19.0, radius)

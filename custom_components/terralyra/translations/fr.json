@@ -71,6 +71,7 @@
       "fire_activity_frp_change": {"name": "Variation de la FRP de l’activité incendie sur une heure"},
       "new_incidents_24h": {"name": "Nouveaux incendies au cours des dernières 24 heures"}
       ,"active_fire_situation": {"name": "Situation des incendies actifs", "state": {"normal": "Normale", "elevated": "Élevée", "high": "Haute", "critical": "Critique", "unknown": "Inconnue"}}
+      ,"fire_source_confirmation": {"name": "Confirmation indépendante de la source d’incendie", "state": {"disabled": "Désactivée", "not_available": "Indisponible", "no_active_fire": "Aucun feu actif", "single_source": "Source unique", "multi_source": "Plusieurs sources"}}
       ,"land_surface_temperature": {"name": "Température de surface au domicile"}
     },
     "event": {"new_fire": {"name": "Nouveau feu actif"}, "fire_risk_increase": {"name": "Augmentation du risque d’incendie"}, "fire_trend": {"name": "Changement de tendance d’un incendie"}},

@@ -8,11 +8,16 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
+    CONF_FIRMS_MAP_KEY,
     CONF_PASSWORD,
+    CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
     CONF_USERNAME,
+    DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
+    DEFAULT_RADIUS_KM,
     DEFAULT_RESOLVE_PLACE_NAMES,
     DOMAIN,
     PLATFORMS,
@@ -23,7 +28,9 @@ from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
 from .products.fire import ActiveFireClient
 from .products.fire_risk import FireRiskClient
+from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
+from .providers.firms import FirmsMultiSatelliteProvider, monitoring_bounds
 from .providers.mtg import MtgActiveFireProvider
 
 
@@ -49,8 +56,26 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
     if entry.options.get(CONF_RESOLVE_PLACE_NAMES, DEFAULT_RESOLVE_PLACE_NAMES):
         resolver = PlaceNameResolver(hass)
         await resolver.async_setup()
+    corroboration_provider = None
+    if entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
+        bounds = monitoring_bounds(
+            float(hass.config.latitude),
+            float(hass.config.longitude),
+            float(entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
+        )
+        corroboration_provider = FirmsMultiSatelliteProvider(
+            FirmsClient(session, str(entry.data.get(CONF_FIRMS_MAP_KEY, ""))),
+            west=bounds[0],
+            south=bounds[1],
+            east=bounds[2],
+            north=bounds[3],
+        )
     coordinator = TerraLyraCoordinator(
-        hass, entry, MtgActiveFireProvider(client), resolver
+        hass,
+        entry,
+        MtgActiveFireProvider(client),
+        resolver,
+        corroboration_provider=corroboration_provider,
     )
     await coordinator.async_config_entry_first_refresh()
     fire_risk_client = FireRiskClient(session)

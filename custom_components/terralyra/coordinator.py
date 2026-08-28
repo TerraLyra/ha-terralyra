@@ -14,6 +14,7 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .activity import ActivitySummary, summarize_activity, update_activity_history
 from .clustering import cluster_detections, haversine_km
+from .correlation import CorrelatedDetection, correlate_detections
 from .const import (
     ATTR_NOTIFICATION_MESSAGE,
     ATTR_NOTIFICATION_TITLE,
@@ -42,6 +43,7 @@ from .geocoding import (
     PlaceNameResolver,
 )
 from .models import (
+    ConfirmationLevel,
     DistanceTrend,
     FireCluster,
     FireDetection,
@@ -76,6 +78,8 @@ class CoordinatorData:
     raw_pixels_in_radius: int
     activity: ActivitySummary
     situation: SituationAssessment
+    confirmation_level: ConfirmationLevel = ConfirmationLevel.DISABLED
+    corroborating_detections: int = 0
 
 
 class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
@@ -87,15 +91,26 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         entry: ConfigEntry,
         provider: ActiveFireProvider,
         place_resolver: PlaceNameResolver | None = None,
+        *,
+        corroboration_provider: ActiveFireProvider | None = None,
     ) -> None:
         self.entry = entry
         self.provider = provider
+        self.corroboration_provider = corroboration_provider
         self.provider_status = ProviderStatus.INITIALIZING
         self.provider_name: str | None = None
         self.satellite: str | None = None
         self.provider_product: str | None = None
         self.product_timestamp: datetime | None = None
         self.received_timestamp: datetime | None = None
+        self.corroboration_status = (
+            ProviderStatus.INITIALIZING
+            if corroboration_provider is not None
+            else None
+        )
+        self.corroboration_provider_name: str | None = None
+        self.corroboration_satellite: str | None = None
+        self.corroboration_product_timestamp: datetime | None = None
         self._store = Store(hass, STORE_VERSION, f"{DOMAIN}.{entry.entry_id}.tracks")
         self._tracks: list[dict[str, Any]] = []
         self._activity_history: list[dict[str, Any]] = []
@@ -151,6 +166,34 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.product_timestamp = snapshot.product_timestamp
         self.received_timestamp = snapshot.received_timestamp
 
+        corroboration_snapshot = None
+        if self.corroboration_provider is not None:
+            try:
+                corroboration_snapshot = (
+                    await self.corroboration_provider.async_fetch_latest()
+                )
+            except ProviderAuthenticationError:
+                self.corroboration_status = ProviderStatus.AUTH_ERROR
+            except ProviderNoDataError:
+                self.corroboration_status = ProviderStatus.NO_PRODUCT
+            except ProviderUnavailableError:
+                self.corroboration_status = ProviderStatus.OUTAGE
+            except Exception as err:  # noqa: BLE001
+                # An optional secondary source must never stop primary
+                # LSA SAF monitoring or expose its credential-bearing request.
+                self.corroboration_status = ProviderStatus.OUTAGE
+                _LOGGER.warning(
+                    "NASA FIRMS corroboration failed safely: %s",
+                    type(err).__name__,
+                )
+            else:
+                self.corroboration_status = corroboration_snapshot.status
+                self.corroboration_provider_name = corroboration_snapshot.provider
+                self.corroboration_satellite = corroboration_snapshot.satellite
+                self.corroboration_product_timestamp = (
+                    corroboration_snapshot.product_timestamp
+                )
+
         radius_km = float(self.entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM))
         min_conf = float(self.entry.options.get(CONF_MIN_CONFIDENCE, DEFAULT_MIN_CONFIDENCE))
         min_frp = float(self.entry.options.get(CONF_MIN_FRP_MW, DEFAULT_MIN_FRP_MW))
@@ -176,6 +219,29 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             home_lat,
             home_lon,
             max(0.5, dedup_radius * 0.66),
+        )
+        correlated: tuple[CorrelatedDetection, ...] = ()
+        if corroboration_snapshot is not None:
+            secondary = tuple(
+                detection
+                for detection in corroboration_snapshot.detections
+                if haversine_km(
+                    home_lat,
+                    home_lon,
+                    detection.latitude,
+                    detection.longitude,
+                )
+                <= radius_km
+            )
+            correlated = correlate_detections(
+                tuple(detection for detection, _distance in filtered), secondary
+            )
+        confirmation_level, corroborating_count = _annotate_corroboration(
+            clusters,
+            correlated,
+            provider_enabled=self.corroboration_provider is not None,
+            provider_available=corroboration_snapshot is not None,
+            cluster_radius_km=max(0.5, dedup_radius * 0.66),
         )
         new_fires: list[dict[str, Any]] = []
         trend_events: list[dict[str, Any]] = []
@@ -260,6 +326,8 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             raw_pixels_in_radius=len(filtered),
             activity=activity,
             situation=situation,
+            confirmation_level=confirmation_level,
+            corroborating_detections=corroborating_count,
         )
 
     def _set_provider_failure_status(self, status: ProviderStatus) -> None:
@@ -361,6 +429,63 @@ def _apply_place(
         cluster.place_attribution = place.attribution
 
 
+def _annotate_corroboration(
+    clusters: list[FireCluster],
+    correlated: tuple[CorrelatedDetection, ...],
+    *,
+    provider_enabled: bool,
+    provider_available: bool,
+    cluster_radius_km: float,
+) -> tuple[ConfirmationLevel, int]:
+    """Attach bounded, explainable independent-source matches to clusters."""
+    if not provider_enabled:
+        return ConfirmationLevel.DISABLED, 0
+    if not clusters:
+        return (
+            ConfirmationLevel.NO_ACTIVE_FIRE
+            if provider_available
+            else ConfirmationLevel.NOT_AVAILABLE,
+            0,
+        )
+    total_matches = 0
+    for cluster in clusters:
+        matches = [
+            match
+            for item in correlated
+            if haversine_km(
+                cluster.latitude,
+                cluster.longitude,
+                item.primary.latitude,
+                item.primary.longitude,
+            )
+            <= cluster_radius_km
+            for match in item.matches
+        ]
+        unique_matches = {
+            match.detection.source_detection_id
+            or (
+                f"{match.detection.provider}:{match.detection.satellite}:"
+                f"{match.detection.timestamp.isoformat()}:"
+                f"{match.detection.latitude:.5f}:{match.detection.longitude:.5f}"
+            )
+            for match in matches
+        }
+        cluster.corroborating_detections = len(unique_matches)
+        total_matches += len(unique_matches)
+        if unique_matches:
+            cluster.confirmation_level = ConfirmationLevel.MULTI_SOURCE
+            cluster.providers = ("eumetsat_lsa_saf", "nasa_firms")
+        elif not provider_available:
+            cluster.confirmation_level = ConfirmationLevel.NOT_AVAILABLE
+        else:
+            cluster.confirmation_level = ConfirmationLevel.SINGLE_SOURCE
+    if total_matches:
+        return ConfirmationLevel.MULTI_SOURCE, total_matches
+    if not provider_available:
+        return ConfirmationLevel.NOT_AVAILABLE, 0
+    return ConfirmationLevel.SINGLE_SOURCE, 0
+
+
 def _notification_text(
     language: str | None,
     settlement: str | None,
@@ -422,6 +547,21 @@ def _tracked_fire_clusters(
             )
             trend_samples = int(track.get("trend_sample_count", 0))
             trend_window_minutes = float(track.get("trend_window_minutes", 0))
+            confirmation_level = ConfirmationLevel(
+                str(
+                    track.get(
+                        "confirmation_level",
+                        ConfirmationLevel.SINGLE_SOURCE.value,
+                    )
+                )
+            )
+            providers = tuple(
+                str(provider)
+                for provider in track.get("providers", ["eumetsat_lsa_saf"])
+            )
+            corroborating_detections = int(
+                track.get("corroborating_detections", 0)
+            )
         except (KeyError, TypeError, ValueError):
             # Tracks written before v0.1.5 do not contain enough map metadata.
             continue
@@ -453,6 +593,9 @@ def _tracked_fire_clusters(
                 distance_trend=distance_trend,
                 trend_samples=trend_samples,
                 trend_window_minutes=trend_window_minutes,
+                confirmation_level=confirmation_level,
+                providers=providers,
+                corroborating_detections=corroborating_detections,
             )
         )
     return sorted(result, key=lambda cluster: cluster.distance_km)

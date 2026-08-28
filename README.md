@@ -395,13 +395,14 @@ The domain is intentionally the generic `terralyra`, not `terralyra_mtg_fire`, s
 
 ### Multi-source detection and incident verification
 
-- add NASA FIRMS as an optional secondary active-fire provider
-- FIRMS foundation implemented without runtime registration: bounded official
-  Area API client/parser and provider-neutral NOAA-20/NOAA-21 VIIRS adapter;
-  configuration, scheduling, and correlation remain intentionally disabled
-- correlate nearby LSA SAF and FIRMS detections by location and acquisition time
-- correlation engine implemented with bounded distance/time gates and retained
-  per-source observations; runtime scheduling and UI exposure remain disabled
+- NASA FIRMS can be enabled as an optional secondary active-fire provider with
+  the user's personal MAP_KEY; it remains disabled by default
+- bounded NOAA-20 and NOAA-21 VIIRS Area API requests are cached for at least
+  15 minutes and failures never stop primary LSA SAF monitoring
+- nearby LSA SAF and FIRMS detections are correlated within explicit 5 km and
+  6 hour gates, with source attribution retained on each incident
+- the independent fire-source confirmation sensor distinguishes disabled,
+  unavailable, single-source, and multi-source results
 - expose a provider-neutral confirmation level instead of treating either
   satellite source as authoritative on its own
 - distinguish detections seen by multiple satellites from single-source,

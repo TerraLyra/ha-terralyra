@@ -147,6 +147,16 @@
           "unknown": "Unknown"
         }
       },
+      "fire_source_confirmation": {
+        "name": "Independent fire-source confirmation",
+        "state": {
+          "disabled": "Disabled",
+          "not_available": "Not available",
+          "no_active_fire": "No active fire",
+          "single_source": "Single source",
+          "multi_source": "Multiple sources"
+        }
+      },
       "land_surface_temperature": {
         "name": "Land-surface temperature at Home"
       }

@@ -10,6 +10,8 @@ from .const import (
     ATTR_ACQUIRED,
     ATTR_ACTIVITY_TREND,
     ATTR_CONFIDENCE,
+    ATTR_CONFIRMATION_LEVEL,
+    ATTR_CORROBORATING_DETECTIONS,
     ATTR_DISTANCE_KM,
     ATTR_DISTANCE_TREND,
     ATTR_DURATION_MINUTES,
@@ -32,6 +34,7 @@ from .const import (
     ATTR_PIXEL_COUNT,
     ATTR_PLACE_ATTRIBUTION,
     ATTR_PLACE_NAME,
+    ATTR_PROVIDERS,
     ATTR_TRACK_ID,
     ATTR_TREND_SAMPLES,
     ATTR_TREND_WINDOW_MINUTES,
@@ -74,6 +77,16 @@ class DistanceTrend(StrEnum):
     STABLE = "stable"
     RECEDING = "receding"
     UNKNOWN = "unknown"
+
+
+class ConfirmationLevel(StrEnum):
+    """Explainable independent-source confirmation state."""
+
+    DISABLED = "disabled"
+    NOT_AVAILABLE = "not_available"
+    NO_ACTIVE_FIRE = "no_active_fire"
+    SINGLE_SOURCE = "single_source"
+    MULTI_SOURCE = "multi_source"
 
 
 @dataclass(frozen=True, slots=True)
@@ -143,6 +156,9 @@ class FireCluster:
     distance_trend: DistanceTrend | None = None
     trend_samples: int | None = None
     trend_window_minutes: float | None = None
+    confirmation_level: ConfirmationLevel = ConfirmationLevel.SINGLE_SOURCE
+    providers: tuple[str, ...] = ("eumetsat_lsa_saf",)
+    corroborating_detections: int = 0
 
     def attrs(self) -> dict[str, Any]:
         """Return bounded Home Assistant state attributes."""
@@ -198,4 +214,7 @@ class FireCluster:
             attrs[ATTR_TREND_SAMPLES] = self.trend_samples
         if self.trend_window_minutes is not None:
             attrs[ATTR_TREND_WINDOW_MINUTES] = round(self.trend_window_minutes, 1)
+        attrs[ATTR_CONFIRMATION_LEVEL] = self.confirmation_level.value
+        attrs[ATTR_PROVIDERS] = list(self.providers)
+        attrs[ATTR_CORROBORATING_DETECTIONS] = self.corroborating_detections
         return attrs
