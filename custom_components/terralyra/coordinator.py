@@ -300,6 +300,12 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 track["source_url"] = corroboration_snapshot.source_url
                 track["providers"] = [corroboration_snapshot.provider]
                 track["confirmation_level"] = ConfirmationLevel.SINGLE_SOURCE.value
+        self._firms_tracks = _remove_overlapping_firms_tracks(
+            self._firms_tracks,
+            self._tracks,
+            matching_radius_km=dedup_radius,
+            matching_window=timedelta(hours=dedup_hours),
+        )
         changed = tracking.changed
         for track, cluster in tracking.new_incidents:
             if not first_snapshot:
@@ -586,6 +592,47 @@ def _firms_only_clusters(
         cluster.providers = ("nasa_firms",)
         cluster.confirmation_level = ConfirmationLevel.SINGLE_SOURCE
     return clusters
+
+
+def _remove_overlapping_firms_tracks(
+    firms_tracks: list[dict[str, Any]],
+    primary_tracks: list[dict[str, Any]],
+    *,
+    matching_radius_km: float,
+    matching_window: timedelta,
+) -> list[dict[str, Any]]:
+    """Remove supplemental tracks already represented by a primary incident."""
+    result: list[dict[str, Any]] = []
+    for firms_track in firms_tracks:
+        try:
+            firms_latitude = float(firms_track["latitude"])
+            firms_longitude = float(firms_track["longitude"])
+            firms_last_seen = _parse_dt(firms_track.get("last_seen"))
+        except (KeyError, TypeError, ValueError):
+            continue
+        overlaps = False
+        for primary_track in primary_tracks:
+            try:
+                time_difference = abs(
+                    firms_last_seen - _parse_dt(primary_track.get("last_seen"))
+                )
+                distance_km = haversine_km(
+                    firms_latitude,
+                    firms_longitude,
+                    float(primary_track["latitude"]),
+                    float(primary_track["longitude"]),
+                )
+            except (KeyError, TypeError, ValueError):
+                continue
+            if (
+                time_difference <= matching_window
+                and distance_km <= matching_radius_km
+            ):
+                overlaps = True
+                break
+        if not overlaps:
+            result.append(firms_track)
+    return result
 
 
 def _notification_text(

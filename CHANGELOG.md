@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.4
+
+- Reconcile persisted NASA FIRMS-only tracks with primary LSA SAF incidents
+  across refresh cycles, preventing historical cross-provider duplicates.
+- Prefix supplemental map entity names with `NASA FIRMS` so their source is
+  immediately visible on Home Assistant maps and entity dialogs.
+- Document migration of manually configured geolocation cards from the legacy
+  `lsa_saf` source to `terralyra`.
+
 ## 0.2.3
 
 - Show NASA FIRMS-only VIIRS detections as supplemental Home Assistant map

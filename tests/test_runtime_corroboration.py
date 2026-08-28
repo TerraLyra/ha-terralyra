@@ -8,6 +8,7 @@ from custom_components.terralyra.correlation import correlate_detections
 from custom_components.terralyra.coordinator import (
     _annotate_corroboration,
     _firms_only_clusters,
+    _remove_overlapping_firms_tracks,
 )
 from custom_components.terralyra.models import (
     ConfirmationLevel,
@@ -127,3 +128,47 @@ def test_all_correlated_firms_detections_are_removed_from_supplemental_map() -> 
         home_lon=19.0,
         cluster_radius_km=2.0,
     ) == []
+
+
+def test_persisted_firms_track_is_removed_when_primary_incident_overlaps() -> None:
+    firms_track = {
+        "track_id": "firms-one",
+        "latitude": 47.5,
+        "longitude": 19.0,
+        "last_seen": NOW.isoformat(),
+    }
+    primary_track = {
+        "track_id": "primary-one",
+        "latitude": 47.51,
+        "longitude": 19.0,
+        "last_seen": (NOW + timedelta(minutes=30)).isoformat(),
+    }
+
+    assert _remove_overlapping_firms_tracks(
+        [firms_track],
+        [primary_track],
+        matching_radius_km=5.0,
+        matching_window=timedelta(hours=6),
+    ) == []
+
+
+def test_distinct_persisted_firms_track_remains_visible() -> None:
+    firms_track = {
+        "track_id": "firms-one",
+        "latitude": 47.5,
+        "longitude": 19.0,
+        "last_seen": NOW.isoformat(),
+    }
+    distant_primary = {
+        "track_id": "primary-one",
+        "latitude": 48.0,
+        "longitude": 19.0,
+        "last_seen": NOW.isoformat(),
+    }
+
+    assert _remove_overlapping_firms_tracks(
+        [firms_track],
+        [distant_primary],
+        matching_radius_km=5.0,
+        matching_window=timedelta(hours=6),
+    ) == [firms_track]

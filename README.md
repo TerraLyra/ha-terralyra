@@ -385,6 +385,15 @@ custom_components/terralyra/
 
 The domain is intentionally the generic `terralyra`, not `terralyra_mtg_fire`, so future products can be added to the same installed integration.
 
+### Migrating an existing map card
+
+Dashboard geolocation-source selections belong to the user's dashboard and
+cannot be rewritten by an integration update. If a map card was created for the
+older development integration, edit that card, remove the legacy `lsa_saf`
+value from **Geolocation sources**, and select `terralyra`. FIRMS-only markers
+are prefixed with **NASA FIRMS**; unprefixed markers use the primary LSA SAF
+feed.
+
 ## Roadmap
 
 ### Next

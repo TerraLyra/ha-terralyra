@@ -1,4 +1,4 @@
-"""Map entities for active LSA SAF fire clusters."""
+"""Provider-attributed TerraLyra map entities for active fire clusters."""
 from __future__ import annotations
 
 from typing import Any, override
@@ -105,13 +105,13 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
             raise ValueError("A map entity requires a tracked fire cluster")
         self._cluster = cluster
         self._attr_unique_id = f"{entry.entry_id}_fire_{cluster.track_id}"
-        self._attr_name = cluster.location_description or f"Fire detection {cluster.track_id[:6]}"
+        self._attr_name = _display_name(cluster)
 
     @callback
     def set_cluster(self, cluster: FireCluster) -> None:
         """Replace this entity's current cluster data."""
         self._cluster = cluster
-        self._attr_name = cluster.location_description or f"Fire detection {cluster.track_id[:6]}"
+        self._attr_name = _display_name(cluster)
 
     @property
     @override
@@ -137,3 +137,12 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
             attrs[ATTR_PRODUCT_TIME] = data.product_time.isoformat()
             attrs.setdefault(ATTR_SOURCE_URL, data.source_url)
         return attrs
+
+
+def _display_name(cluster: FireCluster) -> str:
+    """Return a map label that makes supplemental FIRMS markers explicit."""
+    track_id = cluster.track_id or "unknown"
+    name = cluster.location_description or f"Fire detection {track_id[:6]}"
+    if cluster.providers == ("nasa_firms",):
+        return f"NASA FIRMS · {name}"
+    return name

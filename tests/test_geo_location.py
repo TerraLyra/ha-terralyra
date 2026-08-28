@@ -129,6 +129,17 @@ def test_map_entity_preserves_cluster_specific_source_url() -> None:
     )
 
 
+def test_firms_only_map_entity_has_explicit_provider_name() -> None:
+    entity = _entity(
+        _cluster(
+            providers=("nasa_firms",),
+            location_description="Trebišov közelében észlelt tűz",
+        )
+    )
+
+    assert entity.name == "NASA FIRMS · Trebišov közelében észlelt tűz"
+
+
 def test_map_entity_updates_existing_track_without_changing_identity() -> None:
     entity = _entity(_cluster())
     entity.async_write_ha_state = Mock()
