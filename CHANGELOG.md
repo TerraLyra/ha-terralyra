@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.3
+
+- Show NASA FIRMS-only VIIRS detections as supplemental Home Assistant map
+  markers when FIRMS corroboration is enabled.
+- Suppress duplicate FIRMS markers when the same detection already corroborates
+  an LSA SAF incident.
+- Resolve the nearest settlement locally for supplemental FIRMS incidents and
+  retain explicit NASA FIRMS source attribution.
+- Use a separate identifier namespace for FIRMS incidents to prevent entity
+  identity collisions with primary LSA SAF incidents.
+- Keep FIRMS-only markers out of primary LSA SAF alerts and situation scoring.
+
 ## 0.2.2
 
 - Add a separate, dashboard-adjustable 1–48 hour fire-history window for map

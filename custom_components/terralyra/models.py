@@ -35,6 +35,7 @@ from .const import (
     ATTR_PLACE_ATTRIBUTION,
     ATTR_PLACE_NAME,
     ATTR_PROVIDERS,
+    ATTR_SOURCE_URL,
     ATTR_TRACK_ID,
     ATTR_TREND_SAMPLES,
     ATTR_TREND_WINDOW_MINUTES,
@@ -159,6 +160,7 @@ class FireCluster:
     confirmation_level: ConfirmationLevel = ConfirmationLevel.SINGLE_SOURCE
     providers: tuple[str, ...] = ("eumetsat_lsa_saf",)
     corroborating_detections: int = 0
+    source_url: str | None = None
 
     def attrs(self) -> dict[str, Any]:
         """Return bounded Home Assistant state attributes."""
@@ -217,4 +219,6 @@ class FireCluster:
         attrs[ATTR_CONFIRMATION_LEVEL] = self.confirmation_level.value
         attrs[ATTR_PROVIDERS] = list(self.providers)
         attrs[ATTR_CORROBORATING_DETECTIONS] = self.corroborating_detections
+        if self.source_url is not None:
+            attrs[ATTR_SOURCE_URL] = self.source_url
         return attrs

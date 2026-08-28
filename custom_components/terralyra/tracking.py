@@ -132,6 +132,7 @@ def apply_incident_metadata(cluster: FireCluster, incident: dict[str, Any]) -> N
     cluster.corroborating_detections = int(
         incident.get("corroborating_detections", 0)
     )
+    cluster.source_url = _optional_text(incident.get("source_url"))
 
 
 def _nearest_match(

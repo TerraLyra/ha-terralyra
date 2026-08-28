@@ -118,6 +118,17 @@ def test_map_entity_exposes_location_distance_and_details() -> None:
     assert entity.extra_state_attributes[ATTR_SOURCE_URL].startswith("https://datalsasaf.")
 
 
+def test_map_entity_preserves_cluster_specific_source_url() -> None:
+    entity = _entity(
+        _cluster(source_url="https://firms.modaps.eosdis.nasa.gov/")
+    )
+
+    assert (
+        entity.extra_state_attributes[ATTR_SOURCE_URL]
+        == "https://firms.modaps.eosdis.nasa.gov/"
+    )
+
+
 def test_map_entity_updates_existing_track_without_changing_identity() -> None:
     entity = _entity(_cluster())
     entity.async_write_ha_state = Mock()

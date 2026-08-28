@@ -115,6 +115,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.corroboration_product_timestamp: datetime | None = None
         self._store = Store(hass, STORE_VERSION, f"{DOMAIN}.{entry.entry_id}.tracks")
         self._tracks: list[dict[str, Any]] = []
+        self._firms_tracks: list[dict[str, Any]] = []
         self._activity_history: list[dict[str, Any]] = []
         self._store_loaded = False
         self._initialized = False
@@ -134,10 +135,12 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         stored = await self._store.async_load()
         if isinstance(stored, dict) and isinstance(stored.get("tracks"), list):
             self._tracks = stored["tracks"]
+            if isinstance(stored.get("firms_tracks"), list):
+                self._firms_tracks = stored["firms_tracks"]
             if isinstance(stored.get("activity_history"), list):
                 self._activity_history = stored["activity_history"]
             self._initialized = bool(stored.get("initialized", True))
-            for track in self._tracks:
+            for track in [*self._tracks, *self._firms_tracks]:
                 if track.get("place_attribution") != GEONAMES_ATTRIBUTION:
                     for key in (
                         "place_name",
@@ -228,6 +231,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             max(0.5, dedup_radius * 0.66),
         )
         correlated: tuple[CorrelatedDetection, ...] = ()
+        secondary: tuple[FireDetection, ...] = ()
         if corroboration_snapshot is not None:
             secondary = tuple(
                 detection
@@ -265,6 +269,37 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             history_hours=history_hours,
         )
         self._tracks = tracking.incidents
+        existing_firms_tracks = (
+            self._firms_tracks if self.corroboration_provider is not None else []
+        )
+        firms_tracking = update_incidents(
+            existing_firms_tracks,
+            _firms_only_clusters(
+                correlated,
+                secondary,
+                home_lat=home_lat,
+                home_lon=home_lon,
+                cluster_radius_km=max(0.5, dedup_radius * 0.66),
+            ),
+            now=(
+                corroboration_snapshot.product_timestamp
+                if corroboration_snapshot is not None
+                else snapshot.product_timestamp
+            ),
+            matching_radius_km=dedup_radius,
+            memory_hours=dedup_hours,
+            history_hours=history_hours,
+        )
+        self._firms_tracks = firms_tracking.incidents
+        for track in self._firms_tracks:
+            track_id = str(track.get("track_id", ""))
+            if track_id and not track_id.startswith("firms-"):
+                track["track_id"] = f"firms-{track_id}"
+        if corroboration_snapshot is not None:
+            for track in self._firms_tracks:
+                track["source_url"] = corroboration_snapshot.source_url
+                track["providers"] = [corroboration_snapshot.provider]
+                track["confirmation_level"] = ConfirmationLevel.SINGLE_SOURCE.value
         changed = tracking.changed
         for track, cluster in tracking.new_incidents:
             if not first_snapshot:
@@ -320,22 +355,32 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             await self._async_save_state()
 
         if self._place_resolver is not None:
-            for track in self._tracks:
+            for track in [*self._tracks, *self._firms_tracks]:
                 self._schedule_place_lookup(track)
+
+        visible_since = snapshot.product_timestamp - timedelta(hours=history_hours)
+        tracked_fires = _tracked_fire_clusters(
+            self._tracks,
+            home_lat,
+            home_lon,
+            visible_since=visible_since,
+        )
+        tracked_fires.extend(
+            _tracked_fire_clusters(
+                self._firms_tracks,
+                home_lat,
+                home_lon,
+                visible_since=visible_since,
+            )
+        )
+        tracked_fires.sort(key=lambda cluster: cluster.distance_km)
 
         return CoordinatorData(
             product_time=snapshot.product_timestamp,
             source_url=snapshot.source_url,
             filename=snapshot.filename,
             active_clusters=clusters,
-            tracked_fires=_tracked_fire_clusters(
-                self._tracks,
-                home_lat,
-                home_lon,
-                visible_since=(
-                    snapshot.product_timestamp - timedelta(hours=history_hours)
-                ),
-            ),
+            tracked_fires=tracked_fires,
             new_fires=new_fires,
             trend_events=trend_events,
             raw_pixels_in_radius=len(filtered),
@@ -397,7 +442,11 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 return
             place = await self._place_resolver.async_resolve(latitude, longitude)
             track = next(
-                (item for item in self._tracks if item.get("track_id") == track_id),
+                (
+                    item
+                    for item in [*self._tracks, *self._firms_tracks]
+                    if item.get("track_id") == track_id
+                ),
                 None,
             )
             if track is None:
@@ -424,6 +473,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             {
                 "initialized": self._initialized,
                 "tracks": self._tracks,
+                "firms_tracks": self._firms_tracks,
                 "activity_history": self._activity_history,
             }
         )
@@ -499,6 +549,43 @@ def _annotate_corroboration(
     if not provider_available:
         return ConfirmationLevel.NOT_AVAILABLE, 0
     return ConfirmationLevel.SINGLE_SOURCE, 0
+
+
+def _firms_only_clusters(
+    correlated: tuple[CorrelatedDetection, ...],
+    secondary: tuple[FireDetection, ...],
+    *,
+    home_lat: float,
+    home_lon: float,
+    cluster_radius_km: float,
+) -> list[FireCluster]:
+    """Return FIRMS clusters not already represented by an LSA SAF detection."""
+    matched_ids = {
+        match.detection.source_detection_id
+        for item in correlated
+        for match in item.matches
+        if match.detection.source_detection_id is not None
+    }
+    unmatched = [
+        (
+            detection,
+            haversine_km(
+                home_lat,
+                home_lon,
+                detection.latitude,
+                detection.longitude,
+            ),
+        )
+        for detection in secondary
+        if detection.source_detection_id not in matched_ids
+    ]
+    clusters = cluster_detections(
+        unmatched, home_lat, home_lon, cluster_radius_km
+    )
+    for cluster in clusters:
+        cluster.providers = ("nasa_firms",)
+        cluster.confirmation_level = ConfirmationLevel.SINGLE_SOURCE
+    return clusters
 
 
 def _notification_text(
@@ -617,6 +704,7 @@ def _tracked_fire_clusters(
                 confirmation_level=confirmation_level,
                 providers=providers,
                 corroborating_detections=corroborating_detections,
+                source_url=_optional_text(track.get("source_url")),
             )
         )
     return sorted(result, key=lambda cluster: cluster.distance_km)

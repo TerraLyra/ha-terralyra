@@ -135,5 +135,5 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
         attrs = self._cluster.attrs()
         if data:
             attrs[ATTR_PRODUCT_TIME] = data.product_time.isoformat()
-            attrs[ATTR_SOURCE_URL] = data.source_url
+            attrs.setdefault(ATTR_SOURCE_URL, data.source_url)
         return attrs

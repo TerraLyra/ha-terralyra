@@ -405,6 +405,8 @@ The domain is intentionally the generic `terralyra`, not `terralyra_mtg_fire`, s
   15 minutes and failures never stop primary LSA SAF monitoring
 - nearby LSA SAF and FIRMS detections are correlated within explicit 5 km and
   6 hour gates, with source attribution retained on each incident
+- FIRMS-only detections appear as supplemental map markers with locally resolved
+  nearest-settlement names; correlated FIRMS points are not duplicated
 - the independent fire-source confirmation sensor distinguishes disabled,
   unavailable, single-source, and multi-source results
 - expose a provider-neutral confirmation level instead of treating either

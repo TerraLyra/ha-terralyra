@@ -5,7 +5,10 @@ from dataclasses import replace
 from datetime import UTC, datetime, timedelta
 
 from custom_components.terralyra.correlation import correlate_detections
-from custom_components.terralyra.coordinator import _annotate_corroboration
+from custom_components.terralyra.coordinator import (
+    _annotate_corroboration,
+    _firms_only_clusters,
+)
 from custom_components.terralyra.models import (
     ConfirmationLevel,
     FireCluster,
@@ -92,3 +95,35 @@ def test_secondary_outage_is_not_misreported_as_single_source() -> None:
     assert level is ConfirmationLevel.NOT_AVAILABLE
     assert count == 0
     assert cluster.confirmation_level is ConfirmationLevel.NOT_AVAILABLE
+
+
+def test_firms_only_detection_becomes_supplemental_map_cluster() -> None:
+    primary = _detection("eumetsat_lsa_saf", 47.5, 19.0)
+    matched = _detection("nasa_firms", 47.51, 19.0)
+    firms_only = _detection("nasa_firms", 47.8, 19.2)
+
+    clusters = _firms_only_clusters(
+        correlate_detections((primary,), (matched, firms_only)),
+        (matched, firms_only),
+        home_lat=47.5,
+        home_lon=19.0,
+        cluster_radius_km=2.0,
+    )
+
+    assert len(clusters) == 1
+    assert clusters[0].latitude == firms_only.latitude
+    assert clusters[0].providers == ("nasa_firms",)
+    assert clusters[0].confirmation_level is ConfirmationLevel.SINGLE_SOURCE
+
+
+def test_all_correlated_firms_detections_are_removed_from_supplemental_map() -> None:
+    primary = _detection("eumetsat_lsa_saf", 47.5, 19.0)
+    matched = _detection("nasa_firms", 47.51, 19.0)
+
+    assert _firms_only_clusters(
+        correlate_detections((primary,), (matched,)),
+        (matched,),
+        home_lat=47.5,
+        home_lon=19.0,
+        cluster_radius_km=2.0,
+    ) == []
