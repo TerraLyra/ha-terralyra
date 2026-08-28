@@ -19,6 +19,7 @@ from .entity import (
     TerraLyraFireRiskEntity,
     TerraLyraLandSurfaceTemperatureEntity,
 )
+from .evidence import FireEvidenceAssessment, assess_fire_evidence
 from .models import ProviderStatus
 from .products.fire_risk import WMS_URL
 from .products.lst import WMS_URL as LST_WMS_URL
@@ -39,6 +40,7 @@ async def async_setup_entry(
         NewIncidents24hSensor(entry),
         ActiveFireSituationSensor(entry),
         FireSourceConfirmationSensor(entry),
+        NearestFireEvidenceSensor(entry),
         FireRiskTodaySensor(entry),
         FireRiskAreaMaximumSensor(entry),
         FireRiskUpdateSensor(entry),
@@ -400,6 +402,48 @@ class FireSourceConfirmationSensor(TerraLyraEntity, SensorEntity):
             "correlation_distance_km": 5.0,
             "correlation_window_hours": 6,
             "classification": "independent_satellite_source_corroboration",
+        }
+
+
+class NearestFireEvidenceSensor(TerraLyraEntity, SensorEntity):
+    """Explain the strength and limitations of the nearest fire evidence."""
+
+    _attr_translation_key = "nearest_fire_evidence"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["no_active_fire", "limited", "moderate", "strong"]
+    _attr_icon = "mdi:shield-search"
+
+    def __init__(self, entry: TerraLyraConfigEntry) -> None:
+        super().__init__(entry)
+        self._attr_unique_id = f"{entry.entry_id}_nearest_fire_evidence"
+
+    def _assessment(self) -> FireEvidenceAssessment:
+        data = self.coordinator.data
+        nearest = data.active_clusters[0] if data and data.active_clusters else None
+        return assess_fire_evidence(
+            nearest,
+            product_time=data.product_time if data else None,
+            secondary_available=(
+                self.coordinator.corroboration_status is ProviderStatus.AVAILABLE
+            ),
+        )
+
+    @property
+    def native_value(self) -> str:
+        return self._assessment().level
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        assessment = self._assessment()
+        data = self.coordinator.data
+        nearest = data.active_clusters[0] if data and data.active_clusters else None
+        return {
+            "score": assessment.score,
+            "factors": list(assessment.factors),
+            "cautions": list(assessment.cautions),
+            "incident_id": nearest.track_id if nearest else None,
+            "classification": "integration_calculated_evidence_strength",
+            "not_an_emergency_confirmation": True,
         }
 
 

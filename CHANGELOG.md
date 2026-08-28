@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.2.1
+
+- Add a translated, explainable evidence-strength sensor for the nearest active
+  fire detection, with `limited`, `moderate`, and `strong` states.
+- Explain the assessment with bounded factors and cautions covering independent
+  satellite corroboration, freshness, FRP, primary confidence, and pixel count.
+- Explicitly label the assessment as integration-calculated and not an official
+  emergency confirmation.
+
 ## 0.2.0
 
 - Activate optional NASA FIRMS corroboration with the user's personal MAP_KEY.

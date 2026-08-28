@@ -157,6 +157,10 @@
           "multi_source": "Multiple sources"
         }
       },
+      "nearest_fire_evidence": {
+        "name": "Nearest fire evidence strength",
+        "state": {"no_active_fire": "No active fire", "limited": "Limited", "moderate": "Moderate", "strong": "Strong"}
+      },
       "land_surface_temperature": {
         "name": "Land-surface temperature at Home"
       }

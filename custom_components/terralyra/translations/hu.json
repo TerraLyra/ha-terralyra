@@ -157,6 +157,10 @@
           "multi_source": "Több forrás"
         }
       },
+      "nearest_fire_evidence": {
+        "name": "A legközelebbi tűzészlelés bizonyítékerőssége",
+        "state": {"no_active_fire": "Nincs aktív tűz", "limited": "Korlátozott", "moderate": "Közepes", "strong": "Erős"}
+      },
       "land_surface_temperature": {
         "name": "Felszínhőmérséklet az otthonnál"
       }

@@ -75,6 +75,8 @@ It checks for the newest deterministic 10-minute product filename, parses the fi
   change over one hour, with the 3-hour change as a bounded attribute
 - `sensor.*_new_fire_incidents_in_the_last_24_hours` – new tracked incidents in
   the rolling 24-hour window
+- `sensor.*_nearest_fire_evidence_strength` – explainable strength of the
+  satellite evidence for the nearest incident; never an official confirmation
 - `sensor.*_active_fire_situation` – explainable integration-calculated summary
   of current detected activity (`normal`, `elevated`, `high`, `critical`, or
   `unknown`)
@@ -406,7 +408,8 @@ The domain is intentionally the generic `terralyra`, not `terralyra_mtg_fire`, s
 - expose a provider-neutral confirmation level instead of treating either
   satellite source as authoritative on its own
 - distinguish detections seen by multiple satellites from single-source,
-  low-intensity, stale, or otherwise uncertain thermal anomalies
+  low-intensity, stale, or otherwise uncertain thermal anomalies through a
+  bounded, explainable evidence-strength sensor
 - make the displayed fire-history window configurable so providers with
   different retention periods can be compared consistently
 - preserve source attribution, observation time, resolution, confidence, and

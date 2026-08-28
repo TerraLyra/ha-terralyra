@@ -72,6 +72,7 @@
       "new_incidents_24h": {"name": "Neue Brandereignisse in den letzten 24 Stunden"}
       ,"active_fire_situation": {"name": "Aktive Brandsituation", "state": {"normal": "Normal", "elevated": "Erhöht", "high": "Hoch", "critical": "Kritisch", "unknown": "Unbekannt"}}
       ,"fire_source_confirmation": {"name": "Unabhängige Brandquellenbestätigung", "state": {"disabled": "Deaktiviert", "not_available": "Nicht verfügbar", "no_active_fire": "Kein aktives Feuer", "single_source": "Einzelne Quelle", "multi_source": "Mehrere Quellen"}}
+      ,"nearest_fire_evidence": {"name": "Belegstärke des nächstgelegenen Feuers", "state": {"no_active_fire": "Kein aktives Feuer", "limited": "Begrenzt", "moderate": "Mittel", "strong": "Stark"}}
       ,"land_surface_temperature": {"name": "Landoberflächentemperatur am Zuhause"}
     },
     "event": {"new_fire": {"name": "Neues aktives Feuer"}, "fire_risk_increase": {"name": "Anstieg der Waldbrandgefahr"}, "fire_trend": {"name": "Trendänderung eines Brandereignisses"}},
