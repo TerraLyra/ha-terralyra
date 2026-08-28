@@ -1,0 +1,82 @@
+{
+  "title": "TerraLyra",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connexion au service de données LSA SAF",
+        "description": "Saisissez les identifiants de votre compte gratuit LSA SAF Data Service. L’intégration fournit la détection des feux actifs MTG et la prévision FRMv3 du risque d’incendie.",
+        "data": {"username": "Nom d’utilisateur", "password": "Mot de passe"},
+        "data_description": {"username": "Nom d’utilisateur du service de données LSA SAF", "password": "Mot de passe du service de données LSA SAF"}
+      },
+      "reauth_confirm": {
+        "title": "Réauthentification requise",
+        "description": "Le service de données LSA SAF a refusé les identifiants enregistrés. Saisissez le nom d’utilisateur et le mot de passe actuel du même compte.",
+        "data": {"username": "Nom d’utilisateur", "password": "Mot de passe"},
+        "data_description": {"username": "Nom d’utilisateur du compte LSA SAF configuré à l’origine", "password": "Mot de passe actuel du service de données LSA SAF"}
+      }
+    },
+    "error": {"cannot_connect": "Impossible de se connecter au service de données LSA SAF", "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect"},
+    "abort": {"already_configured": "Ce compte LSA SAF est déjà configuré", "reauth_successful": "Identifiants mis à jour", "wrong_account": "Les nouveaux identifiants appartiennent à un autre compte LSA SAF"}
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Options de surveillance des feux actifs",
+        "data": {
+          "radius_km": "Rayon de surveillance",
+          "fire_risk_radius_km": "Rayon de prévision du risque d’incendie",
+          "min_confidence": "Confiance minimale de détection",
+          "min_frp_mw": "Puissance radiative minimale du feu",
+          "scan_interval_minutes": "Intervalle de vérification",
+          "dedup_radius_km": "Rayon de correspondance d’un même feu",
+          "dedup_hours": "Durée de mémorisation d’un même feu",
+          "resolve_place_names": "Afficher les lieux proches sur la carte",
+          "enable_land_surface_temperature": "Activer la température de surface",
+          "enable_firms": "Activer la corroboration NASA FIRMS",
+          "firms_map_key": "NASA FIRMS MAP_KEY"
+        },
+        "data_description": {
+          "radius_km": "Seules les détections MTG situées dans cette distance du domicile Home Assistant sont prises en compte.",
+          "fire_risk_radius_km": "Zone affichée sur la carte FRMv3 et analysée pour déterminer le risque régional maximal. Cela ne modifie pas les alertes de feu actif.",
+          "min_confidence": "0 inclut toutes les détections ; 1 applique le filtre le plus strict.",
+          "min_frp_mw": "Ignore les détections dont la FRP en MW est inférieure à cette valeur.",
+          "scan_interval_minutes": "Fréquence à laquelle Home Assistant recherche un produit MTG de dix minutes plus récent.",
+          "dedup_radius_km": "Une détection proche d’un feu récent est considérée comme le même feu et ne génère pas de nouvel événement.",
+          "dedup_hours": "Durée pendant laquelle les événements répétés d’un même feu dans la même zone sont supprimés.",
+          "resolve_place_names": "Recherche localement la localité la plus proche à l’aide de la base GeoNames cities500 incluse. Aucune coordonnée n’est envoyée à un service externe.",
+          "enable_land_surface_temperature": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie environ toutes les 15 minutes les coordonnées du domicile au service WMS officiel LSA SAF adaguc.lsasvcs.ipma.pt.",
+          "enable_firms": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie une petite zone autour du domicile à l’API officielle NASA FIRMS afin de rechercher des détections VIIRS indépendantes. Un MAP_KEY personnel gratuit est requis.",
+          "firms_map_key": "Stocké comme secret dans l’entrée de configuration Home Assistant et masqué dans les diagnostics. Laisser vide pour conserver une clé déjà enregistrée."
+        }
+      }
+    },
+    "error": {
+      "firms_key_required": "Saisissez un NASA FIRMS MAP_KEY avant d’activer la corroboration",
+      "invalid_firms_key": "Le NASA FIRMS MAP_KEY a été refusé",
+      "firms_cannot_connect": "Impossible de valider le NASA FIRMS MAP_KEY"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "nearest_fire": {"name": "Feu actif le plus proche"},
+      "active_fire_count": {"name": "Groupes de feux actifs"},
+      "raw_pixel_count": {"name": "Pixels de feu dans le rayon"},
+      "product_time": {"name": "Heure du dernier produit incendie"},
+      "product_age": {"name": "Âge du produit incendie"},
+      "provider_status": {"name": "État des données d’incendie actif", "state": {"initializing": "Initialisation", "available": "Disponible", "delayed": "Retardé", "no_product": "Aucun produit actuel", "outage": "Indisponibilité du fournisseur", "auth_error": "Erreur d’authentification"}},
+      "fire_risk_today": {"name": "Risque d’incendie près du domicile", "state": {"low": "Faible", "moderate": "Modéré", "high": "Élevé", "very_high": "Très élevé", "extreme": "Extrême", "unknown": "Inconnu"}},
+      "fire_risk_area_maximum": {"name": "Risque d’incendie maximal dans la zone surveillée", "state": {"low": "Faible", "moderate": "Modéré", "high": "Élevé", "very_high": "Très élevé", "extreme": "Extrême", "unknown": "Inconnu"}},
+      "fire_risk_update": {"name": "Dernière mise à jour de la prévision du risque d’incendie"},
+      "recent_detections": {"name": "Détections d’incendie au cours de la dernière heure"},
+      "fire_activity_frp_change": {"name": "Variation de la FRP de l’activité incendie sur une heure"},
+      "new_incidents_24h": {"name": "Nouveaux incendies au cours des dernières 24 heures"}
+      ,"active_fire_situation": {"name": "Situation des incendies actifs", "state": {"normal": "Normale", "elevated": "Élevée", "high": "Haute", "critical": "Critique", "unknown": "Inconnue"}}
+      ,"land_surface_temperature": {"name": "Température de surface au domicile"}
+    },
+    "event": {"new_fire": {"name": "Nouveau feu actif"}, "fire_risk_increase": {"name": "Augmentation du risque d’incendie"}, "fire_trend": {"name": "Changement de tendance d’un incendie"}},
+    "select": {"fire_risk_day": {"name": "Jour de prévision du risque d’incendie", "state": {"today": "Aujourd’hui", "tomorrow": "Demain", "in_2_days": "Dans 2 jours", "in_3_days": "Dans 3 jours", "in_4_days": "Dans 4 jours", "in_5_days": "Dans 5 jours", "in_6_days": "Dans 6 jours", "in_7_days": "Dans 7 jours", "in_8_days": "Dans 8 jours", "in_9_days": "Dans 9 jours"}}},
+    "camera": {"fire_risk_map": {"name": "Carte de prévision du risque d’incendie"}},
+    "calendar": {"fire_risk_forecast": {"name": "Prévision du risque d’incendie sur 10 jours"}},
+    "number": {"monitoring_radius": {"name": "Rayon de surveillance des feux actifs"}, "fire_risk_radius": {"name": "Rayon de prévision du risque d’incendie"}}
+  }
+}

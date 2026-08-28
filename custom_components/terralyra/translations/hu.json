@@ -1,0 +1,201 @@
+{
+  "title": "TerraLyra",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Kapcsolódás az LSA SAF Data Service-hez",
+        "description": "Add meg az ingyenes LSA SAF Data Service fiókod adatait. Az integráció MTG aktívtűz-észlelést és FRMv3 tűzkockázati előrejelzést biztosít.",
+        "data": {
+          "username": "Felhasználónév",
+          "password": "Jelszó"
+        },
+        "data_description": {
+          "username": "LSA SAF Data Service felhasználónév",
+          "password": "LSA SAF Data Service jelszó"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Újrahitelesítés szükséges",
+        "description": "Az LSA SAF Data Service elutasította a mentett hitelesítési adatokat. Add meg újra a fiók felhasználónevét és jelszavát.",
+        "data": {
+          "username": "Felhasználónév",
+          "password": "Jelszó"
+        },
+        "data_description": {
+          "username": "Az eredeti LSA SAF fiók felhasználóneve",
+          "password": "Az LSA SAF Data Service aktuális jelszava"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Nem sikerült kapcsolódni az LSA SAF Data Service-hez",
+      "invalid_auth": "Hibás felhasználónév vagy jelszó"
+    },
+    "abort": {
+      "already_configured": "Ez az LSA SAF fiók már be van állítva",
+      "reauth_successful": "A hitelesítési adatok frissítve lettek",
+      "wrong_account": "Az új hitelesítési adatok egy másik LSA SAF fiókhoz tartoznak"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Aktív tűzfigyelés beállításai",
+        "data": {
+          "radius_km": "Figyelési sugár",
+          "fire_risk_radius_km": "Tűzkockázati előrejelzés sugara",
+          "min_confidence": "Minimális megbízhatóság",
+          "min_frp_mw": "Minimális tűzsugárzási teljesítmény",
+          "scan_interval_minutes": "Ellenőrzési gyakoriság",
+          "dedup_radius_km": "Azonos tűz illesztési sugara",
+          "dedup_hours": "Azonos tűz megjegyzési ideje",
+          "resolve_place_names": "Közeli helynevek megjelenítése a térképen",
+          "enable_land_surface_temperature": "Felszínhőmérséklet engedélyezése",
+          "enable_firms": "NASA FIRMS megerősítés engedélyezése",
+          "firms_map_key": "NASA FIRMS MAP_KEY"
+        },
+        "data_description": {
+          "radius_km": "Csak a Home Assistant Otthon helyétől ezen a távolságon belüli MTG tűzészlelések számítanak.",
+          "fire_risk_radius_km": "Az FRMv3 térképen megjelenő és a legmagasabb regionális tűzkockázathoz vizsgált terület. Az aktívtűz-riasztások sugarát nem módosítja.",
+          "min_confidence": "A 0 minden észlelést enged; az 1 a legszigorúbb szűrés.",
+          "min_frp_mw": "Az ennél gyengébb FRP-jű észlelések figyelmen kívül maradnak.",
+          "scan_interval_minutes": "Milyen gyakran ellenőrizze a Home Assistant az új 10 perces MTG tűzterméket.",
+          "dedup_radius_km": "A közelmúltban látott tűzhöz közeli észlelés ugyanannak a tűznek számít, így nem keletkezik új esemény.",
+          "dedup_hours": "Ennyi ideig nyomja el az azonos helyen jelentkező ismételt új-tűz eseményt.",
+          "resolve_place_names": "A legközelebbi települést helyben keresi meg a csomagolt GeoNames cities500 adatbázisból. Koordinátát nem küld külső szolgáltatásnak.",
+          "enable_land_surface_temperature": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant körülbelül 15 percenként elküldi az Otthon szélességi és hosszúsági koordinátáját az LSA SAF hivatalos adaguc.lsasvcs.ipma.pt WMS-szolgáltatásának a legfrissebb műholdas felszínhőmérséklet lekéréséhez.",
+          "enable_firms": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant az Otthon körüli kis határolóterületet elküldi a NASA hivatalos FIRMS API-jának, hogy független VIIRS-észleléseket keressen. Saját ingyenes MAP_KEY szükséges.",
+          "firms_map_key": "Titkos adatként kerül a Home Assistant konfigurációs bejegyzésébe, és a diagnosztikából ki van takarva. Hagyd üresen a már mentett kulcs megtartásához."
+        }
+      }
+    },
+    "error": {
+      "firms_key_required": "A megerősítés engedélyezése előtt add meg a NASA FIRMS MAP_KEY értékét",
+      "invalid_firms_key": "A NASA FIRMS elutasította a MAP_KEY értékét",
+      "firms_cannot_connect": "A NASA FIRMS MAP_KEY ellenőrzése nem sikerült"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "nearest_fire": {
+        "name": "Legközelebbi aktív tűz"
+      },
+      "active_fire_count": {
+        "name": "Aktív tűzcsoportok"
+      },
+      "raw_pixel_count": {
+        "name": "Tűzpixelek a körön belül"
+      },
+      "product_time": {
+        "name": "Legfrissebb tűztermék ideje"
+      },
+      "product_age": {
+        "name": "Tűztermék kora"
+      },
+      "provider_status": {
+        "name": "Aktívtűz-adatok állapota",
+        "state": {
+          "initializing": "Indítás",
+          "available": "Elérhető",
+          "delayed": "Késik",
+          "no_product": "Nincs friss termék",
+          "outage": "Szolgáltatói kiesés",
+          "auth_error": "Hitelesítési hiba"
+        }
+      },
+      "fire_risk_today": {
+        "name": "Tűzkockázat az otthon közelében",
+        "state": {
+          "low": "Alacsony",
+          "moderate": "Mérsékelt",
+          "high": "Magas",
+          "very_high": "Nagyon magas",
+          "extreme": "Szélsőséges",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "fire_risk_area_maximum": {
+        "name": "Legmagasabb tűzkockázat a figyelési körzetben",
+        "state": {
+          "low": "Alacsony",
+          "moderate": "Mérsékelt",
+          "high": "Magas",
+          "very_high": "Nagyon magas",
+          "extreme": "Szélsőséges",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "fire_risk_update": {
+        "name": "Tűzkockázati előrejelzés legutóbbi frissítése"
+      },
+      "recent_detections": {
+        "name": "Tűzészlelések az elmúlt órában"
+      },
+      "fire_activity_frp_change": {
+        "name": "Tűzaktivitás FRP-változása egy óra alatt"
+      },
+      "new_incidents_24h": {
+        "name": "Új tűzesetek az elmúlt 24 órában"
+      },
+      "active_fire_situation": {
+        "name": "Aktív tűzhelyzet",
+        "state": {
+          "normal": "Normál",
+          "elevated": "Emelkedett",
+          "high": "Magas",
+          "critical": "Kritikus",
+          "unknown": "Ismeretlen"
+        }
+      },
+      "land_surface_temperature": {
+        "name": "Felszínhőmérséklet az otthonnál"
+      }
+    },
+    "event": {
+      "new_fire": {
+        "name": "Új aktív tűz"
+      },
+      "fire_risk_increase": {
+        "name": "Tűzkockázat emelkedése"
+      },
+      "fire_trend": {
+        "name": "Tűzeset trendváltozása"
+      }
+    },
+    "select": {
+      "fire_risk_day": {
+        "name": "Tűzkockázati előrejelzés napja",
+        "state": {
+          "today": "Ma",
+          "tomorrow": "Holnap",
+          "in_2_days": "2 nap múlva",
+          "in_3_days": "3 nap múlva",
+          "in_4_days": "4 nap múlva",
+          "in_5_days": "5 nap múlva",
+          "in_6_days": "6 nap múlva",
+          "in_7_days": "7 nap múlva",
+          "in_8_days": "8 nap múlva",
+          "in_9_days": "9 nap múlva"
+        }
+      }
+    },
+    "camera": {
+      "fire_risk_map": {
+        "name": "Tűzkockázati előrejelzési térkép"
+      }
+    },
+    "calendar": {
+      "fire_risk_forecast": {
+        "name": "10 napos tűzkockázati előrejelzés"
+      }
+    },
+    "number": {
+      "monitoring_radius": {
+        "name": "Aktív tűz figyelési sugár"
+      },
+      "fire_risk_radius": {
+        "name": "Tűzkockázati előrejelzés sugara"
+      }
+    }
+  }
+}

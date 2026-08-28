@@ -1,0 +1,201 @@
+{
+  "title": "TerraLyra",
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect to LSA SAF Data Service",
+        "description": "Enter the credentials from your free LSA SAF Data Service account. The integration provides MTG Active Fire Detection and the FRMv3 fire-risk forecast.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "LSA SAF Data Service username",
+          "password": "LSA SAF Data Service password"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthentication required",
+        "description": "The LSA SAF Data Service rejected the saved credentials. Enter the username and current password for the same account.",
+        "data": {
+          "username": "Username",
+          "password": "Password"
+        },
+        "data_description": {
+          "username": "Username of the originally configured LSA SAF account",
+          "password": "Current LSA SAF Data Service password"
+        }
+      }
+    },
+    "error": {
+      "cannot_connect": "Could not connect to the LSA SAF Data Service",
+      "invalid_auth": "Invalid username or password"
+    },
+    "abort": {
+      "already_configured": "This LSA SAF account is already configured",
+      "reauth_successful": "Authentication details updated successfully",
+      "wrong_account": "The new credentials belong to a different LSA SAF account"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Active fire monitoring options",
+        "data": {
+          "radius_km": "Monitoring radius",
+          "fire_risk_radius_km": "Fire-risk forecast radius",
+          "min_confidence": "Minimum fire confidence",
+          "min_frp_mw": "Minimum fire radiative power",
+          "scan_interval_minutes": "Check interval",
+          "dedup_radius_km": "Same-fire matching radius",
+          "dedup_hours": "Same-fire memory",
+          "resolve_place_names": "Show nearby place names on the map",
+          "enable_land_surface_temperature": "Enable land-surface temperature",
+          "enable_firms": "Enable NASA FIRMS corroboration",
+          "firms_map_key": "NASA FIRMS MAP_KEY"
+        },
+        "data_description": {
+          "radius_km": "Only MTG fire detections within this distance of Home Assistant's Home location are considered.",
+          "fire_risk_radius_km": "Area shown on the FRMv3 map and checked for the highest regional fire risk. This does not change active-fire alerts.",
+          "min_confidence": "0 includes all detections; 1 is the strictest possible filter.",
+          "min_frp_mw": "Ignore detections weaker than this FRP in MW.",
+          "scan_interval_minutes": "How often Home Assistant checks for a newer 10-minute MTG fire product.",
+          "dedup_radius_km": "A detection near a recently seen fire is treated as the same fire and will not generate another new-fire event.",
+          "dedup_hours": "How long a recently seen fire suppresses repeat new-fire events in the same area.",
+          "resolve_place_names": "Find the nearest settlement locally using the bundled GeoNames cities500 database. No coordinates are sent to an external service.",
+          "enable_land_surface_temperature": "Optional and off by default. When enabled, Home Assistant sends the Home latitude and longitude about every 15 minutes to the official LSA SAF WMS service at adaguc.lsasvcs.ipma.pt to retrieve the latest satellite-observed land-surface temperature.",
+          "enable_firms": "Optional and off by default. When enabled, Home Assistant sends a small bounding box around Home to the official NASA FIRMS API to look for independent VIIRS detections. A free personal MAP_KEY is required.",
+          "firms_map_key": "Stored as a secret in the Home Assistant config entry and redacted from diagnostics. Leave blank to keep an already saved key."
+        }
+      }
+    },
+    "error": {
+      "firms_key_required": "Enter a NASA FIRMS MAP_KEY before enabling corroboration",
+      "invalid_firms_key": "The NASA FIRMS MAP_KEY was rejected",
+      "firms_cannot_connect": "Could not validate the NASA FIRMS MAP_KEY"
+    }
+  },
+  "entity": {
+    "sensor": {
+      "nearest_fire": {
+        "name": "Nearest active fire"
+      },
+      "active_fire_count": {
+        "name": "Active fire clusters"
+      },
+      "raw_pixel_count": {
+        "name": "Fire pixels in radius"
+      },
+      "product_time": {
+        "name": "Latest fire product time"
+      },
+      "product_age": {
+        "name": "Fire product age"
+      },
+      "provider_status": {
+        "name": "Active-fire data status",
+        "state": {
+          "initializing": "Initializing",
+          "available": "Available",
+          "delayed": "Delayed",
+          "no_product": "No current product",
+          "outage": "Provider outage",
+          "auth_error": "Authentication error"
+        }
+      },
+      "fire_risk_today": {
+        "name": "Fire risk near Home",
+        "state": {
+          "low": "Low",
+          "moderate": "Moderate",
+          "high": "High",
+          "very_high": "Very high",
+          "extreme": "Extreme",
+          "unknown": "Unknown"
+        }
+      },
+      "fire_risk_area_maximum": {
+        "name": "Highest fire risk in monitoring area",
+        "state": {
+          "low": "Low",
+          "moderate": "Moderate",
+          "high": "High",
+          "very_high": "Very high",
+          "extreme": "Extreme",
+          "unknown": "Unknown"
+        }
+      },
+      "fire_risk_update": {
+        "name": "Latest fire-risk forecast update"
+      },
+      "recent_detections": {
+        "name": "Fire detections in the last hour"
+      },
+      "fire_activity_frp_change": {
+        "name": "Fire activity FRP change over one hour"
+      },
+      "new_incidents_24h": {
+        "name": "New fire incidents in the last 24 hours"
+      },
+      "active_fire_situation": {
+        "name": "Active Fire Situation",
+        "state": {
+          "normal": "Normal",
+          "elevated": "Elevated",
+          "high": "High",
+          "critical": "Critical",
+          "unknown": "Unknown"
+        }
+      },
+      "land_surface_temperature": {
+        "name": "Land-surface temperature at Home"
+      }
+    },
+    "event": {
+      "new_fire": {
+        "name": "New active fire"
+      },
+      "fire_risk_increase": {
+        "name": "Fire risk increase"
+      },
+      "fire_trend": {
+        "name": "Fire incident trend change"
+      }
+    },
+    "select": {
+      "fire_risk_day": {
+        "name": "Fire risk forecast day",
+        "state": {
+          "today": "Today",
+          "tomorrow": "Tomorrow",
+          "in_2_days": "In 2 days",
+          "in_3_days": "In 3 days",
+          "in_4_days": "In 4 days",
+          "in_5_days": "In 5 days",
+          "in_6_days": "In 6 days",
+          "in_7_days": "In 7 days",
+          "in_8_days": "In 8 days",
+          "in_9_days": "In 9 days"
+        }
+      }
+    },
+    "camera": {
+      "fire_risk_map": {
+        "name": "Fire risk forecast map"
+      }
+    },
+    "calendar": {
+      "fire_risk_forecast": {
+        "name": "10-day fire-risk forecast"
+      }
+    },
+    "number": {
+      "monitoring_radius": {
+        "name": "Active fire monitoring radius"
+      },
+      "fire_risk_radius": {
+        "name": "Fire-risk forecast radius"
+      }
+    }
+  }
+}
