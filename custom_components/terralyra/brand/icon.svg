@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="title desc">
+  <title id="title">TerraLyra</title>
+  <desc id="desc">A stylized eye formed by orbital arcs around a globe.</desc>
+  <g fill="none" stroke-linecap="round">
+    <path d="M64 216C115 120 188 76 256 76c68 0 141 44 192 140" stroke="#082B5C" stroke-width="42"/>
+    <path d="M116 210c39-59 88-88 140-88s101 29 140 88" stroke="#16B8F3" stroke-width="30"/>
+    <path d="M116 302c39 59 88 88 140 88s101-29 140-88" stroke="#10C8B0" stroke-width="30"/>
+    <path d="M64 296c51 96 124 140 192 140 68 0 141-44 192-140" stroke="#082B5C" stroke-width="42"/>
+  </g>
+  <circle cx="256" cy="256" r="102" fill="#082B5C"/>
+  <path fill="#72D944" d="M188 201c17-25 44-41 74-45l8 19-13 18-25 4-9 18-27 5-15-10 7-9Zm99-39c25 8 46 25 59 47l-14 10-17-5-13-17-22-8 7-27Zm-91 92 20-18 32 7 14 23 25 9 6 34-18 41-15 7-10-26-23-12-15-29-22-13 6-23Zm103-12 24-5 22 12 9 25-12 13-21-10-9-20-13-15Z"/>
+  <circle cx="256" cy="256" r="102" fill="none" stroke="#16B8F3" stroke-width="10"/>
+</svg>

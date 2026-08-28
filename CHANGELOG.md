@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Replace the fire-specific branding with TerraLyra's provider-neutral globe
+  and observation-eye identity.
+- Include a scalable SVG source and transparent 256 px and 512 px icons.
+
 ## 0.1.0
 
 - Launch TerraLyra as a clean, provider-neutral Home Assistant integration
