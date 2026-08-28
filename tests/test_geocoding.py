@@ -38,6 +38,7 @@ def _database(path: Path) -> None:
 async def test_resolves_nearest_settlement_without_network(hass, tmp_path: Path) -> None:
     database = tmp_path / "places.sqlite3"
     _database(database)
+    hass.config.language = "hu"
     resolver = PlaceNameResolver(hass, database)
     await resolver.async_setup()
 
