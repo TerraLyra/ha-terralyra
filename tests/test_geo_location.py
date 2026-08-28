@@ -130,12 +130,12 @@ def test_map_entity_preserves_cluster_specific_source_url() -> None:
 
 
 def test_firms_only_map_entity_has_explicit_provider_name() -> None:
-    entity = _entity(
-        _cluster(
-            providers=("nasa_firms",),
-            location_description="Trebišov közelében észlelt tűz",
-        )
+    cluster = _cluster(
+        providers=("nasa_firms",),
+        location_description="Trebišov közelében észlelt tűz",
     )
+    entity = _entity(cluster)
+    entity.set_cluster(cluster)
 
     assert entity.name == "NASA FIRMS · Trebišov közelében észlelt tűz"
 
