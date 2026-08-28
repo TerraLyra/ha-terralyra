@@ -30,6 +30,7 @@
           "scan_interval_minutes": "Intervallo di controllo",
           "dedup_radius_km": "Raggio di corrispondenza dello stesso incendio",
           "dedup_hours": "Durata della memoria dello stesso incendio",
+          "fire_history_hours": "Finestra visibile dello storico incendi",
           "resolve_place_names": "Mostra i luoghi vicini sulla mappa",
           "enable_land_surface_temperature": "Abilita la temperatura della superficie terrestre",
           "enable_firms": "Abilita la conferma NASA FIRMS",
@@ -43,6 +44,7 @@
           "scan_interval_minutes": "Frequenza con cui Home Assistant cerca un prodotto MTG di dieci minuti più recente.",
           "dedup_radius_km": "Un rilevamento vicino a un incendio osservato di recente viene considerato lo stesso incendio e non genera un altro evento.",
           "dedup_hours": "Periodo durante il quale vengono soppressi gli eventi ripetuti dello stesso incendio nella stessa area.",
+          "fire_history_hours": "Periodo durante il quale i marker degli incendi inattivi restano visibili sulla mappa. Non prolunga la soppressione degli avvisi ripetuti.",
           "resolve_place_names": "Trova localmente l’insediamento più vicino utilizzando il database GeoNames cities500 incluso. Nessuna coordinata viene inviata a servizi esterni.",
           "enable_land_surface_temperature": "Opzionale e disattivata per impostazione predefinita. Se attivata, Home Assistant invia circa ogni 15 minuti le coordinate di Casa al servizio WMS ufficiale LSA SAF adaguc.lsasvcs.ipma.pt.",
           "enable_firms": "Opzionale e disattivata per impostazione predefinita. Se attivata, Home Assistant invia una piccola area attorno a Casa all’API ufficiale NASA FIRMS per cercare rilevamenti VIIRS indipendenti. È richiesto un MAP_KEY personale gratuito.",
@@ -79,6 +81,6 @@
     "select": {"fire_risk_day": {"name": "Giorno della previsione del rischio di incendio", "state": {"today": "Oggi", "tomorrow": "Domani", "in_2_days": "Tra 2 giorni", "in_3_days": "Tra 3 giorni", "in_4_days": "Tra 4 giorni", "in_5_days": "Tra 5 giorni", "in_6_days": "Tra 6 giorni", "in_7_days": "Tra 7 giorni", "in_8_days": "Tra 8 giorni", "in_9_days": "Tra 9 giorni"}}},
     "camera": {"fire_risk_map": {"name": "Mappa di previsione del rischio di incendio"}},
     "calendar": {"fire_risk_forecast": {"name": "Previsione del rischio di incendio a 10 giorni"}},
-    "number": {"monitoring_radius": {"name": "Raggio di monitoraggio degli incendi attivi"}, "fire_risk_radius": {"name": "Raggio della previsione del rischio di incendio"}}
+    "number": {"monitoring_radius": {"name": "Raggio di monitoraggio degli incendi attivi"}, "fire_risk_radius": {"name": "Raggio della previsione del rischio di incendio"}, "fire_history_hours": {"name": "Finestra dello storico incendi"}}
   }
 }

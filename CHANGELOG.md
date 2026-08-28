@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.2
+
+- Add a separate, dashboard-adjustable 1–48 hour fire-history window for map
+  markers.
+- Keep inactive incidents visible for the selected history period without
+  extending same-fire alert suppression.
+- Preserve the previous six-hour behavior by default for existing users.
+
 ## 0.2.1
 
 - Add a translated, explainable evidence-strength sensor for the nearest active

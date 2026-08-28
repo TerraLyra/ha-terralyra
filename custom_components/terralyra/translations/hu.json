@@ -49,6 +49,7 @@
           "scan_interval_minutes": "Ellenőrzési gyakoriság",
           "dedup_radius_km": "Azonos tűz illesztési sugara",
           "dedup_hours": "Azonos tűz megjegyzési ideje",
+          "fire_history_hours": "Megjelenített tűzelőzmény időablaka",
           "resolve_place_names": "Közeli helynevek megjelenítése a térképen",
           "enable_land_surface_temperature": "Felszínhőmérséklet engedélyezése",
           "enable_firms": "NASA FIRMS megerősítés engedélyezése",
@@ -62,6 +63,7 @@
           "scan_interval_minutes": "Milyen gyakran ellenőrizze a Home Assistant az új 10 perces MTG tűzterméket.",
           "dedup_radius_km": "A közelmúltban látott tűzhöz közeli észlelés ugyanannak a tűznek számít, így nem keletkezik új esemény.",
           "dedup_hours": "Ennyi ideig nyomja el az azonos helyen jelentkező ismételt új-tűz eseményt.",
+          "fire_history_hours": "Ennyi ideig maradnak láthatók az inaktív tűzjelölések a térképen. Az ismételt riasztások elnyomását nem hosszabbítja meg.",
           "resolve_place_names": "A legközelebbi települést helyben keresi meg a csomagolt GeoNames cities500 adatbázisból. Koordinátát nem küld külső szolgáltatásnak.",
           "enable_land_surface_temperature": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant körülbelül 15 percenként elküldi az Otthon szélességi és hosszúsági koordinátáját az LSA SAF hivatalos adaguc.lsasvcs.ipma.pt WMS-szolgáltatásának a legfrissebb műholdas felszínhőmérséklet lekéréséhez.",
           "enable_firms": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant az Otthon körüli kis határolóterületet elküldi a NASA hivatalos FIRMS API-jának, hogy független VIIRS-észleléseket keressen. Saját ingyenes MAP_KEY szükséges.",
@@ -209,6 +211,9 @@
       },
       "fire_risk_radius": {
         "name": "Tűzkockázati előrejelzés sugara"
+      },
+      "fire_history_hours": {
+        "name": "Tűzelőzmény időablaka"
       }
     }
   }

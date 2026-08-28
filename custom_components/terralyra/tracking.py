@@ -44,15 +44,19 @@ def update_incidents(
     now: datetime,
     matching_radius_km: float,
     memory_hours: int,
+    history_hours: int | None = None,
 ) -> TrackingResult:
     """Match clusters to incidents and update bounded lifecycle aggregates."""
-    cutoff = now - timedelta(hours=memory_hours)
+    dedup_cutoff = now - timedelta(hours=memory_hours)
+    history_cutoff = now - timedelta(
+        hours=max(memory_hours, history_hours or memory_hours)
+    )
     retained: list[dict[str, Any]] = []
     ended: list[str] = []
     changed = False
     for incident in incidents:
         _migrate_incident(incident)
-        if _parse_dt(incident.get("last_seen")) < cutoff:
+        if _parse_dt(incident.get("last_seen")) < history_cutoff:
             incident["lifecycle"] = FireLifecycle.ENDED.value
             ended.append(str(incident.get("track_id", "")))
             changed = True
@@ -67,7 +71,11 @@ def update_incidents(
     matched_ids: set[str] = set()
     for cluster in clusters:
         matched = _nearest_match(
-            retained, cluster, matching_radius_km, matched_ids
+            retained,
+            cluster,
+            matching_radius_km,
+            matched_ids,
+            dedup_cutoff,
         )
         if matched is None:
             matched = _new_incident(cluster)
@@ -131,6 +139,7 @@ def _nearest_match(
     cluster: FireCluster,
     radius_km: float,
     matched_ids: set[str],
+    dedup_cutoff: datetime,
 ) -> dict[str, Any] | None:
     candidates = (
         (
@@ -144,6 +153,7 @@ def _nearest_match(
         )
         for incident in incidents
         if str(incident.get("track_id")) not in matched_ids
+        and _parse_dt(incident.get("last_seen")) >= dedup_cutoff
     )
     within = [item for item in candidates if item[0] <= radius_km]
     return min(within, key=lambda item: item[0])[1] if within else None

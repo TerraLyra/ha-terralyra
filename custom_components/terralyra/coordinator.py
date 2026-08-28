@@ -23,12 +23,14 @@ from .const import (
     BUS_EVENT_FIRE_TREND,
     BUS_EVENT_NEW_FIRE,
     CONF_DEDUP_HOURS,
+    CONF_FIRE_HISTORY_HOURS,
     CONF_DEDUP_RADIUS_KM,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
     CONF_RADIUS_KM,
     CONF_SCAN_INTERVAL_MINUTES,
     DEFAULT_DEDUP_HOURS,
+    DEFAULT_FIRE_HISTORY_HOURS,
     DEFAULT_DEDUP_RADIUS_KM,
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_FRP_MW,
@@ -199,6 +201,11 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         min_frp = float(self.entry.options.get(CONF_MIN_FRP_MW, DEFAULT_MIN_FRP_MW))
         dedup_radius = float(self.entry.options.get(CONF_DEDUP_RADIUS_KM, DEFAULT_DEDUP_RADIUS_KM))
         dedup_hours = int(self.entry.options.get(CONF_DEDUP_HOURS, DEFAULT_DEDUP_HOURS))
+        history_hours = int(
+            self.entry.options.get(
+                CONF_FIRE_HISTORY_HOURS, DEFAULT_FIRE_HISTORY_HOURS
+            )
+        )
         home_lat = float(self.hass.config.latitude)
         home_lon = float(self.hass.config.longitude)
 
@@ -255,6 +262,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             now=snapshot.product_timestamp,
             matching_radius_km=dedup_radius,
             memory_hours=dedup_hours,
+            history_hours=history_hours,
         )
         self._tracks = tracking.incidents
         changed = tracking.changed
@@ -320,7 +328,14 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             source_url=snapshot.source_url,
             filename=snapshot.filename,
             active_clusters=clusters,
-            tracked_fires=_tracked_fire_clusters(self._tracks, home_lat, home_lon),
+            tracked_fires=_tracked_fire_clusters(
+                self._tracks,
+                home_lat,
+                home_lon,
+                visible_since=(
+                    snapshot.product_timestamp - timedelta(hours=history_hours)
+                ),
+            ),
             new_fires=new_fires,
             trend_events=trend_events,
             raw_pixels_in_radius=len(filtered),
@@ -511,7 +526,11 @@ def _notification_text(
 
 
 def _tracked_fire_clusters(
-    tracks: list[dict[str, Any]], home_lat: float, home_lon: float
+    tracks: list[dict[str, Any]],
+    home_lat: float,
+    home_lon: float,
+    *,
+    visible_since: datetime | None = None,
 ) -> list[FireCluster]:
     """Convert persisted recent tracks into map-ready fire clusters."""
     result: list[FireCluster] = []
@@ -520,6 +539,8 @@ def _tracked_fire_clusters(
             latitude = float(track["latitude"])
             longitude = float(track["longitude"])
             acquired = _parse_dt(track.get("last_seen"))
+            if visible_since is not None and acquired < visible_since:
+                continue
             track_id = str(track["track_id"])
             confidence = float(track["confidence"])
             frp_mw = float(track["frp_mw"])

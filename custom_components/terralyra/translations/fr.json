@@ -30,6 +30,7 @@
           "scan_interval_minutes": "Intervalle de vérification",
           "dedup_radius_km": "Rayon de correspondance d’un même feu",
           "dedup_hours": "Durée de mémorisation d’un même feu",
+          "fire_history_hours": "Fenêtre d’historique des feux affichée",
           "resolve_place_names": "Afficher les lieux proches sur la carte",
           "enable_land_surface_temperature": "Activer la température de surface",
           "enable_firms": "Activer la corroboration NASA FIRMS",
@@ -43,6 +44,7 @@
           "scan_interval_minutes": "Fréquence à laquelle Home Assistant recherche un produit MTG de dix minutes plus récent.",
           "dedup_radius_km": "Une détection proche d’un feu récent est considérée comme le même feu et ne génère pas de nouvel événement.",
           "dedup_hours": "Durée pendant laquelle les événements répétés d’un même feu dans la même zone sont supprimés.",
+          "fire_history_hours": "Durée d’affichage des marqueurs de feux inactifs sur la carte. Elle ne prolonge pas la suppression des alertes répétées.",
           "resolve_place_names": "Recherche localement la localité la plus proche à l’aide de la base GeoNames cities500 incluse. Aucune coordonnée n’est envoyée à un service externe.",
           "enable_land_surface_temperature": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie environ toutes les 15 minutes les coordonnées du domicile au service WMS officiel LSA SAF adaguc.lsasvcs.ipma.pt.",
           "enable_firms": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie une petite zone autour du domicile à l’API officielle NASA FIRMS afin de rechercher des détections VIIRS indépendantes. Un MAP_KEY personnel gratuit est requis.",
@@ -79,6 +81,6 @@
     "select": {"fire_risk_day": {"name": "Jour de prévision du risque d’incendie", "state": {"today": "Aujourd’hui", "tomorrow": "Demain", "in_2_days": "Dans 2 jours", "in_3_days": "Dans 3 jours", "in_4_days": "Dans 4 jours", "in_5_days": "Dans 5 jours", "in_6_days": "Dans 6 jours", "in_7_days": "Dans 7 jours", "in_8_days": "Dans 8 jours", "in_9_days": "Dans 9 jours"}}},
     "camera": {"fire_risk_map": {"name": "Carte de prévision du risque d’incendie"}},
     "calendar": {"fire_risk_forecast": {"name": "Prévision du risque d’incendie sur 10 jours"}},
-    "number": {"monitoring_radius": {"name": "Rayon de surveillance des feux actifs"}, "fire_risk_radius": {"name": "Rayon de prévision du risque d’incendie"}}
+    "number": {"monitoring_radius": {"name": "Rayon de surveillance des feux actifs"}, "fire_risk_radius": {"name": "Rayon de prévision du risque d’incendie"}, "fire_history_hours": {"name": "Fenêtre d’historique des feux"}}
   }
 }

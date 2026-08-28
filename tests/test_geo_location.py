@@ -173,6 +173,13 @@ def test_recent_tracks_become_separate_map_markers() -> None:
 
     assert {marker.track_id for marker in markers} == {"first", "second"}
     assert all(marker.distance_km > 0 for marker in markers)
+    recent_only = _tracked_fire_clusters(
+        tracks,
+        46.2,
+        20.1,
+        visible_since=datetime(2026, 8, 25, 20, 25, tzinfo=UTC),
+    )
+    assert [marker.track_id for marker in recent_only] == ["second"]
 
 
 def test_legacy_track_without_map_metadata_is_ignored() -> None:

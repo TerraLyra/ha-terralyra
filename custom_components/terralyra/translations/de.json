@@ -30,6 +30,7 @@
           "scan_interval_minutes": "Prüfintervall",
           "dedup_radius_km": "Abgleichradius für dasselbe Feuer",
           "dedup_hours": "Speicherdauer für dasselbe Feuer",
+          "fire_history_hours": "Angezeigtes Brandverlaufsfenster",
           "resolve_place_names": "Nahe Ortsnamen auf der Karte anzeigen",
           "enable_land_surface_temperature": "Landoberflächentemperatur aktivieren",
           "enable_firms": "NASA-FIRMS-Bestätigung aktivieren",
@@ -43,6 +44,7 @@
           "scan_interval_minutes": "Wie oft Home Assistant nach einem neueren 10-Minuten-MTG-Brandprodukt sucht.",
           "dedup_radius_km": "Eine Erkennung in der Nähe eines kürzlich gesehenen Feuers gilt als dasselbe Feuer und erzeugt kein weiteres Ereignis.",
           "dedup_hours": "So lange werden wiederholte Ereignisse für dasselbe Feuer im selben Gebiet unterdrückt.",
+          "fire_history_hours": "So lange bleiben inaktive Brandmarkierungen auf der Karte sichtbar. Die Unterdrückung wiederholter Warnungen wird dadurch nicht verlängert.",
           "resolve_place_names": "Ermittelt den nächsten Ort lokal anhand der enthaltenen GeoNames-cities500-Datenbank. Es werden keine Koordinaten an externe Dienste gesendet.",
           "enable_land_surface_temperature": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant etwa alle 15 Minuten die Koordinaten des Zuhauses an den offiziellen LSA-SAF-WMS-Dienst adaguc.lsasvcs.ipma.pt.",
           "enable_firms": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant einen kleinen Begrenzungsbereich um das Zuhause an die offizielle NASA-FIRMS-API, um unabhängige VIIRS-Erkennungen zu suchen. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
@@ -79,6 +81,6 @@
     "select": {"fire_risk_day": {"name": "Tag der Waldbrandgefahrenvorhersage", "state": {"today": "Heute", "tomorrow": "Morgen", "in_2_days": "In 2 Tagen", "in_3_days": "In 3 Tagen", "in_4_days": "In 4 Tagen", "in_5_days": "In 5 Tagen", "in_6_days": "In 6 Tagen", "in_7_days": "In 7 Tagen", "in_8_days": "In 8 Tagen", "in_9_days": "In 9 Tagen"}}},
     "camera": {"fire_risk_map": {"name": "Karte der Waldbrandgefahrenvorhersage"}},
     "calendar": {"fire_risk_forecast": {"name": "10-Tage-Waldbrandgefahrenvorhersage"}},
-    "number": {"monitoring_radius": {"name": "Radius der Aktivbrandüberwachung"}, "fire_risk_radius": {"name": "Radius der Waldbrandgefahrenvorhersage"}}
+    "number": {"monitoring_radius": {"name": "Radius der Aktivbrandüberwachung"}, "fire_risk_radius": {"name": "Radius der Waldbrandgefahrenvorhersage"}, "fire_history_hours": {"name": "Brandverlaufsfenster"}}
   }
 }

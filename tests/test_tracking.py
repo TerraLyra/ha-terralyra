@@ -132,6 +132,26 @@ def test_incident_ends_only_after_memory_window() -> None:
     assert result.ended_incident_ids
 
 
+def test_history_can_outlive_dedup_without_suppressing_new_incident() -> None:
+    first = update_incidents(
+        [], [_cluster()], now=BASE, matching_radius_km=3.0, memory_hours=2
+    )
+
+    result = update_incidents(
+        first.incidents,
+        [_cluster(acquired=BASE + timedelta(hours=3))],
+        now=BASE + timedelta(hours=3),
+        matching_radius_km=3.0,
+        memory_hours=2,
+        history_hours=12,
+    )
+
+    assert len(result.incidents) == 2
+    assert len(result.new_incidents) == 1
+    assert result.incidents[0]["lifecycle"] == FireLifecycle.INACTIVE.value
+    assert result.incidents[1]["lifecycle"] == FireLifecycle.NEW.value
+
+
 def test_legacy_persisted_track_is_migrated_and_continued() -> None:
     legacy = {
         "track_id": "legacy-id",
