@@ -643,20 +643,46 @@ def _notification_text(
 ) -> tuple[str, str]:
     """Build a concise localized mobile-notification title and message."""
     confidence_percent = round(confidence * 100)
-    if (language or "").lower().startswith("hu"):
-        distance = f"{distance_km:.1f}".replace(".", ",")
-        location = f" {settlement} közelében" if settlement else ""
-        return (
+    code = (language or "en").lower().split("-", 1)[0]
+    decimal_comma = code in {"de", "es", "fr", "hu", "it"}
+    distance = f"{distance_km:.1f}"
+    if decimal_comma:
+        distance = distance.replace(".", ",")
+    messages = {
+        "de": (
+            "🔥 Branddetektionswarnung",
+            f"Brand{' in der Nähe von ' + settlement if settlement else ''} "
+            f"erkannt, {distance} km von Zuhause entfernt. "
+            f"Erkennungssicherheit: {confidence_percent} %.",
+        ),
+        "en": (
+            "🔥 Fire detection alert",
+            f"Fire detected{' near ' + settlement if settlement else ''}, "
+            f"{distance} km from Home. Confidence: {confidence_percent}%.",
+        ),
+        "es": (
+            "🔥 Alerta de detección de incendio",
+            f"Incendio detectado{' cerca de ' + settlement if settlement else ''}, "
+            f"a {distance} km de Casa. Confianza: {confidence_percent} %.",
+        ),
+        "fr": (
+            "🔥 Alerte de détection d’incendie",
+            f"Incendie détecté{' près de ' + settlement if settlement else ''}, "
+            f"à {distance} km du domicile. Confiance : {confidence_percent} %.",
+        ),
+        "hu": (
             "🔥 Tűzészlelés riasztás",
-            f"Tűz észlelve{location}, {distance} km-re az otthonodtól. "
-            f"Megbízhatóság: {confidence_percent}%.",
-        )
-    location = f" near {settlement}" if settlement else ""
-    return (
-        "🔥 Fire detection alert",
-        f"Fire detected{location}, {distance_km:.1f} km from Home. "
-        f"Confidence: {confidence_percent}%.",
-    )
+            f"Tűz észlelve{' ' + settlement + ' közelében' if settlement else ''}, "
+            f"{distance} km-re az otthonodtól. Megbízhatóság: "
+            f"{confidence_percent}%.",
+        ),
+        "it": (
+            "🔥 Avviso di rilevamento incendio",
+            f"Incendio rilevato{' vicino a ' + settlement if settlement else ''}, "
+            f"a {distance} km da Casa. Attendibilità: {confidence_percent}%.",
+        ),
+    }
+    return messages.get(code, messages["en"])
 
 
 def _tracked_fire_clusters(

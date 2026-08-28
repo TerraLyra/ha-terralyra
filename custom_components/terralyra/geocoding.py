@@ -68,7 +68,9 @@ class PlaceNameResolver:
         return PlaceInfo(
             place_name=None,
             nearest_settlement=name,
-            location_description=f"{name} közelében észlelt tűz",
+            location_description=_location_description(
+                self._hass.config.language, name
+            ),
         )
 
     async def async_map_places(
@@ -184,3 +186,17 @@ def _haversine_km(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
     )
     value = min(1.0, max(0.0, value))
     return EARTH_RADIUS_KM * 2 * math.atan2(math.sqrt(value), math.sqrt(1 - value))
+
+
+def _location_description(language: str | None, name: str) -> str:
+    """Return a concise localized map-entity description."""
+    code = (language or "en").lower().split("-", 1)[0]
+    templates = {
+        "de": "Brand in der Nähe von {name} erkannt",
+        "en": "Fire detected near {name}",
+        "es": "Incendio detectado cerca de {name}",
+        "fr": "Incendie détecté près de {name}",
+        "hu": "{name} közelében észlelt tűz",
+        "it": "Incendio rilevato vicino a {name}",
+    }
+    return templates.get(code, templates["en"]).format(name=name)

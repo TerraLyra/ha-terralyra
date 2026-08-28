@@ -19,15 +19,20 @@ Repository: `https://github.com/TerraLyra/ha-terralyra`
 
 ## Why one integration?
 
-LSA SAF exposes several related satellite products through the same ecosystem. This repository uses one authentication/configuration layer and keeps each scientific product in a separate Python module. That makes it possible to add new products without creating a separate HACS repository for every dataset.
+TerraLyra keeps provider access, scientific-product parsing and Home Assistant
+entities in separate modules. One installation can therefore combine related
+environmental observations without presenting a different HACS repository for
+every dataset. Provider names and attribution remain visible; TerraLyra does
+not relabel third-party data as its own.
 
 ## Product status
 
-| Product | LSA SAF ID | Resolution / cadence | Integration status |
+| Product | Source / ID | Resolution / cadence | Integration status |
 |---|---|---|---|
 | MTG Fire Radiative Power Pixel | LSA-509 / MTFRPPIXEL | ~1 km / 10 min | **Implemented** |
 | Fire Risk Map v3 Forecast | FRMv3 | Europe / daily, day 0…9 | **Implemented** |
 | MTG Land Surface Temperature | LSA-007 / MTLST | ~2 km / 10 min; up to 60 min publication delay | **Implemented, optional** |
+| Independent active-fire corroboration | NASA FIRMS NOAA-20/NOAA-21 VIIRS NRT | ~375 m / provider-dependent NRT latency | **Implemented, optional** |
 | Evapotranspiration | LSA SAF ET family | product-dependent | Roadmap |
 | Solar radiation / fluxes | LSA SAF radiation family | product-dependent | Roadmap |
 | Vegetation metrics | NDVI/FVC/LAI/FAPAR/GPP | product-dependent | Roadmap |
@@ -77,12 +82,15 @@ It checks for the newest deterministic 10-minute product filename, parses the fi
   the rolling 24-hour window
 - `sensor.*_nearest_fire_evidence_strength` – explainable strength of the
   satellite evidence for the nearest incident; never an official confirmation
+- `sensor.*_independent_fire_source_confirmation` – availability and result of
+  optional independent NASA FIRMS corroboration
 - `sensor.*_active_fire_situation` – explainable integration-calculated summary
   of current detected activity (`normal`, `elevated`, `high`, `critical`, or
   `unknown`)
 - `event.*_new_active_fire` – Home Assistant Event entity for a newly deduplicated fire
 - `event.*_fire_incident_trend_change` – meaningful, cooldown-protected trend changes
-- `geo_location.*` – one live map marker per active fire cluster
+- `geo_location.*` – one map marker per recently tracked primary or
+  supplemental fire incident
 - `number.*_active_fire_monitoring_radius` – dashboard-adjustable monitoring radius
 - `number.*_fire_history_window` – dashboard-adjustable 1–48 hour period for
   retaining inactive incident markers without extending alert deduplication
@@ -98,8 +106,9 @@ historical maxima, and FRP/activity/distance trends. Trend states are calculated
 from a bounded 90-minute observation window. They remain `unknown` until at
 least three observations spanning 20 minutes are available.
 Markers keep the same identity while the cluster remains within the configured
-same-fire matching radius. They remain visible for the configured same-fire
-memory period and are removed automatically when that period expires.
+same-fire matching radius. Inactive markers remain visible for the independent
+**Fire history window** (1–48 hours) and are removed automatically afterward.
+Changing this display window does not extend repeat-alert suppression.
 
 Add a **Map** card to a dashboard and select the `terralyra` geolocation source, or
 use this YAML configuration:
@@ -112,9 +121,10 @@ geo_location_sources:
 hours_to_show: 24
 ```
 
-`label_mode: icon` displays the integration's fire icon instead of the `LSF`
-letter label. Clicking a marker shows the exact latitude and longitude together
-with all fire attributes.
+`label_mode: icon` displays the integration's fire icon instead of a shortened
+text label. Clicking a marker shows its exact latitude and longitude together
+with the fire attributes. Supplemental FIRMS-only entity names begin with
+**NASA FIRMS ·** so the source is also visible in the entity dialog.
 
 The integration resolves the nearest settlement locally from its bundled
 GeoNames `cities500` database. It sends no fire or Home coordinates to an
@@ -156,6 +166,14 @@ Event data includes:
 - `frp_trend`
 - `activity_trend`
 - `distance_trend`
+- `confirmation_level`
+- `providers`
+- `corroborating_detections`
+- `place_name`
+- `nearest_settlement`
+- `location_description`
+- `notification_title`
+- `notification_message`
 - `product_time`
 - `source_url`
 
@@ -223,12 +241,12 @@ false zero-fire observation.
 
 ## Installation through HACS
 
-1. In HACS, add `TerraLyra/ha-terralyra` as a custom repository.
-2. In HACS, add it as a **Custom repository** of type **Integration**.
-3. Install **TerraLyra**.
-4. Restart Home Assistant.
-5. Go to **Settings → Devices & services → Add integration → TerraLyra**.
-6. Enter your LSA SAF Data Service username and password.
+1. In HACS, add `TerraLyra/ha-terralyra` as a **Custom repository** of type
+   **Integration**.
+2. Install **TerraLyra**.
+3. Restart Home Assistant.
+4. Go to **Settings → Devices & services → Add integration → TerraLyra**.
+5. Enter your LSA SAF Data Service username and password.
 
 A free LSA SAF Data Service account is required for the MTFRPPixel archive.
 
@@ -240,6 +258,37 @@ A free LSA SAF Data Service account is required for the MTFRPPixel archive.
 - **Check interval**: how often Home Assistant looks for a newer product. The source product itself is nominally 10-minute data.
 - **Same-fire matching radius**: nearby detections are considered the same physical fire.
 - **Same-fire memory**: how long an already-seen fire suppresses a repeat `new_fire` event.
+- **Fire history window**: independently controls how long inactive markers
+  remain visible on the map.
+- **Fire-risk forecast radius**: controls FRMv3 regional maximum sampling and
+  the static map extent; it does not change active-fire alerts.
+- **Resolve nearby place names**: uses the bundled offline GeoNames database.
+- **Land-surface temperature**: creates the optional MTLST point sensor and
+  sends Home coordinates to the official LSA SAF WMS while enabled.
+- **NASA FIRMS corroboration**: enables independent VIIRS comparison and
+  requires the user's own FIRMS MAP_KEY.
+
+## Optional NASA FIRMS corroboration
+
+NASA FIRMS is disabled by default. To enable it, create a personal FIRMS
+MAP_KEY, open **Settings → Devices & services → TerraLyra → Configure**, enable
+NASA FIRMS corroboration and enter the key. TerraLyra validates the key before
+saving the option.
+
+When enabled, TerraLyra requests only the bounded monitoring area from the
+NOAA-20 and NOAA-21 VIIRS near-real-time feeds. Requests are cached for at least
+15 minutes, use a maximum one-day query window, and are isolated from primary
+LSA SAF monitoring: a FIRMS outage cannot stop MTG active-fire updates.
+
+Detections within 5 km and 6 hours are treated as independent corroboration.
+FIRMS-only detections can appear as supplemental **NASA FIRMS · …** map markers,
+but they do not independently trigger TerraLyra new-fire alerts or change the
+Active Fire Situation score. Cross-refresh reconciliation prevents a matching
+primary and supplemental incident from remaining as duplicate map entities.
+
+Enabling the option sends the configured monitoring-area bounding coordinates
+and the user's MAP_KEY to the official NASA FIRMS service. The key is stored in
+the Home Assistant config entry, redacted from diagnostics and never logged.
 
 ## Example iPhone notification automation
 
@@ -258,8 +307,8 @@ mode: queued
 
 The integration resolves the nearest settlement before publishing a new-fire
 event. `notification_title` and `notification_message` are concise and follow
-the Home Assistant system language: Hungarian installations use **Tűzészlelés
-riasztás**, while other languages currently fall back to English. If place-name
+the Home Assistant system language in English, Hungarian, German, Spanish,
+French and Italian. Unsupported languages fall back to English. If place-name
 lookup is disabled or unavailable, the message safely falls back to distance
 from Home.
 
@@ -371,16 +420,19 @@ custom_components/terralyra/
 ├── entity.py
 ├── sensor.py
 ├── event.py
-├── geo_location.py       # live active-fire map markers
+├── geo_location.py        # recent active-fire map markers
 ├── number.py
 ├── select.py              # FRMv3 forecast day 0–9
 ├── providers/
 │   ├── base.py            # typed provider interface
+│   ├── firms.py           # NOAA-20/21 VIIRS corroboration adapter
+│   ├── goes_spike.py      # non-production GOES feasibility boundary
 │   └── mtg.py             # MTFRPPixel → FireDetection adapter
 └── products/
     ├── fire.py            # MTFRPPixel parser + client (implemented)
     ├── fire_risk.py       # bounded FRMv3 WMS client and parser
-    └── lst.py             # MTLST product metadata / future module
+    ├── firms.py           # bounded NASA FIRMS Area API client/parser
+    └── lst.py             # optional MTLST WMS client/parser
 ```
 
 The domain is intentionally the generic `terralyra`, not `terralyra_mtg_fire`, so future products can be added to the same installed integration.
@@ -392,7 +444,9 @@ cannot be rewritten by an integration update. If a map card was created for the
 older development integration, edit that card, remove the legacy `lsa_saf`
 value from **Geolocation sources**, and select `terralyra`. FIRMS-only markers
 are prefixed with **NASA FIRMS**; unprefixed markers use the primary LSA SAF
-feed.
+feed. Home Assistant only lists sources that currently have a loaded
+`geo_location` entity. If no recent fire marker exists, leave the source filter
+empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ## Roadmap
 
@@ -402,9 +456,9 @@ feed.
   [`docs/GOES_TECHNICAL_SPIKE.md`](docs/GOES_TECHNICAL_SPIKE.md). The result is
   intentionally not enabled for Europe because GOES observes the Western
   Hemisphere
-- stabilize the planned LSA SAF Land Surface Temperature product as an
-  independent, explicit opt-in module. Enabling it sends the configured Home
-  coordinates to the official LSA SAF WMS about every 15 minutes
+- evaluate and implement GOES-18/19 as an optional, location-aware production
+  provider for covered Western Hemisphere installations without routing
+  unsupported European locations to GOES
 
 ### Multi-source detection and incident verification
 
@@ -415,7 +469,8 @@ feed.
 - nearby LSA SAF and FIRMS detections are correlated within explicit 5 km and
   6 hour gates, with source attribution retained on each incident
 - FIRMS-only detections appear as supplemental map markers with locally resolved
-  nearest-settlement names; correlated FIRMS points are not duplicated
+  nearest-settlement names; current and persisted cross-provider matches are
+  reconciled instead of being displayed as duplicates
 - the independent fire-source confirmation sensor distinguishes disabled,
   unavailable, single-source, and multi-source results
 - expose a provider-neutral confirmation level instead of treating either
@@ -462,9 +517,18 @@ Satellite fire detection is **not an emergency warning service**. Cloud, viewing
 
 MTFRPPixel is currently an LSA SAF demonstration product, so its availability or format may change.
 
+NASA FIRMS near-real-time data has its own latency, coverage, confidence and
+false-positive limitations. Multi-source agreement strengthens the available
+satellite evidence but does not prove that an emergency is occurring.
+
 ## Data attribution
 
 LSA SAF products are provided by the **EUMETSAT Satellite Application Facility on Land Surface Analysis (LSA SAF)**. Follow the LSA SAF/EUMETSAT acknowledgement and licensing requirements when redistributing derived data or screenshots.
+
+Supplemental active-fire observations are provided by
+[NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/). Users are responsible for
+complying with the provider's current terms and attribution requirements when
+redistributing data or derived material.
 
 Offline settlement names are derived from [GeoNames](https://www.geonames.org/)
 `cities500`, licensed under [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/).

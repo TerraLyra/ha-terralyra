@@ -12,6 +12,7 @@ from custom_components.terralyra.geocoding import (
     PlaceLookupError,
     PlaceNameResolver,
     _haversine_km,
+    _location_description,
     _query_candidates,
 )
 
@@ -105,3 +106,22 @@ def test_haversine_distance_is_stable() -> None:
     assert _haversine_km(47.4979, 19.0402, 46.2530, 20.1414) == pytest.approx(
         162.3, abs=1.0
     )
+
+
+@pytest.mark.parametrize(
+    ("language", "expected"),
+    [
+        ("de", "Brand in der Nähe von Erdut erkannt"),
+        ("en", "Fire detected near Erdut"),
+        ("es", "Incendio detectado cerca de Erdut"),
+        ("fr", "Incendie détecté près de Erdut"),
+        ("hu-HU", "Erdut közelében észlelt tűz"),
+        ("it", "Incendio rilevato vicino a Erdut"),
+    ],
+)
+def test_location_description_is_localized(language: str, expected: str) -> None:
+    assert _location_description(language, "Erdut") == expected
+
+
+def test_location_description_falls_back_to_english() -> None:
+    assert _location_description("nl", "Erdut") == "Fire detected near Erdut"

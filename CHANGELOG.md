@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.2.5
+
+- Localize generated fire-place descriptions and mobile notification text in
+  English, Hungarian, German, Spanish, French, and Italian, with an English
+  fallback for other Home Assistant languages.
+
+- Audit and update the README against the current integration behavior,
+  entities, options, privacy boundaries and provider attribution.
+- Verify the native Map-card geolocation-source YAML and document why
+  `terralyra` may be absent while no recent fire marker exists.
+- Add complete NASA FIRMS setup, behavior, failure-isolation, privacy and
+  supplemental-marker guidance.
+- Correct obsolete MTLST roadmap and architecture descriptions, remove a
+  duplicated installation step and decouple map history wording from alert
+  memory.
+- Remove a stale development version from the NASA FIRMS HTTP User-Agent.
+
 ## 0.2.4
 
 - Reconcile persisted NASA FIRMS-only tracks with primary LSA SAF incidents

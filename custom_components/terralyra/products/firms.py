@@ -18,7 +18,7 @@ MAX_CSV_BYTES = 2 * 1024 * 1024
 MAX_CSV_ROWS = 20_000
 MAX_LINE_BYTES = 4096
 MAX_BBOX_SPAN_DEGREES = 20.0
-USER_AGENT = "ha-terralyra/0.8.0 (https://github.com/TerraLyra/ha-terralyra)"
+USER_AGENT = "ha-terralyra (https://github.com/TerraLyra/ha-terralyra)"
 _MAP_KEY_RE = re.compile(r"[A-Za-z0-9_-]{16,128}\Z")
 _REQUIRED_FIELDS = frozenset(
     {
