@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
+    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
     CONF_FIRMS_MAP_KEY,
@@ -15,6 +16,7 @@ from .const import (
     CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
     CONF_USERNAME,
+    DEFAULT_ACTIVE_FIRE_PROVIDER,
     DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
     DEFAULT_RADIUS_KM,
@@ -26,12 +28,11 @@ from .coordinator import TerraLyraCoordinator
 from .fire_risk_coordinator import FireRiskCoordinator
 from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
-from .products.fire import ActiveFireClient
 from .products.fire_risk import FireRiskClient
 from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
+from .providers.factory import build_primary_provider
 from .providers.firms import FirmsMultiSatelliteProvider, monitoring_bounds
-from .providers.mtg import MtgActiveFireProvider
 
 
 @dataclass
@@ -51,7 +52,17 @@ type TerraLyraConfigEntry = ConfigEntry[RuntimeData]
 async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) -> bool:
     """Set up TerraLyra from a config entry."""
     session = async_get_clientsession(hass)
-    client = ActiveFireClient(session, entry.data[CONF_USERNAME], entry.data[CONF_PASSWORD])
+    primary_provider = build_primary_provider(
+        session,
+        hass.async_add_executor_job,
+        provider_name=str(
+            entry.data.get(CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER)
+        ),
+        latitude=float(hass.config.latitude),
+        longitude=float(hass.config.longitude),
+        username=entry.data.get(CONF_USERNAME),
+        password=entry.data.get(CONF_PASSWORD),
+    )
     resolver = None
     if entry.options.get(CONF_RESOLVE_PLACE_NAMES, DEFAULT_RESOLVE_PLACE_NAMES):
         resolver = PlaceNameResolver(hass)
@@ -73,7 +84,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
     coordinator = TerraLyraCoordinator(
         hass,
         entry,
-        MtgActiveFireProvider(client),
+        primary_provider,
         resolver,
         corroboration_provider=corroboration_provider,
     )

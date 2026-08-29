@@ -9,6 +9,7 @@ MANUFACTURER = "TerraLyra open-source project"
 
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
+CONF_ACTIVE_FIRE_PROVIDER = "active_fire_provider"
 CONF_PRODUCTS = "products"
 CONF_RADIUS_KM = "radius_km"
 CONF_MIN_CONFIDENCE = "min_confidence"
@@ -23,6 +24,10 @@ CONF_FIRE_RISK_RADIUS_KM = "fire_risk_radius_km"
 CONF_ENABLE_LAND_SURFACE_TEMPERATURE = "enable_land_surface_temperature"
 CONF_ENABLE_FIRMS = "enable_firms"
 CONF_FIRMS_MAP_KEY = "firms_map_key"
+
+ACTIVE_FIRE_PROVIDER_LSA_SAF = "eumetsat_lsa_saf"
+ACTIVE_FIRE_PROVIDER_GOES = "noaa_goes"
+DEFAULT_ACTIVE_FIRE_PROVIDER = ACTIVE_FIRE_PROVIDER_LSA_SAF
 
 PRODUCT_ACTIVE_FIRE = "active_fire"
 PRODUCT_FIRE_RISK = "fire_risk"

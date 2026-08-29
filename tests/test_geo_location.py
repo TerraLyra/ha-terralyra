@@ -118,6 +118,17 @@ def test_map_entity_exposes_location_distance_and_details() -> None:
     assert entity.extra_state_attributes[ATTR_SOURCE_URL].startswith("https://datalsasaf.")
 
 
+def test_map_entity_publishes_home_assistant_geolocation_attributes() -> None:
+    """Protect the attributes used by the native Map card source selector."""
+    entity = _entity(_cluster())
+
+    assert entity.state_attributes == {
+        "source": DOMAIN,
+        "latitude": 46.253,
+        "longitude": 20.141,
+    }
+
+
 def test_map_entity_preserves_cluster_specific_source_url() -> None:
     entity = _entity(
         _cluster(source_url="https://firms.modaps.eosdis.nasa.gov/")

@@ -460,9 +460,11 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   intentionally not exposed as a user option yet. Europe and near-limb
   locations are rejected before any catalogue request
 - the selected direct-`h5py` decoder and bounded miniature fixtures are now
-  implemented but remain disconnected from normal operation; verify the
-  decoder on Linux x86-64 and ARM64 before enabling GOES observations for
-  covered Western Hemisphere installations; benchmark details are in
+  implemented and verified on Linux x86-64 and ARM64. A strict internal
+  provider factory now constructs GOES only for safely covered locations, but
+  the setup flow does not expose it yet; provider-specific onboarding and
+  migration behavior must be completed before enabling GOES observations for
+  covered Western Hemisphere installations. Benchmark details are in
   [`docs/GOES_DECODER_BENCHMARK.md`](docs/GOES_DECODER_BENCHMARK.md)
 
 ### Multi-source detection and incident verification

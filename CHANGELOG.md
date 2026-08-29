@@ -2,6 +2,12 @@
 
 ## 0.2.6
 
+- Add a regression test for the exact geolocation attributes consumed by Home
+  Assistant's native Map-card source selector.
+- Add a strict primary-provider factory that preserves existing LSA SAF entries
+  while preparing a coverage-gated GOES runtime path without silent fallback.
+- Test LSA SAF compatibility, GOES-East selection, European exclusion, missing
+  credentials and unknown-provider rejection at the provider boundary.
 - Add conservative spherical coverage selection for the operational GOES-18
   and GOES-19 satellites while rejecting Europe and near-limb locations.
 - Add a fixed-host, redirect-free and size-limited NOAA catalogue discovery
