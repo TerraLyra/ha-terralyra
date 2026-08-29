@@ -105,3 +105,8 @@ fixtures covering:
 - malformed dimensions, chunks, attributes and projection metadata;
 - bounded download cleanup and cancellation;
 - correlation between GOES-18/19 and other providers without double counting.
+
+The repository now runs the miniature decoder and bounded-download tests on
+both Linux x86-64 and ARM64 with Python 3.14 for every main-branch change. GOES
+must remain disabled until that matrix is green and the provider option and
+correlation lifecycle are implemented.

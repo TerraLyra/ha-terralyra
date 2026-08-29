@@ -22,6 +22,8 @@
   disconnected from normal integration operation pending provider activation.
 - Add redirect-free, advertised-size-verified streaming downloads with
   executor-backed file writes and cancellation-safe temporary-file cleanup.
+- Add a dedicated Python 3.14 GOES compatibility workflow on Linux x86-64 and
+  ARM64 GitHub-hosted runners.
 
 ## 0.2.5
 
