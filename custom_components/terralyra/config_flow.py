@@ -350,7 +350,7 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                     NumberSelectorConfig(
                         min=-90,
                         max=90,
-                        step=0.000001,
+                        step="any",
                         mode=NumberSelectorMode.BOX,
                     )
                 ),
@@ -358,7 +358,7 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                     NumberSelectorConfig(
                         min=-180,
                         max=180,
-                        step=0.000001,
+                        step="any",
                         mode=NumberSelectorMode.BOX,
                     )
                 ),
@@ -430,7 +430,7 @@ def _monitoring_center_schema() -> vol.Schema:
                 NumberSelectorConfig(
                     min=-90,
                     max=90,
-                    step=0.000001,
+                    step="any",
                     mode=NumberSelectorMode.BOX,
                 )
             ),
@@ -438,7 +438,7 @@ def _monitoring_center_schema() -> vol.Schema:
                 NumberSelectorConfig(
                     min=-180,
                     max=180,
-                    step=0.000001,
+                    step="any",
                     mode=NumberSelectorMode.BOX,
                 )
             ),
