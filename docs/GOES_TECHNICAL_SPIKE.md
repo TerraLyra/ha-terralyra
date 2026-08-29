@@ -1,6 +1,7 @@
 # GOES ABI Fire/Hot Spot technical spike
 
-Status: **research-only, not enabled in Home Assistant**
+Status: **production foundation implemented; observation decoding and Home
+Assistant option remain disabled**
 
 ## Decision
 
@@ -11,14 +12,27 @@ European target region. GOES-East and GOES-West observe the Western Hemisphere;
 Hungary and most of Europe must continue to use an appropriate European/global
 provider such as EUMETSAT LSA SAF or, in a later phase, NASA FIRMS.
 
-The repository therefore contains only a dependency-free spike. Nothing is
-registered as a Home Assistant platform, no new network request is made, and no
-runtime dependency or configuration option is added.
+The repository now contains a dependency-free feasibility spike plus a bounded
+production foundation. Nothing is registered as a Home Assistant platform and
+no GOES request runs during normal integration operation yet.
+
+The foundation:
+
+- selects GOES-18 or GOES-19 from the Home coordinates using a conservative
+  spherical visibility calculation;
+- rejects Europe and near-limb locations before any catalogue request;
+- lists only the current and previous UTC hour from fixed, allowlisted NOAA
+  buckets over HTTPS;
+- limits each catalogue to 100 keys and 512 KiB;
+- validates every key, filename, satellite identity, timestamp and advertised
+  object size before returning a public download candidate;
+- rejects redirects, oversized/invalid XML, entity declarations, unexpected
+  paths and objects larger than 64 MiB.
 
 ## Official product and access path
 
 - Product: NOAA GOES-R ABI Level 2 Fire/Hot Spot Characterization.
-- Operational satellites considered by this spike: GOES-18 and GOES-19.
+- Operational satellites: GOES-18 (West) and GOES-19 (East).
 - Public archives: `noaa-goes18` and `noaa-goes19` in AWS Open Data.
 - Product prefixes: `ABI-L2-FDCF` (full disk), `ABI-L2-FDCC` (CONUS), and
   `ABI-L2-FDCM` (mesoscale).
@@ -82,18 +96,27 @@ common clustering, tracking, situation, diagnostics, or redaction layers.
 - Expose GOES only to locations actually covered and only as an explicit,
   optional provider.
 
+## Completed implementation gate
+
+The fixed-host catalogue-discovery and pre-download coverage gate are complete.
+They deliberately stop before downloading or decoding NetCDF data. This gives
+the integration a testable security boundary without silently adding a large
+binary dependency or network load for existing users.
+
 ## Recommended next implementation
 
-Do not ship GOES in the next public release. Proceed with the independent LSA
-SAF Land Surface Temperature module, then prioritize optional NASA FIRMS
-correlation for broader active-fire corroboration. Revisit the GOES production
-adapter when Western Hemisphere user demand and the NetCDF dependency review
-justify it.
+Benchmark a small set of current GOES-18/19 FDCF objects with candidate NetCDF
+decoders on x86-64 and ARM. Record package-size increase, peak memory, parse
+time, downloaded bytes and the ability to read only the required variables.
+Only after that gate passes should the integration add an explicit opt-in and
+begin downloading observations for covered Western Hemisphere locations.
 
 ## References
 
 - NOAA GOES-R Fire/Hot Spot product overview:
   <https://goes-r.noaa.gov/products/baseline-fire-hot-spot.html>
+- NOAA GOES public archive registry and operational transition notes:
+  <https://registry.opendata.aws/noaa-goes/>
 - NOAA/NCEI ABI L2 Fire/Hot Spot dataset and public archive access:
   <https://www.ncei.noaa.gov/access/metadata/landing-page/bin/iso?id=gov.noaa.ncdc%3AC01520>
 - NOAA GOES-R ABI instrument and scan cadence:

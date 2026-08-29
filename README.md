@@ -426,12 +426,14 @@ custom_components/terralyra/
 ├── providers/
 │   ├── base.py            # typed provider interface
 │   ├── firms.py           # NOAA-20/21 VIIRS corroboration adapter
-│   ├── goes_spike.py      # non-production GOES feasibility boundary
+│   ├── goes.py            # conservative GOES-18/19 coverage selection
+│   ├── goes_spike.py      # dependency-free GOES filename/timing validation
 │   └── mtg.py             # MTFRPPixel → FireDetection adapter
 └── products/
     ├── fire.py            # MTFRPPixel parser + client (implemented)
     ├── fire_risk.py       # bounded FRMv3 WMS client and parser
     ├── firms.py           # bounded NASA FIRMS Area API client/parser
+    ├── goes.py            # bounded NOAA GOES catalogue discovery
     └── lst.py             # optional MTLST WMS client/parser
 ```
 
@@ -452,13 +454,14 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Next
 
-- GOES technical spike completed without production dependencies; see
+- GOES technical spike and safe product-discovery foundation completed without
+  a NetCDF runtime dependency; see
   [`docs/GOES_TECHNICAL_SPIKE.md`](docs/GOES_TECHNICAL_SPIKE.md). The result is
-  intentionally not enabled for Europe because GOES observes the Western
-  Hemisphere
-- evaluate and implement GOES-18/19 as an optional, location-aware production
-  provider for covered Western Hemisphere installations without routing
-  unsupported European locations to GOES
+  intentionally not exposed as a user option yet. Europe and near-limb
+  locations are rejected before any catalogue request
+- benchmark the NetCDF decoder, package size, peak memory and parse time on
+  x86-64 and ARM before enabling GOES observations for covered Western
+  Hemisphere installations
 
 ### Multi-source detection and incident verification
 
