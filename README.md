@@ -1,9 +1,10 @@
 # TerraLyra for Home Assistant
 
 A HACS-compatible environmental monitoring and early-warning integration for
-Home Assistant. TerraLyra currently combines **EUMETSAT LSA SAF** products and
-an optional NASA FIRMS corroboration source, with a provider-neutral foundation
-for additional environmental data sources.
+Home Assistant. TerraLyra currently offers **EUMETSAT LSA SAF** and, in safely
+covered Western Hemisphere locations, **NOAA GOES-18/19** as primary
+active-fire sources. It can also use NASA FIRMS as optional independent
+corroboration and includes additional LSA SAF environmental products.
 
 Repository: `https://github.com/TerraLyra/ha-terralyra`
 
@@ -30,6 +31,7 @@ not relabel third-party data as its own.
 | Product | Source / ID | Resolution / cadence | Integration status |
 |---|---|---|---|
 | MTG Fire Radiative Power Pixel | LSA-509 / MTFRPPIXEL | ~1 km / 10 min | **Implemented** |
+| GOES ABI Fire/Hot Spot Characterization | ABI-L2-FDCF | ~2 km / 10 min full disk | **Implemented, coverage-gated** |
 | Fire Risk Map v3 Forecast | FRMv3 | Europe / daily, day 0…9 | **Implemented** |
 | MTG Land Surface Temperature | LSA-007 / MTLST | ~2 km / 10 min; up to 60 min publication delay | **Implemented, optional** |
 | Independent active-fire corroboration | NASA FIRMS NOAA-20/NOAA-21 VIIRS NRT | ~375 m / provider-dependent NRT latency | **Implemented, optional** |
@@ -37,9 +39,9 @@ not relabel third-party data as its own.
 | Solar radiation / fluxes | LSA SAF radiation family | product-dependent | Roadmap |
 | Vegetation metrics | NDVI/FVC/LAI/FAPAR/GPP | product-dependent | Roadmap |
 
-The integration enables **MTG Active Fire Detection** and the public **FRMv3
-Fire Risk Map** forecast. The MTLST point sensor is optional and disabled by
-default.
+The integration enables one location-appropriate primary active-fire provider
+and the public **FRMv3 Fire Risk Map** forecast. The MTLST point sensor and NASA
+FIRMS corroboration are optional and disabled by default.
 
 ## MTG Land Surface Temperature
 
@@ -64,7 +66,12 @@ ListProduct from:
 
 `MTG / MTFRPPixel / NATIVE`
 
-It checks for the newest deterministic 10-minute product filename, parses the fire pixels, filters them around Home Assistant's configured **Home** location, groups adjacent pixels into fire clusters, and remembers recently observed clusters so the same fire does not create a new alert every product cycle. On first setup it seeds the current snapshot without emitting `new_fire` events, so already-existing fires do not cause an alert flood.
+For covered Western Hemisphere installations, NOAA GOES uses the public
+ABI-L2-FDCF full-disk product without provider credentials. Both primary
+providers pass normalized detections to the same filtering, clustering,
+tracking and alert pipeline. On first setup TerraLyra seeds the current snapshot
+without emitting `new_fire` events, so already-existing fires do not cause an
+alert flood.
 
 ### Entities
 
@@ -286,8 +293,8 @@ saving the option.
 
 When enabled, TerraLyra requests only the bounded monitoring area from the
 NOAA-20 and NOAA-21 VIIRS near-real-time feeds. Requests are cached for at least
-15 minutes, use a maximum one-day query window, and are isolated from primary
-LSA SAF monitoring: a FIRMS outage cannot stop MTG active-fire updates.
+15 minutes, use a maximum one-day query window, and are isolated from the
+primary provider: a FIRMS outage cannot stop primary active-fire updates.
 
 Detections within 5 km and 6 hours are treated as independent corroboration.
 FIRMS-only detections can appear as supplemental **NASA FIRMS · …** map markers,
@@ -436,6 +443,7 @@ custom_components/terralyra/
 │   ├── base.py            # typed provider interface
 │   ├── firms.py           # NOAA-20/21 VIIRS corroboration adapter
 │   ├── goes.py            # conservative GOES-18/19 coverage selection
+│   ├── goes_active.py     # GOES discovery/download/decoder provider adapter
 │   ├── goes_spike.py      # dependency-free GOES filename/timing validation
 │   └── mtg.py             # MTFRPPixel → FireDetection adapter
 └── products/
@@ -443,6 +451,7 @@ custom_components/terralyra/
     ├── fire_risk.py       # bounded FRMv3 WMS client and parser
     ├── firms.py           # bounded NASA FIRMS Area API client/parser
     ├── goes.py            # bounded NOAA GOES catalogue discovery
+    ├── goes_decoder.py    # bounded stripe-based ABI-L2-FDCF decoder
     └── lst.py             # optional MTLST WMS client/parser
 ```
 
@@ -454,8 +463,8 @@ Dashboard geolocation-source selections belong to the user's dashboard and
 cannot be rewritten by an integration update. If a map card was created for the
 older development integration, edit that card, remove the legacy `lsa_saf`
 value from **Geolocation sources**, and select `terralyra`. FIRMS-only markers
-are prefixed with **NASA FIRMS**; unprefixed markers use the primary LSA SAF
-feed. Home Assistant only lists sources that currently have a loaded
+are prefixed with **NASA FIRMS**; unprefixed markers use the selected primary
+provider. Home Assistant only lists sources that currently have a loaded
 `geo_location` entity. If no recent fire marker exists, leave the source filter
 empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
@@ -463,26 +472,22 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Next
 
-- GOES technical spike and safe product-discovery foundation completed without
-  a NetCDF runtime dependency; see
-  [`docs/GOES_TECHNICAL_SPIKE.md`](docs/GOES_TECHNICAL_SPIKE.md). The result is
-  intentionally not exposed as a user option yet. Europe and near-limb
-  locations are rejected before any catalogue request
-- the selected direct-`h5py` decoder and bounded miniature fixtures are now
-  implemented and verified on Linux x86-64 and ARM64. The translated setup
-  flow exposes GOES only after a conservative Home-location coverage check and
-  requires no provider credential. Operational soak testing and provider-
-  specific entity wording remain before the next release. Benchmark details are in
+- collect operational GOES-18/19 experience from covered installations while
+  retaining the conservative pre-download coverage gate and product navigation
+  checks; technical and resource details are in
+  [`docs/GOES_TECHNICAL_SPIKE.md`](docs/GOES_TECHNICAL_SPIKE.md) and
   [`docs/GOES_DECODER_BENCHMARK.md`](docs/GOES_DECODER_BENCHMARK.md)
+- continue localization and usability review on real Home Assistant dashboards
+- submit TerraLyra artwork to the upstream Home Assistant brands repository
 
 ### Multi-source detection and incident verification
 
 - NASA FIRMS can be enabled as an optional secondary active-fire provider with
   the user's personal MAP_KEY; it remains disabled by default
 - bounded NOAA-20 and NOAA-21 VIIRS Area API requests are cached for at least
-  15 minutes and failures never stop primary LSA SAF monitoring
-- nearby LSA SAF and FIRMS detections are correlated within explicit 5 km and
-  6 hour gates, with source attribution retained on each incident
+  15 minutes and failures never stop primary-provider monitoring
+- nearby primary-provider and FIRMS detections are correlated within explicit
+  5 km and 6 hour gates, with source attribution retained on each incident
 - FIRMS-only detections appear as supplemental map markers with locally resolved
   nearest-settlement names; current and persisted cross-provider matches are
   reconciled instead of being displayed as duplicates
@@ -497,8 +502,6 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   alert suppression so provider observations can be compared consistently
 - preserve source attribution, observation time, resolution, confidence, and
   FRP for every contributing detection
-- add GOES-18/19 as an optional location-aware provider for covered Western
-  Hemisphere users after the NetCDF/resource gates in the technical spike pass
 
 ### News and official-report enrichment
 

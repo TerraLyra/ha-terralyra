@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.7
+
+- Audit all English, Hungarian, German, French, Spanish and Italian translation
+  schemas and guard against accidental English fallback text.
+- Reconcile the README with the released GOES primary-provider workflow,
+  provider-neutral map behavior, current architecture and remaining roadmap.
+
 ## 0.2.6
 
 - Add a translated primary-provider setup step for EUMETSAT LSA SAF and NOAA
