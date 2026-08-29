@@ -16,6 +16,10 @@
 - Record a real GOES-18/19 ARM64 decoder benchmark and select direct `h5py`
   conditionally; keep the native dependency and user option out until the
   bounded production decoder and miniature fixtures pass the remaining gate.
+- Add the bounded direct-`h5py` FDCF decoder with stripe-based mask scanning,
+  strict dimensions/chunks/units/projection validation, optional-value
+  preservation and synthetic miniature fixtures. The decoder remains
+  disconnected from normal integration operation pending provider activation.
 
 ## 0.2.5
 

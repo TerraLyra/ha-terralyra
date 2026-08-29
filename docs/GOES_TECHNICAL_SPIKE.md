@@ -1,7 +1,7 @@
 # GOES ABI Fire/Hot Spot technical spike
 
-Status: **production foundation implemented; observation decoding and Home
-Assistant option remain disabled**
+Status: **production foundation and bounded decoder implemented; Home
+Assistant option remains disabled**
 
 ## Decision
 
@@ -111,10 +111,10 @@ fixture requirements are recorded in
 
 ## Recommended next implementation
 
-Implement a direct-`h5py` production decoder with bounded miniature fixtures,
-then repeat its integration tests on Linux x86-64 and ARM64. Only after that
-gate passes should the integration add an explicit opt-in and begin downloading
-observations for covered Western Hemisphere locations.
+The direct-`h5py` production decoder and synthetic miniature fixtures are now
+implemented. Repeat its integration tests on Linux x86-64 and ARM64. Only after
+that gate passes should the integration add an explicit opt-in and begin
+downloading observations for covered Western Hemisphere locations.
 
 ## References
 

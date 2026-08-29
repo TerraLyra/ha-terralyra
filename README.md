@@ -459,8 +459,9 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   [`docs/GOES_TECHNICAL_SPIKE.md`](docs/GOES_TECHNICAL_SPIKE.md). The result is
   intentionally not exposed as a user option yet. Europe and near-limb
   locations are rejected before any catalogue request
-- implement the selected direct-`h5py` decoder with bounded miniature fixtures
-  and verify it on Linux x86-64 and ARM64 before enabling GOES observations for
+- the selected direct-`h5py` decoder and bounded miniature fixtures are now
+  implemented but remain disconnected from normal operation; verify the
+  decoder on Linux x86-64 and ARM64 before enabling GOES observations for
   covered Western Hemisphere installations; benchmark details are in
   [`docs/GOES_DECODER_BENCHMARK.md`](docs/GOES_DECODER_BENCHMARK.md)
 
