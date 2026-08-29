@@ -13,6 +13,9 @@
   malformed, oversized or cross-satellite catalogue objects.
 - Document the completed production foundation and retain NetCDF downloading
   behind a separate package-size, memory and ARM compatibility gate.
+- Record a real GOES-18/19 ARM64 decoder benchmark and select direct `h5py`
+  conditionally; keep the native dependency and user option out until the
+  bounded production decoder and miniature fixtures pass the remaining gate.
 
 ## 0.2.5
 

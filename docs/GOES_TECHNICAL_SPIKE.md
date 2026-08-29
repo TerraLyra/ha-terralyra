@@ -103,13 +103,18 @@ They deliberately stop before downloading or decoding NetCDF data. This gives
 the integration a testable security boundary without silently adding a large
 binary dependency or network load for existing users.
 
+The decoder benchmark is also complete. Direct `h5py` is the conditional
+production choice; `netCDF4` was rejected for its materially larger installed
+and runtime footprint. Full measurements, data-shape findings and remaining
+fixture requirements are recorded in
+[`GOES_DECODER_BENCHMARK.md`](GOES_DECODER_BENCHMARK.md).
+
 ## Recommended next implementation
 
-Benchmark a small set of current GOES-18/19 FDCF objects with candidate NetCDF
-decoders on x86-64 and ARM. Record package-size increase, peak memory, parse
-time, downloaded bytes and the ability to read only the required variables.
-Only after that gate passes should the integration add an explicit opt-in and
-begin downloading observations for covered Western Hemisphere locations.
+Implement a direct-`h5py` production decoder with bounded miniature fixtures,
+then repeat its integration tests on Linux x86-64 and ARM64. Only after that
+gate passes should the integration add an explicit opt-in and begin downloading
+observations for covered Western Hemisphere locations.
 
 ## References
 
