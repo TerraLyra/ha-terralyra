@@ -9,6 +9,9 @@ on:
 
 permissions: {}
 
+env:
+  PYTHONPATH: ${{ github.workspace }}
+
 jobs:
   decoder:
     name: Python 3.14 / ${{ matrix.architecture }}
