@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import PurePosixPath
 from urllib.parse import quote
-import xml.etree.ElementTree as ET
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
+from defusedxml import ElementTree as ET
 
 from ..providers.goes_spike import GoesObjectMetadata, parse_fdc_filename
 

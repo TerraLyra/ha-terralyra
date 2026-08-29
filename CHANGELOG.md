@@ -7,7 +7,8 @@
 - Add a fixed-host, redirect-free and size-limited NOAA catalogue discovery
   client that inspects only the current and previous UTC product hour.
 - Strictly validate GOES catalogue XML, object paths, filenames, satellite
-  identity, timestamps and advertised NetCDF object size before download.
+  identity, timestamps and advertised NetCDF object size before download, using
+  a pinned attack-resistant XML parser.
 - Add tests for satellite selection, European exclusion, UTC prefixes and
   malformed, oversized or cross-satellite catalogue objects.
 - Document the completed production foundation and retain NetCDF downloading
