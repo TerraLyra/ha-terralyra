@@ -11,6 +11,8 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TerraLyraConfigEntry
 from .const import (
+    ACTIVE_FIRE_PROVIDER_GOES,
+    ACTIVE_FIRE_PROVIDER_LSA_SAF,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
 )
@@ -35,6 +37,7 @@ async def async_setup_entry(
         ProductTimeSensor(entry),
         ProductAgeSensor(entry),
         ProviderStatusSensor(entry),
+        ActiveFireProviderSensor(entry),
         RecentDetectionsSensor(entry),
         FireActivityFrpChangeSensor(entry),
         NewIncidents24hSensor(entry),
@@ -141,7 +144,12 @@ class ActiveFireCountSensor(TerraLyraEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data
         if data is None:
-            return {"tracked_incidents": 0, "inactive_incidents": 0}
+            return {
+                "tracked_incidents": 0,
+                "inactive_incidents": 0,
+                "map_markers": 0,
+                "map_source": "terralyra",
+            }
         inactive = sum(
             cluster.lifecycle is not None and cluster.lifecycle.value == "inactive"
             for cluster in data.tracked_fires
@@ -149,6 +157,8 @@ class ActiveFireCountSensor(TerraLyraEntity, SensorEntity):
         return {
             "tracked_incidents": len(data.tracked_fires),
             "inactive_incidents": inactive,
+            "map_markers": len(data.tracked_fires),
+            "map_source": "terralyra",
         }
 
 
@@ -241,6 +251,35 @@ class ProviderStatusSensor(TerraLyraEntity, SensorEntity):
                 if self.coordinator.received_timestamp
                 else None
             ),
+        }
+
+
+class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
+    """Expose the selected primary provider as a translated entity state."""
+
+    _attr_translation_key = "active_fire_provider"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = [
+        ACTIVE_FIRE_PROVIDER_LSA_SAF,
+        ACTIVE_FIRE_PROVIDER_GOES,
+        "unknown",
+    ]
+    _attr_icon = "mdi:satellite-variant"
+
+    def __init__(self, entry: TerraLyraConfigEntry) -> None:
+        super().__init__(entry)
+        self._attr_unique_id = f"{entry.entry_id}_active_fire_provider"
+
+    @property
+    def native_value(self) -> str:
+        provider = self.coordinator.provider_name
+        return provider if provider in self._attr_options else "unknown"
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "satellite": self.coordinator.satellite,
+            "product": self.coordinator.provider_product,
         }
 
 

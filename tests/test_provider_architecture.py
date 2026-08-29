@@ -30,7 +30,11 @@ from custom_components.terralyra.providers.mtg import (
     SATELLITE,
     MtgActiveFireProvider,
 )
-from custom_components.terralyra.sensor import ProviderStatusSensor
+from custom_components.terralyra.sensor import (
+    ActiveFireCountSensor,
+    ActiveFireProviderSensor,
+    ProviderStatusSensor,
+)
 
 
 def _detection(**changes) -> FireDetection:
@@ -203,3 +207,39 @@ def test_provider_status_sensor_remains_available_during_outage() -> None:
         "product_timestamp": product_time.isoformat(),
         "received_timestamp": received_time.isoformat(),
     }
+
+
+@pytest.mark.parametrize(
+    ("provider", "expected"),
+    [
+        ("eumetsat_lsa_saf", "eumetsat_lsa_saf"),
+        ("noaa_goes", "noaa_goes"),
+        (None, "unknown"),
+        ("unexpected", "unknown"),
+    ],
+)
+def test_active_fire_provider_sensor_has_stable_translated_states(
+    provider: str | None, expected: str
+) -> None:
+    entity = object.__new__(ActiveFireProviderSensor)
+    entity.coordinator = SimpleNamespace(
+        provider_name=provider,
+        satellite="G19",
+        provider_product="ABI-L2-FDCF",
+    )
+
+    assert entity.native_value == expected
+    assert entity.extra_state_attributes == {
+        "satellite": "G19",
+        "product": "ABI-L2-FDCF",
+    }
+
+
+@pytest.mark.parametrize("data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])])
+def test_active_fire_summary_identifies_terralyra_map_source(data: object) -> None:
+    """Map-card support information stays explicit even with no detections."""
+    entity = object.__new__(ActiveFireCountSensor)
+    entity.coordinator = SimpleNamespace(data=data)
+
+    assert entity.extra_state_attributes["map_source"] == "terralyra"
+    assert entity.extra_state_attributes["map_markers"] == 0

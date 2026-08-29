@@ -121,6 +121,14 @@
           "auth_error": "Authentication error"
         }
       },
+      "active_fire_provider": {
+        "name": "Active-fire data source",
+        "state": {
+          "eumetsat_lsa_saf": "EUMETSAT LSA SAF",
+          "noaa_goes": "NOAA GOES-18/19",
+          "unknown": "Unknown"
+        }
+      },
       "fire_risk_today": {
         "name": "Fire risk near Home",
         "state": {

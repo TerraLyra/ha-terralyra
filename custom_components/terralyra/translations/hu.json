@@ -121,6 +121,14 @@
           "auth_error": "Hitelesítési hiba"
         }
       },
+      "active_fire_provider": {
+        "name": "Aktívtűz-adatforrás",
+        "state": {
+          "eumetsat_lsa_saf": "EUMETSAT LSA SAF",
+          "noaa_goes": "NOAA GOES-18/19",
+          "unknown": "Ismeretlen"
+        }
+      },
       "fire_risk_today": {
         "name": "Tűzkockázat az otthon közelében",
         "state": {

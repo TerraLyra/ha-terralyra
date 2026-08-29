@@ -57,9 +57,10 @@ attribution. A clear-sky satellite observation can be unavailable because of
 cloud, coverage, or publication delay; such a result remains unavailable rather
 than being replaced with an invented value.
 
-## MTG Active Fire Detection
+## Active-fire detection
 
-The integration reads the compressed CSV ListProduct from:
+For EUMETSAT installations, the integration reads the compressed CSV
+ListProduct from:
 
 `MTG / MTFRPPixel / NATIVE`
 
@@ -69,9 +70,11 @@ It checks for the newest deterministic 10-minute product filename, parses the fi
 
 - `sensor.*_nearest_active_fire` – distance to the nearest active fire cluster
 - `sensor.*_active_fire_clusters` – number of active clusters in the configured radius
-- `sensor.*_fire_pixels_in_radius` – raw MTG fire pixels after filters
-- `sensor.*_latest_fire_product_time` – time of the latest processed LSA SAF product
+- `sensor.*_fire_pixels_in_radius` – raw provider detections after filters
+- `sensor.*_latest_fire_product_time` – time of the latest processed provider product
 - `sensor.*_fire_product_age` – age of the latest product in minutes
+- `sensor.*_active_fire_data_source` – selected primary provider, with its
+  current satellite and product as attributes
 - `sensor.*_active_fire_data_status` – provider health and freshness, including
   delayed, no-product and outage states
 - `sensor.*_fire_detections_in_the_last_hour` – detections during the last hour,

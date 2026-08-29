@@ -14,6 +14,9 @@
   while preparing a coverage-gated GOES runtime path without silent fallback.
 - Test LSA SAF compatibility, GOES-East selection, European exclusion, missing
   credentials and unknown-provider rejection at the provider boundary.
+- Show the selected active-fire provider, satellite and product in a translated
+  Home Assistant sensor, and expose the `terralyra` map-source identifier on
+  the active-fire summary even when no marker is currently available.
 - Add conservative spherical coverage selection for the operational GOES-18
   and GOES-19 satellites while rejecting Europe and near-limb locations.
 - Add a fixed-host, redirect-free and size-limited NOAA catalogue discovery

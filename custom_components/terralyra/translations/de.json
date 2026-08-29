@@ -72,6 +72,7 @@
       "product_time": {"name": "Zeitpunkt des neuesten Brandprodukts"},
       "product_age": {"name": "Alter des Brandprodukts"},
       "provider_status": {"name": "Status der Aktivbranddaten", "state": {"initializing": "Wird initialisiert", "available": "Verfügbar", "delayed": "Verspätet", "no_product": "Kein aktuelles Produkt", "outage": "Anbieterausfall", "auth_error": "Authentifizierungsfehler"}},
+      "active_fire_provider": {"name": "Datenquelle für aktive Brände", "state": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF", "noaa_goes": "NOAA GOES-18/19", "unknown": "Unbekannt"}},
       "fire_risk_today": {"name": "Waldbrandgefahr in der Nähe von Zuhause", "state": {"low": "Niedrig", "moderate": "Mäßig", "high": "Hoch", "very_high": "Sehr hoch", "extreme": "Extrem", "unknown": "Unbekannt"}},
       "fire_risk_area_maximum": {"name": "Höchste Waldbrandgefahr im Überwachungsgebiet", "state": {"low": "Niedrig", "moderate": "Mäßig", "high": "Hoch", "very_high": "Sehr hoch", "extreme": "Extrem", "unknown": "Unbekannt"}},
       "fire_risk_update": {"name": "Letzte Aktualisierung der Waldbrandgefahrenvorhersage"},
