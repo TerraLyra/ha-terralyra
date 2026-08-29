@@ -45,4 +45,8 @@ jobs:
           print(f"numpy={numpy.__version__}")
           PY
       - name: Test GOES discovery, download and decoder
-        run: pytest -q tests/test_goes_foundation.py tests/test_goes_decoder.py
+        run: |
+          pytest -q \
+            tests/test_goes_foundation.py \
+            tests/test_goes_decoder.py \
+            tests/test_goes_provider.py

@@ -1,7 +1,7 @@
 # GOES ABI Fire/Hot Spot technical spike
 
-Status: **production foundation and bounded decoder implemented; Home
-Assistant option remains disabled**
+Status: **production foundation, bounded decoder and provider adapter
+implemented; Home Assistant option remains disabled**
 
 ## Decision
 

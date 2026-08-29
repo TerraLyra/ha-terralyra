@@ -24,6 +24,9 @@
   executor-backed file writes and cancellation-safe temporary-file cleanup.
 - Add a dedicated Python 3.14 GOES compatibility workflow on Linux x86-64 and
   ARM64 GitHub-hosted runners.
+- Add a provider-neutral GOES active-fire adapter with conservative coverage
+  selection, explicit freshness states and strict decoded-product identity
+  checks. It remains unregistered until multi-provider coordination is ready.
 
 ## 0.2.5
 
