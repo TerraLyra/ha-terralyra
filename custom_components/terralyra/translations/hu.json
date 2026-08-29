@@ -3,6 +3,13 @@
   "config": {
     "step": {
       "user": {
+        "title": "Aktívtűz-adatforrás kiválasztása",
+        "description": "Európában és a környező térségekben az ingyenes fiókot igénylő LSA SAF ajánlott. A NOAA GOES a biztonságosan lefedett nyugati féltekén használható fiók nélkül, de további műholdas adatokat tölt le.",
+        "data": {
+          "active_fire_provider": "Aktívtűz-adatforrás"
+        }
+      },
+      "lsa_saf": {
         "title": "Kapcsolódás az LSA SAF Data Service-hez",
         "description": "Add meg az ingyenes LSA SAF Data Service fiókod adatait. Az integráció MTG aktívtűz-észlelést és FRMv3 tűzkockázati előrejelzést biztosít.",
         "data": {
@@ -29,12 +36,21 @@
     },
     "error": {
       "cannot_connect": "Nem sikerült kapcsolódni az LSA SAF Data Service-hez",
+      "goes_not_available": "Az Otthon helye kívül esik a NOAA GOES biztonságos lefedettségi területén",
       "invalid_auth": "Hibás felhasználónév vagy jelszó"
     },
     "abort": {
       "already_configured": "Ez az LSA SAF fiók már be van állítva",
       "reauth_successful": "A hitelesítési adatok frissítve lettek",
       "wrong_account": "Az új hitelesítési adatok egy másik LSA SAF fiókhoz tartoznak"
+    }
+  },
+  "selector": {
+    "active_fire_provider": {
+      "options": {
+        "eumetsat_lsa_saf": "EUMETSAT LSA SAF (fiók szükséges)",
+        "noaa_goes": "NOAA GOES-18/19 (nem szükséges fiók)"
+      }
     }
   },
   "options": {
@@ -56,11 +72,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Csak a Home Assistant Otthon helyétől ezen a távolságon belüli MTG tűzészlelések számítanak.",
+          "radius_km": "Csak a kiválasztott aktívtűz-adatforrás Otthon helyétől ezen a távolságon belüli észlelései számítanak.",
           "fire_risk_radius_km": "Az FRMv3 térképen megjelenő és a legmagasabb regionális tűzkockázathoz vizsgált terület. Az aktívtűz-riasztások sugarát nem módosítja.",
           "min_confidence": "A 0 minden észlelést enged; az 1 a legszigorúbb szűrés.",
           "min_frp_mw": "Az ennél gyengébb FRP-jű észlelések figyelmen kívül maradnak.",
-          "scan_interval_minutes": "Milyen gyakran ellenőrizze a Home Assistant az új 10 perces MTG tűzterméket.",
+          "scan_interval_minutes": "Milyen gyakran ellenőrizze a Home Assistant az újabb aktívtűz-adatokat a kiválasztott szolgáltatónál.",
           "dedup_radius_km": "A közelmúltban látott tűzhöz közeli észlelés ugyanannak a tűznek számít, így nem keletkezik új esemény.",
           "dedup_hours": "Ennyi ideig nyomja el az azonos helyen jelentkező ismételt új-tűz eseményt.",
           "fire_history_hours": "Ennyi ideig maradnak láthatók az inaktív tűzjelölések a térképen. Az ismételt riasztások elnyomását nem hosszabbítja meg.",

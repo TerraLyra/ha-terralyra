@@ -12,6 +12,8 @@ from homeassistant.helpers.selector import (
     NumberSelector,
     NumberSelectorConfig,
     NumberSelectorMode,
+    SelectSelector,
+    SelectSelectorConfig,
     TextSelector,
     TextSelectorConfig,
     TextSelectorType,
@@ -19,6 +21,9 @@ from homeassistant.helpers.selector import (
 
 from .api import LsaSafAuthError, LsaSafError
 from .const import (
+    ACTIVE_FIRE_PROVIDER_GOES,
+    ACTIVE_FIRE_PROVIDER_LSA_SAF,
+    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_DEDUP_HOURS,
     CONF_DEDUP_RADIUS_KM,
     CONF_ENABLE_FIRMS,
@@ -50,6 +55,7 @@ from .const import (
 )
 from .products.fire import ActiveFireClient
 from .products.firms import FirmsAuthenticationError, FirmsClient, FirmsError
+from .providers.goes import select_goes_satellite
 
 FIRMS_VALIDATION_SOURCE = "VIIRS_NOAA20_NRT"
 
@@ -60,6 +66,55 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     VERSION = 1
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+        """Choose the primary active-fire provider."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            provider_name = str(user_input[CONF_ACTIVE_FIRE_PROVIDER])
+            if provider_name == ACTIVE_FIRE_PROVIDER_LSA_SAF:
+                return await self.async_step_lsa_saf()
+            if provider_name == ACTIVE_FIRE_PROVIDER_GOES:
+                if (
+                    select_goes_satellite(
+                        float(self.hass.config.latitude),
+                        float(self.hass.config.longitude),
+                    )
+                    is None
+                ):
+                    errors["base"] = "goes_not_available"
+                else:
+                    await self.async_set_unique_id(ACTIVE_FIRE_PROVIDER_GOES)
+                    self._abort_if_unique_id_configured()
+                    return self.async_create_entry(
+                        title="TerraLyra",
+                        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+                        options=_default_options(),
+                    )
+
+        return self.async_show_form(
+            step_id="user",
+            data_schema=vol.Schema(
+                {
+                    vol.Required(
+                        CONF_ACTIVE_FIRE_PROVIDER,
+                        default=ACTIVE_FIRE_PROVIDER_LSA_SAF,
+                    ): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                ACTIVE_FIRE_PROVIDER_LSA_SAF,
+                                ACTIVE_FIRE_PROVIDER_GOES,
+                            ],
+                            translation_key="active_fire_provider",
+                        )
+                    )
+                }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_lsa_saf(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Connect an LSA SAF account."""
         errors: dict[str, str] = {}
         if user_input is not None:
             client = ActiveFireClient(
@@ -81,6 +136,7 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 return self.async_create_entry(
                     title="TerraLyra",
                     data={
+                        CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF,
                         CONF_USERNAME: user_input[CONF_USERNAME].strip(),
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
@@ -88,7 +144,7 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 )
 
         return self.async_show_form(
-            step_id="user",
+            step_id="lsa_saf",
             data_schema=vol.Schema(
                 {
                     vol.Required(CONF_USERNAME): str,

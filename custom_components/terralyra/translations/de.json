@@ -3,6 +3,11 @@
   "config": {
     "step": {
       "user": {
+        "title": "Datenquelle für aktive Brände auswählen",
+        "description": "LSA SAF wird für Europa und angrenzende Regionen empfohlen und erfordert ein kostenloses Konto. NOAA GOES ist für sicher abgedeckte Standorte in der westlichen Hemisphäre gedacht, benötigt kein Konto und lädt zusätzliche Satellitendaten herunter.",
+        "data": {"active_fire_provider": "Datenquelle für aktive Brände"}
+      },
+      "lsa_saf": {
         "title": "Mit dem LSA SAF Data Service verbinden",
         "description": "Gib die Zugangsdaten deines kostenlosen LSA SAF Data Service-Kontos ein. Die Integration stellt MTG-Aktivbranderkennung und die FRMv3-Waldbrandgefahrenvorhersage bereit.",
         "data": {"username": "Benutzername", "password": "Passwort"},
@@ -15,9 +20,10 @@
         "data_description": {"username": "Benutzername des ursprünglich eingerichteten LSA SAF-Kontos", "password": "Aktuelles Passwort des LSA SAF Data Service"}
       }
     },
-    "error": {"cannot_connect": "Verbindung zum LSA SAF Data Service nicht möglich", "invalid_auth": "Ungültiger Benutzername oder ungültiges Passwort"},
+    "error": {"cannot_connect": "Verbindung zum LSA SAF Data Service nicht möglich", "goes_not_available": "Der Zuhause-Standort liegt außerhalb des sicheren NOAA-GOES-Abdeckungsgebiets", "invalid_auth": "Ungültiger Benutzername oder ungültiges Passwort"},
     "abort": {"already_configured": "Dieses LSA SAF-Konto ist bereits eingerichtet", "reauth_successful": "Authentifizierungsdaten erfolgreich aktualisiert", "wrong_account": "Die neuen Zugangsdaten gehören zu einem anderen LSA SAF-Konto"}
   },
+  "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (Konto erforderlich)", "noaa_goes": "NOAA GOES-18/19 (kein Konto erforderlich)"}}},
   "options": {
     "step": {
       "init": {
@@ -37,11 +43,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Nur MTG-Branderkennungen innerhalb dieser Entfernung vom Zuhause-Standort von Home Assistant werden berücksichtigt.",
+          "radius_km": "Nur Erkennungen der ausgewählten Aktivbrand-Datenquelle innerhalb dieser Entfernung vom Zuhause-Standort werden berücksichtigt.",
           "fire_risk_radius_km": "Auf der FRMv3-Karte angezeigtes und für die höchste regionale Waldbrandgefahr geprüftes Gebiet. Dies ändert die Aktivbrandwarnungen nicht.",
           "min_confidence": "0 berücksichtigt alle Erkennungen; 1 ist der strengste mögliche Filter.",
           "min_frp_mw": "Erkennungen mit einer geringeren FRP in MW werden ignoriert.",
-          "scan_interval_minutes": "Wie oft Home Assistant nach einem neueren 10-Minuten-MTG-Brandprodukt sucht.",
+          "scan_interval_minutes": "Wie oft Home Assistant die ausgewählte Quelle auf neuere Aktivbranddaten prüft.",
           "dedup_radius_km": "Eine Erkennung in der Nähe eines kürzlich gesehenen Feuers gilt als dasselbe Feuer und erzeugt kein weiteres Ereignis.",
           "dedup_hours": "So lange werden wiederholte Ereignisse für dasselbe Feuer im selben Gebiet unterdrückt.",
           "fire_history_hours": "So lange bleiben inaktive Brandmarkierungen auf der Karte sichtbar. Die Unterdrückung wiederholter Warnungen wird dadurch nicht verlängert.",

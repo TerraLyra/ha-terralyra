@@ -229,8 +229,8 @@ successfully processed and contained no matching detections. It is deliberately
 different from a provider failure. The **Active-fire data status** sensor reports:
 
 - `available` for a current valid product;
-- `delayed` when the newest valid MTG product is more than 60 minutes old;
-- `no_product` when no recent MTFRPPixel product can be found;
+- `delayed` when the newest valid primary-provider product exceeds its freshness threshold;
+- `no_product` when no recent primary-provider product can be found;
 - `outage` when the provider cannot return a safe, valid response;
 - `auth_error` when saved credentials require reauthentication.
 
@@ -246,9 +246,15 @@ false zero-fire observation.
 2. Install **TerraLyra**.
 3. Restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration → TerraLyra**.
-5. Enter your LSA SAF Data Service username and password.
+5. Select the active-fire provider appropriate for the Home location.
+6. For **EUMETSAT LSA SAF**, enter the LSA SAF Data Service username and
+   password. Safely covered **NOAA GOES-18/19** installations need no provider
+   account.
 
-A free LSA SAF Data Service account is required for the MTFRPPixel archive.
+A free LSA SAF Data Service account is required only for the MTFRPPixel
+provider. GOES downloads the newest validated public NOAA full-disk product and
+therefore adds network, storage, decoder and memory cost. TerraLyra rejects
+GOES before setup when Home is outside its conservative coverage gate.
 
 ## Active fire options
 
@@ -460,11 +466,10 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   intentionally not exposed as a user option yet. Europe and near-limb
   locations are rejected before any catalogue request
 - the selected direct-`h5py` decoder and bounded miniature fixtures are now
-  implemented and verified on Linux x86-64 and ARM64. A strict internal
-  provider factory now constructs GOES only for safely covered locations, but
-  the setup flow does not expose it yet; provider-specific onboarding and
-  migration behavior must be completed before enabling GOES observations for
-  covered Western Hemisphere installations. Benchmark details are in
+  implemented and verified on Linux x86-64 and ARM64. The translated setup
+  flow exposes GOES only after a conservative Home-location coverage check and
+  requires no provider credential. Operational soak testing and provider-
+  specific entity wording remain before the next release. Benchmark details are in
   [`docs/GOES_DECODER_BENCHMARK.md`](docs/GOES_DECODER_BENCHMARK.md)
 
 ### Multi-source detection and incident verification

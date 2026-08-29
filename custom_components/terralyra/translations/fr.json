@@ -3,6 +3,11 @@
   "config": {
     "step": {
       "user": {
+        "title": "Choisir une source de données sur les feux actifs",
+        "description": "LSA SAF est recommandé pour l’Europe et les régions voisines et nécessite un compte gratuit. NOAA GOES est destiné aux emplacements couverts de façon sûre dans l’hémisphère occidental, ne nécessite aucun compte et télécharge des données satellitaires supplémentaires.",
+        "data": {"active_fire_provider": "Source de données sur les feux actifs"}
+      },
+      "lsa_saf": {
         "title": "Connexion au service de données LSA SAF",
         "description": "Saisissez les identifiants de votre compte gratuit LSA SAF Data Service. L’intégration fournit la détection des feux actifs MTG et la prévision FRMv3 du risque d’incendie.",
         "data": {"username": "Nom d’utilisateur", "password": "Mot de passe"},
@@ -15,9 +20,10 @@
         "data_description": {"username": "Nom d’utilisateur du compte LSA SAF configuré à l’origine", "password": "Mot de passe actuel du service de données LSA SAF"}
       }
     },
-    "error": {"cannot_connect": "Impossible de se connecter au service de données LSA SAF", "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect"},
+    "error": {"cannot_connect": "Impossible de se connecter au service de données LSA SAF", "goes_not_available": "L’emplacement du domicile se trouve hors de la zone de couverture sûre de NOAA GOES", "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect"},
     "abort": {"already_configured": "Ce compte LSA SAF est déjà configuré", "reauth_successful": "Identifiants mis à jour", "wrong_account": "Les nouveaux identifiants appartiennent à un autre compte LSA SAF"}
   },
+  "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (compte requis)", "noaa_goes": "NOAA GOES-18/19 (aucun compte requis)"}}},
   "options": {
     "step": {
       "init": {
@@ -37,11 +43,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Seules les détections MTG situées dans cette distance du domicile Home Assistant sont prises en compte.",
+          "radius_km": "Seules les détections de la source sélectionnée situées dans cette distance du domicile sont prises en compte.",
           "fire_risk_radius_km": "Zone affichée sur la carte FRMv3 et analysée pour déterminer le risque régional maximal. Cela ne modifie pas les alertes de feu actif.",
           "min_confidence": "0 inclut toutes les détections ; 1 applique le filtre le plus strict.",
           "min_frp_mw": "Ignore les détections dont la FRP en MW est inférieure à cette valeur.",
-          "scan_interval_minutes": "Fréquence à laquelle Home Assistant recherche un produit MTG de dix minutes plus récent.",
+          "scan_interval_minutes": "Fréquence à laquelle Home Assistant recherche des données plus récentes auprès de la source sélectionnée.",
           "dedup_radius_km": "Une détection proche d’un feu récent est considérée comme le même feu et ne génère pas de nouvel événement.",
           "dedup_hours": "Durée pendant laquelle les événements répétés d’un même feu dans la même zone sont supprimés.",
           "fire_history_hours": "Durée d’affichage des marqueurs de feux inactifs sur la carte. Elle ne prolonge pas la suppression des alertes répétées.",

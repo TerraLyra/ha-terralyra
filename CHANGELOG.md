@@ -2,6 +2,12 @@
 
 ## 0.2.6
 
+- Add a translated primary-provider setup step for EUMETSAT LSA SAF and NOAA
+  GOES-18/19.
+- Allow safely covered Western Hemisphere installations to use GOES without an
+  LSA SAF account while retaining the existing credential flow for LSA SAF.
+- Explain GOES coverage, account and additional-download implications before
+  activation, and reject uncovered Home locations before creating an entry.
 - Add a regression test for the exact geolocation attributes consumed by Home
   Assistant's native Map-card source selector.
 - Add a strict primary-provider factory that preserves existing LSA SAF entries

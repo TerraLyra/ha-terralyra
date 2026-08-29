@@ -3,6 +3,13 @@
   "config": {
     "step": {
       "user": {
+        "title": "Choose an active-fire data source",
+        "description": "LSA SAF is recommended for Europe and nearby regions and requires a free account. NOAA GOES is intended for safely covered Western Hemisphere locations, needs no account, and downloads additional satellite data.",
+        "data": {
+          "active_fire_provider": "Active-fire data source"
+        }
+      },
+      "lsa_saf": {
         "title": "Connect to LSA SAF Data Service",
         "description": "Enter the credentials from your free LSA SAF Data Service account. The integration provides MTG Active Fire Detection and the FRMv3 fire-risk forecast.",
         "data": {
@@ -29,12 +36,21 @@
     },
     "error": {
       "cannot_connect": "Could not connect to the LSA SAF Data Service",
+      "goes_not_available": "The Home location is outside the safe NOAA GOES coverage area",
       "invalid_auth": "Invalid username or password"
     },
     "abort": {
       "already_configured": "This LSA SAF account is already configured",
       "reauth_successful": "Authentication details updated successfully",
       "wrong_account": "The new credentials belong to a different LSA SAF account"
+    }
+  },
+  "selector": {
+    "active_fire_provider": {
+      "options": {
+        "eumetsat_lsa_saf": "EUMETSAT LSA SAF (account required)",
+        "noaa_goes": "NOAA GOES-18/19 (no account required)"
+      }
     }
   },
   "options": {
@@ -56,11 +72,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Only MTG fire detections within this distance of Home Assistant's Home location are considered.",
+          "radius_km": "Only detections from the selected active-fire provider within this distance of Home Assistant's Home location are considered.",
           "fire_risk_radius_km": "Area shown on the FRMv3 map and checked for the highest regional fire risk. This does not change active-fire alerts.",
           "min_confidence": "0 includes all detections; 1 is the strictest possible filter.",
           "min_frp_mw": "Ignore detections weaker than this FRP in MW.",
-          "scan_interval_minutes": "How often Home Assistant checks for a newer 10-minute MTG fire product.",
+          "scan_interval_minutes": "How often Home Assistant checks the selected provider for a newer active-fire product.",
           "dedup_radius_km": "A detection near a recently seen fire is treated as the same fire and will not generate another new-fire event.",
           "dedup_hours": "How long a recently seen fire suppresses repeat new-fire events in the same area.",
           "fire_history_hours": "How long inactive fire markers remain visible on the map. This does not extend repeat-alert suppression.",

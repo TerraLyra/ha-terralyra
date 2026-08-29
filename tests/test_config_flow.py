@@ -10,6 +10,9 @@ from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
 from custom_components.terralyra.const import (
+    ACTIVE_FIRE_PROVIDER_GOES,
+    ACTIVE_FIRE_PROVIDER_LSA_SAF,
+    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_DEDUP_HOURS,
     CONF_DEDUP_RADIUS_KM,
     CONF_ENABLE_FIRMS,
@@ -80,11 +83,19 @@ async def _start_user_flow(hass):
     )
 
 
+async def _start_lsa_saf_flow(hass):
+    result = await _start_user_flow(hass)
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF},
+    )
+
+
 async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
     """Test successful first-time setup."""
-    result = await _start_user_flow(hass)
+    result = await _start_lsa_saf_flow(hass)
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "lsa_saf"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
@@ -93,7 +104,11 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "TerraLyra"
-    assert result["data"] == {CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD}
+    assert result["data"] == {
+        CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF,
+        CONF_USERNAME: USERNAME,
+        CONF_PASSWORD: PASSWORD,
+    }
     assert result["options"] == {
         CONF_RADIUS_KM: DEFAULT_RADIUS_KM,
         CONF_FIRE_RISK_RADIUS_KM: DEFAULT_FIRE_RISK_RADIUS_KM,
@@ -110,6 +125,43 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
     mock_test_auth.assert_awaited_once()
+
+
+async def test_goes_user_flow_needs_no_credentials(hass) -> None:
+    """Test covered locations can select GOES without creating a secret."""
+    with patch(
+        "custom_components.terralyra.config_flow.select_goes_satellite",
+        return_value=object(),
+    ):
+        result = await _start_user_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {
+        CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES
+    }
+    assert CONF_USERNAME not in result["data"]
+    assert CONF_PASSWORD not in result["data"]
+
+
+async def test_goes_user_flow_rejects_unsafe_coverage(hass) -> None:
+    """Test GOES cannot be enabled outside its conservative coverage gate."""
+    with patch(
+        "custom_components.terralyra.config_flow.select_goes_satellite",
+        return_value=None,
+    ):
+        result = await _start_user_flow(hass)
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "goes_not_available"}
 
 
 @pytest.mark.parametrize(
@@ -129,13 +181,13 @@ async def test_user_flow_errors_recover(
     """Test all setup errors can be corrected without restarting the flow."""
     mock_test_auth.side_effect = [side_effect, None]
 
-    result = await _start_user_flow(hass)
+    result = await _start_lsa_saf_flow(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: USERNAME, CONF_PASSWORD: "bad"},
     )
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "lsa_saf"
     assert result["errors"] == {"base": expected_error}
 
     result = await hass.config_entries.flow.async_configure(
@@ -155,7 +207,7 @@ async def test_duplicate_account_aborts(hass, mock_test_auth: AsyncMock) -> None
     )
     existing.add_to_hass(hass)
 
-    result = await _start_user_flow(hass)
+    result = await _start_lsa_saf_flow(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: USERNAME.upper(), CONF_PASSWORD: PASSWORD},

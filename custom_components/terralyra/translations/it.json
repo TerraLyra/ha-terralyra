@@ -3,6 +3,11 @@
   "config": {
     "step": {
       "user": {
+        "title": "Scegli una fonte dati per gli incendi attivi",
+        "description": "LSA SAF è consigliato per l’Europa e le regioni vicine e richiede un account gratuito. NOAA GOES è destinato alle località coperte in modo sicuro nell’emisfero occidentale, non richiede un account e scarica dati satellitari aggiuntivi.",
+        "data": {"active_fire_provider": "Fonte dati per gli incendi attivi"}
+      },
+      "lsa_saf": {
         "title": "Connetti al servizio dati LSA SAF",
         "description": "Inserisci le credenziali del tuo account gratuito LSA SAF Data Service. L’integrazione fornisce il rilevamento degli incendi attivi MTG e la previsione FRMv3 del rischio di incendio.",
         "data": {"username": "Nome utente", "password": "Password"},
@@ -15,9 +20,10 @@
         "data_description": {"username": "Nome utente dell’account LSA SAF configurato originariamente", "password": "Password attuale di LSA SAF Data Service"}
       }
     },
-    "error": {"cannot_connect": "Impossibile connettersi a LSA SAF Data Service", "invalid_auth": "Nome utente o password non validi"},
+    "error": {"cannot_connect": "Impossibile connettersi a LSA SAF Data Service", "goes_not_available": "La posizione Casa è fuori dall’area di copertura sicura di NOAA GOES", "invalid_auth": "Nome utente o password non validi"},
     "abort": {"already_configured": "Questo account LSA SAF è già configurato", "reauth_successful": "Credenziali aggiornate correttamente", "wrong_account": "Le nuove credenziali appartengono a un altro account LSA SAF"}
   },
+  "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (account richiesto)", "noaa_goes": "NOAA GOES-18/19 (nessun account richiesto)"}}},
   "options": {
     "step": {
       "init": {
@@ -37,11 +43,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Vengono considerati solo i rilevamenti MTG entro questa distanza dalla posizione Casa di Home Assistant.",
+          "radius_km": "Vengono considerati solo i rilevamenti della fonte selezionata entro questa distanza dalla posizione Casa.",
           "fire_risk_radius_km": "Area visualizzata sulla mappa FRMv3 e analizzata per il massimo rischio regionale. Non modifica gli avvisi di incendio attivo.",
           "min_confidence": "0 include tutti i rilevamenti; 1 è il filtro più rigoroso.",
           "min_frp_mw": "Ignora i rilevamenti con FRP in MW inferiore a questo valore.",
-          "scan_interval_minutes": "Frequenza con cui Home Assistant cerca un prodotto MTG di dieci minuti più recente.",
+          "scan_interval_minutes": "Frequenza con cui Home Assistant controlla la fonte selezionata per dati più recenti.",
           "dedup_radius_km": "Un rilevamento vicino a un incendio osservato di recente viene considerato lo stesso incendio e non genera un altro evento.",
           "dedup_hours": "Periodo durante il quale vengono soppressi gli eventi ripetuti dello stesso incendio nella stessa area.",
           "fire_history_hours": "Periodo durante il quale i marker degli incendi inattivi restano visibili sulla mappa. Non prolunga la soppressione degli avvisi ripetuti.",
