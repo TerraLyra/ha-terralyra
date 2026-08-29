@@ -277,9 +277,14 @@ class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        center = self.coordinator.monitoring_center
         return {
             "satellite": self.coordinator.satellite,
             "product": self.coordinator.provider_product,
+            "monitoring_center": center.name,
+            "monitoring_latitude": round(center.latitude, 6),
+            "monitoring_longitude": round(center.longitude, 6),
+            "custom_monitoring_center": center.custom,
         }
 
 

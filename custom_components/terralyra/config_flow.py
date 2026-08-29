@@ -6,7 +6,7 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import config_entries
 from homeassistant.config_entries import ConfigFlowResult, OptionsFlowWithReload
-from homeassistant.core import callback
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 from homeassistant.helpers.selector import (
     NumberSelector,
@@ -33,11 +33,15 @@ from .const import (
     CONF_FIRE_HISTORY_HOURS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
+    CONF_MONITORING_CENTER_NAME,
+    CONF_MONITORING_LATITUDE,
+    CONF_MONITORING_LONGITUDE,
     CONF_PASSWORD,
     CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
     CONF_SCAN_INTERVAL_MINUTES,
     CONF_USERNAME,
+    CONF_USE_CUSTOM_MONITORING_CENTER,
     DEFAULT_DEDUP_HOURS,
     DEFAULT_DEDUP_RADIUS_KM,
     DEFAULT_ENABLE_FIRMS,
@@ -46,13 +50,16 @@ from .const import (
     DEFAULT_FIRE_HISTORY_HOURS,
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_FRP_MW,
+    DEFAULT_MONITORING_CENTER_NAME,
     DEFAULT_RADIUS_KM,
     DEFAULT_RESOLVE_PLACE_NAMES,
     DEFAULT_SCAN_INTERVAL_MINUTES,
+    DEFAULT_USE_CUSTOM_MONITORING_CENTER,
     DOMAIN,
     MAX_RADIUS_KM,
     MIN_RADIUS_KM,
 )
+from .monitoring import MonitoringCenter, validate_monitoring_center
 from .products.fire import ActiveFireClient
 from .products.firms import FirmsAuthenticationError, FirmsClient, FirmsError
 from .providers.goes import select_goes_satellite
@@ -65,30 +72,18 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     VERSION = 1
 
+    def __init__(self) -> None:
+        """Initialize temporary setup state."""
+        super().__init__()
+        self._selected_provider = ACTIVE_FIRE_PROVIDER_LSA_SAF
+        self._monitoring_options: dict[str, Any] = {}
+
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         """Choose the primary active-fire provider."""
         errors: dict[str, str] = {}
         if user_input is not None:
-            provider_name = str(user_input[CONF_ACTIVE_FIRE_PROVIDER])
-            if provider_name == ACTIVE_FIRE_PROVIDER_LSA_SAF:
-                return await self.async_step_lsa_saf()
-            if provider_name == ACTIVE_FIRE_PROVIDER_GOES:
-                if (
-                    select_goes_satellite(
-                        float(self.hass.config.latitude),
-                        float(self.hass.config.longitude),
-                    )
-                    is None
-                ):
-                    errors["base"] = "goes_not_available"
-                else:
-                    await self.async_set_unique_id(ACTIVE_FIRE_PROVIDER_GOES)
-                    self._abort_if_unique_id_configured()
-                    return self.async_create_entry(
-                        title="TerraLyra",
-                        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
-                        options=_default_options(),
-                    )
+            self._selected_provider = str(user_input[CONF_ACTIVE_FIRE_PROVIDER])
+            return await self.async_step_monitoring_center()
 
         return self.async_show_form(
             step_id="user",
@@ -107,6 +102,50 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         )
                     )
                 }
+            ),
+            errors=errors,
+        )
+
+    async def async_step_monitoring_center(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Choose Home or a custom center for active-fire monitoring."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                center = _monitoring_center_from_input(self.hass, user_input)
+            except (KeyError, TypeError, ValueError):
+                errors["base"] = "invalid_monitoring_center"
+            else:
+                if (
+                    self._selected_provider == ACTIVE_FIRE_PROVIDER_GOES
+                    and select_goes_satellite(center.latitude, center.longitude) is None
+                ):
+                    errors["base"] = "goes_not_available"
+                else:
+                    self._monitoring_options = {
+                        CONF_USE_CUSTOM_MONITORING_CENTER: center.custom,
+                        CONF_MONITORING_CENTER_NAME: center.name,
+                        CONF_MONITORING_LATITUDE: center.latitude,
+                        CONF_MONITORING_LONGITUDE: center.longitude,
+                    }
+                    if self._selected_provider == ACTIVE_FIRE_PROVIDER_LSA_SAF:
+                        return await self.async_step_lsa_saf()
+                    await self.async_set_unique_id(ACTIVE_FIRE_PROVIDER_GOES)
+                    self._abort_if_unique_id_configured()
+                    return self.async_create_entry(
+                        title=_entry_title(center),
+                        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+                        options=_default_options() | self._monitoring_options,
+                    )
+
+        defaults = _home_monitoring_options(self.hass)
+        if user_input is not None:
+            defaults |= user_input
+        return self.async_show_form(
+            step_id="monitoring_center",
+            data_schema=self.add_suggested_values_to_schema(
+                _monitoring_center_schema(), defaults
             ),
             errors=errors,
         )
@@ -133,14 +172,18 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             else:
                 await self.async_set_unique_id(user_input[CONF_USERNAME].strip().lower())
                 self._abort_if_unique_id_configured()
+                center = _monitoring_center_from_options(
+                    self.hass,
+                    self._monitoring_options or _home_monitoring_options(self.hass),
+                )
                 return self.async_create_entry(
-                    title="TerraLyra",
+                    title=_entry_title(center),
                     data={
                         CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF,
                         CONF_USERNAME: user_input[CONF_USERNAME].strip(),
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
-                    options=_default_options(),
+                    options=_default_options() | self._monitoring_options,
                 )
 
         return self.async_show_form(
@@ -222,8 +265,30 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
         errors: dict[str, str] = {}
         if user_input is not None:
             options = dict(user_input)
+            try:
+                center = _monitoring_center_from_input(self.hass, options)
+            except (KeyError, TypeError, ValueError):
+                errors["base"] = "invalid_monitoring_center"
+                center = MonitoringCenter(
+                    DEFAULT_MONITORING_CENTER_NAME,
+                    float(self.hass.config.latitude),
+                    float(self.hass.config.longitude),
+                    False,
+                )
+            else:
+                options[CONF_MONITORING_CENTER_NAME] = center.name
+            if (
+                not errors
+                and self.config_entry.data.get(
+                    CONF_ACTIVE_FIRE_PROVIDER,
+                    ACTIVE_FIRE_PROVIDER_LSA_SAF,
+                )
+                == ACTIVE_FIRE_PROVIDER_GOES
+                and select_goes_satellite(center.latitude, center.longitude) is None
+            ):
+                errors["base"] = "goes_not_available"
             submitted_key = str(options.pop(CONF_FIRMS_MAP_KEY, "")).strip()
-            if options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
+            if not errors and options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
                 map_key = submitted_key or str(
                     self.config_entry.data.get(CONF_FIRMS_MAP_KEY, "")
                 )
@@ -231,8 +296,8 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                     errors[CONF_FIRMS_MAP_KEY] = "firms_key_required"
                 else:
                     west, south, east, north = _firms_validation_bounds(
-                        float(self.hass.config.latitude),
-                        float(self.hass.config.longitude),
+                        center.latitude,
+                        center.longitude,
                     )
                     try:
                         await FirmsClient(
@@ -260,10 +325,12 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                                 },
                             )
                         return self.async_create_entry(data=options)
-            else:
+            elif not errors:
                 return self.async_create_entry(data=options)
 
         current = _default_options() | dict(self.config_entry.options)
+        current.setdefault(CONF_MONITORING_LATITUDE, float(self.hass.config.latitude))
+        current.setdefault(CONF_MONITORING_LONGITUDE, float(self.hass.config.longitude))
         if user_input is not None:
             current |= {
                 key: value
@@ -274,6 +341,26 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
             {
                 vol.Required(CONF_RADIUS_KM): NumberSelector(
                     NumberSelectorConfig(min=MIN_RADIUS_KM, max=MAX_RADIUS_KM, step=1, unit_of_measurement="km", mode=NumberSelectorMode.BOX)
+                ),
+                vol.Required(CONF_USE_CUSTOM_MONITORING_CENTER): bool,
+                vol.Required(CONF_MONITORING_CENTER_NAME): TextSelector(
+                    TextSelectorConfig()
+                ),
+                vol.Required(CONF_MONITORING_LATITUDE): NumberSelector(
+                    NumberSelectorConfig(
+                        min=-90,
+                        max=90,
+                        step=0.000001,
+                        mode=NumberSelectorMode.BOX,
+                    )
+                ),
+                vol.Required(CONF_MONITORING_LONGITUDE): NumberSelector(
+                    NumberSelectorConfig(
+                        min=-180,
+                        max=180,
+                        step=0.000001,
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_FIRE_RISK_RADIUS_KM): NumberSelector(
                     NumberSelectorConfig(min=MIN_RADIUS_KM, max=MAX_RADIUS_KM, step=1, unit_of_measurement="km", mode=NumberSelectorMode.BOX)
@@ -314,6 +401,8 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
 def _default_options() -> dict[str, Any]:
     return {
         CONF_RADIUS_KM: DEFAULT_RADIUS_KM,
+        CONF_USE_CUSTOM_MONITORING_CENTER: DEFAULT_USE_CUSTOM_MONITORING_CENTER,
+        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
         CONF_FIRE_RISK_RADIUS_KM: DEFAULT_FIRE_RISK_RADIUS_KM,
         CONF_MIN_CONFIDENCE: DEFAULT_MIN_CONFIDENCE,
         CONF_MIN_FRP_MW: DEFAULT_MIN_FRP_MW,
@@ -327,6 +416,73 @@ def _default_options() -> dict[str, Any]:
         ),
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
+
+
+def _monitoring_center_schema() -> vol.Schema:
+    """Return the reusable monitoring-center form schema."""
+    return vol.Schema(
+        {
+            vol.Required(CONF_USE_CUSTOM_MONITORING_CENTER): bool,
+            vol.Required(CONF_MONITORING_CENTER_NAME): TextSelector(
+                TextSelectorConfig()
+            ),
+            vol.Required(CONF_MONITORING_LATITUDE): NumberSelector(
+                NumberSelectorConfig(
+                    min=-90,
+                    max=90,
+                    step=0.000001,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(CONF_MONITORING_LONGITUDE): NumberSelector(
+                NumberSelectorConfig(
+                    min=-180,
+                    max=180,
+                    step=0.000001,
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+        }
+    )
+
+
+def _home_monitoring_options(hass: HomeAssistant) -> dict[str, Any]:
+    """Return form values representing the Home location."""
+    return {
+        CONF_USE_CUSTOM_MONITORING_CENTER: False,
+        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
+        CONF_MONITORING_LATITUDE: float(hass.config.latitude),
+        CONF_MONITORING_LONGITUDE: float(hass.config.longitude),
+    }
+
+
+def _monitoring_center_from_input(
+    hass: HomeAssistant, values: dict[str, Any]
+) -> MonitoringCenter:
+    """Validate submitted center values, ignoring coordinates when Home is used."""
+    custom = bool(values.get(CONF_USE_CUSTOM_MONITORING_CENTER, False))
+    if custom:
+        name = str(values[CONF_MONITORING_CENTER_NAME]).strip()
+        latitude = float(values[CONF_MONITORING_LATITUDE])
+        longitude = float(values[CONF_MONITORING_LONGITUDE])
+    else:
+        name = DEFAULT_MONITORING_CENTER_NAME
+        latitude = float(hass.config.latitude)
+        longitude = float(hass.config.longitude)
+    validate_monitoring_center(latitude, longitude, name)
+    return MonitoringCenter(name, latitude, longitude, custom)
+
+
+def _monitoring_center_from_options(
+    hass: HomeAssistant, values: dict[str, Any]
+) -> MonitoringCenter:
+    """Resolve setup options into a monitoring center."""
+    return _monitoring_center_from_input(hass, values)
+
+
+def _entry_title(center: MonitoringCenter) -> str:
+    """Make custom-center entries recognizable without renaming Home entries."""
+    return f"TerraLyra · {center.name}" if center.custom else "TerraLyra"
 
 
 def _firms_validation_bounds(

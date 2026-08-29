@@ -53,6 +53,7 @@ from .models import (
     MetricTrend,
     ProviderStatus,
 )
+from .monitoring import MonitoringCenter
 from .providers.base import (
     ActiveFireProvider,
     ProviderAuthenticationError,
@@ -94,9 +95,16 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         provider: ActiveFireProvider,
         place_resolver: PlaceNameResolver | None = None,
         *,
+        monitoring_center: MonitoringCenter | None = None,
         corroboration_provider: ActiveFireProvider | None = None,
     ) -> None:
         self.entry = entry
+        self.monitoring_center = monitoring_center or MonitoringCenter(
+            "Home",
+            float(hass.config.latitude),
+            float(hass.config.longitude),
+            False,
+        )
         self.provider = provider
         self.corroboration_provider = corroboration_provider
         self.provider_status = ProviderStatus.INITIALIZING
@@ -133,7 +141,14 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
 
     async def _async_setup(self) -> None:
         stored = await self._store.async_load()
-        if isinstance(stored, dict) and isinstance(stored.get("tracks"), list):
+        stored_center = stored.get("monitoring_center") if isinstance(stored, dict) else None
+        center_matches = stored_center == self.monitoring_center.storage_key
+        legacy_home_store = stored_center is None and not self.monitoring_center.custom
+        if (
+            isinstance(stored, dict)
+            and isinstance(stored.get("tracks"), list)
+            and (center_matches or legacy_home_store)
+        ):
             self._tracks = stored["tracks"]
             if isinstance(stored.get("firms_tracks"), list):
                 self._firms_tracks = stored["firms_tracks"]
@@ -209,8 +224,8 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 CONF_FIRE_HISTORY_HOURS, DEFAULT_FIRE_HISTORY_HOURS
             )
         )
-        home_lat = float(self.hass.config.latitude)
-        home_lon = float(self.hass.config.longitude)
+        home_lat = self.monitoring_center.latitude
+        home_lon = self.monitoring_center.longitude
 
         filtered: list[tuple[FireDetection, float]] = []
         for detection in snapshot.detections:
@@ -320,6 +335,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     cluster.nearest_settlement,
                     cluster.distance_km,
                     cluster.confidence,
+                    self.monitoring_center.name,
                 )
                 attrs[ATTR_NOTIFICATION_TITLE] = title
                 attrs[ATTR_NOTIFICATION_MESSAGE] = message
@@ -481,6 +497,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 "tracks": self._tracks,
                 "firms_tracks": self._firms_tracks,
                 "activity_history": self._activity_history,
+                "monitoring_center": self.monitoring_center.storage_key,
             }
         )
 
@@ -640,6 +657,7 @@ def _notification_text(
     settlement: str | None,
     distance_km: float,
     confidence: float,
+    monitoring_center: str = "Home",
 ) -> tuple[str, str]:
     """Build a concise localized mobile-notification title and message."""
     confidence_percent = round(confidence * 100)
@@ -648,38 +666,48 @@ def _notification_text(
     distance = f"{distance_km:.1f}"
     if decimal_comma:
         distance = distance.replace(".", ",")
+    default_center = monitoring_center == "Home"
     messages = {
         "de": (
             "🔥 Branddetektionswarnung",
             f"Brand{' in der Nähe von ' + settlement if settlement else ''} "
-            f"erkannt, {distance} km von Zuhause entfernt. "
+            f"erkannt, {distance} km von "
+            f"{'Zuhause' if default_center else monitoring_center} entfernt. "
             f"Erkennungssicherheit: {confidence_percent} %.",
         ),
         "en": (
             "🔥 Fire detection alert",
             f"Fire detected{' near ' + settlement if settlement else ''}, "
-            f"{distance} km from Home. Confidence: {confidence_percent}%.",
+            f"{distance} km from {monitoring_center}. Confidence: {confidence_percent}%.",
         ),
         "es": (
             "🔥 Alerta de detección de incendio",
             f"Incendio detectado{' cerca de ' + settlement if settlement else ''}, "
-            f"a {distance} km de Casa. Confianza: {confidence_percent} %.",
+            f"a {distance} km de "
+            f"{'Casa' if default_center else monitoring_center}. "
+            f"Confianza: {confidence_percent} %.",
         ),
         "fr": (
             "🔥 Alerte de détection d’incendie",
             f"Incendie détecté{' près de ' + settlement if settlement else ''}, "
-            f"à {distance} km du domicile. Confiance : {confidence_percent} %.",
+            f"à {distance} km "
+            f"{'du domicile' if default_center else 'de ' + monitoring_center}. "
+            f"Confiance : {confidence_percent} %.",
         ),
         "hu": (
             "🔥 Tűzészlelés riasztás",
             f"Tűz észlelve{' ' + settlement + ' közelében' if settlement else ''}, "
-            f"{distance} km-re az otthonodtól. Megbízhatóság: "
+            f"{distance} km-re "
+            f"{'az otthonodtól' if default_center else 'a(z) ' + monitoring_center + ' figyelőközponttól'}. "
+            f"Megbízhatóság: "
             f"{confidence_percent}%.",
         ),
         "it": (
             "🔥 Avviso di rilevamento incendio",
             f"Incendio rilevato{' vicino a ' + settlement if settlement else ''}, "
-            f"a {distance} km da Casa. Attendibilità: {confidence_percent}%.",
+            f"a {distance} km da "
+            f"{'Casa' if default_center else monitoring_center}. "
+            f"Attendibilità: {confidence_percent}%.",
         ),
     }
     return messages.get(code, messages["en"])

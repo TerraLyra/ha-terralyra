@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.3.0
+
+- Add a setup and options workflow for choosing Home or one named custom
+  active-fire monitoring center with strictly validated coordinates.
+- Use the selected center consistently for the primary active-fire provider,
+  NASA FIRMS bounds, distance calculations, alerts and map markers while
+  keeping FRMv3 fire risk and land-surface temperature tied to Home.
+- Allow European Home Assistant installations to create a coverage-gated NOAA
+  GOES entry for a safely covered Western Hemisphere test location.
+- Show the center name and rounded coordinates as attributes of the active-fire
+  data-source sensor and use the name in localized mobile notifications.
+- Separate persisted incident tracks and activity history when the center
+  changes so detections from two locations cannot be mixed.
+- Add English, Hungarian, German, French, Spanish and Italian setup text plus
+  regression tests for custom centers, validation, GOES coverage and alerts.
+
 ## 0.2.7
 
 - Audit all English, Hungarian, German, French, Spanish and Italian translation

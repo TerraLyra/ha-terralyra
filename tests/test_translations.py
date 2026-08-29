@@ -25,6 +25,8 @@ EXPECTED_ENGLISH_IDENTICAL_PATHS = {
     },
     "fr": {
         "title",
+        "config.step.monitoring_center.data.monitoring_latitude",
+        "config.step.monitoring_center.data.monitoring_longitude",
         "options.step.init.data.firms_map_key",
         "entity.sensor.active_fire_provider.state.eumetsat_lsa_saf",
         "entity.sensor.active_fire_provider.state.noaa_goes",

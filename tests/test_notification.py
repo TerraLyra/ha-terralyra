@@ -56,3 +56,16 @@ def test_unsupported_notification_language_falls_back_to_english() -> None:
     assert _notification_text("nl", "Erdut", 10, 0.8) == _notification_text(
         "en", "Erdut", 10, 0.8
     )
+
+
+def test_notification_names_custom_monitoring_center() -> None:
+    """Custom centers replace Home wording without exposing coordinates."""
+    title, message = _notification_text(
+        "en", "Albany", 24.68, 0.91, monitoring_center="New York"
+    )
+
+    assert title == "🔥 Fire detection alert"
+    assert message == (
+        "Fire detected near Albany, 24.7 km from New York. "
+        "Confidence: 91%."
+    )

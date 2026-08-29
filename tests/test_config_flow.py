@@ -22,11 +22,15 @@ from custom_components.terralyra.const import (
     CONF_FIRE_HISTORY_HOURS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
+    CONF_MONITORING_CENTER_NAME,
+    CONF_MONITORING_LATITUDE,
+    CONF_MONITORING_LONGITUDE,
     CONF_PASSWORD,
     CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
     CONF_SCAN_INTERVAL_MINUTES,
     CONF_USERNAME,
+    CONF_USE_CUSTOM_MONITORING_CENTER,
     DEFAULT_DEDUP_HOURS,
     DEFAULT_DEDUP_RADIUS_KM,
     DEFAULT_ENABLE_FIRMS,
@@ -35,6 +39,7 @@ from custom_components.terralyra.const import (
     DEFAULT_FIRE_HISTORY_HOURS,
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_FRP_MW,
+    DEFAULT_MONITORING_CENTER_NAME,
     DEFAULT_RADIUS_KM,
     DEFAULT_RESOLVE_PLACE_NAMES,
     DEFAULT_SCAN_INTERVAL_MINUTES,
@@ -51,6 +56,10 @@ def _default_options_input() -> dict:
     """Return a complete valid options submission."""
     return {
         CONF_RADIUS_KM: DEFAULT_RADIUS_KM,
+        CONF_USE_CUSTOM_MONITORING_CENTER: False,
+        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
+        CONF_MONITORING_LATITUDE: 47.4979,
+        CONF_MONITORING_LONGITUDE: 19.0402,
         CONF_FIRE_RISK_RADIUS_KM: DEFAULT_FIRE_RISK_RADIUS_KM,
         CONF_MIN_CONFIDENCE: DEFAULT_MIN_CONFIDENCE,
         CONF_MIN_FRP_MW: DEFAULT_MIN_FRP_MW,
@@ -85,10 +94,24 @@ async def _start_user_flow(hass):
 
 async def _start_lsa_saf_flow(hass):
     result = await _start_user_flow(hass)
-    return await hass.config_entries.flow.async_configure(
+    result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF},
     )
+    assert result["step_id"] == "monitoring_center"
+    return await hass.config_entries.flow.async_configure(
+        result["flow_id"], _default_monitoring_input(hass)
+    )
+
+
+def _default_monitoring_input(hass, **overrides) -> dict:
+    """Return a valid setup submission using Home by default."""
+    return {
+        CONF_USE_CUSTOM_MONITORING_CENTER: False,
+        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
+        CONF_MONITORING_LATITUDE: float(hass.config.latitude),
+        CONF_MONITORING_LONGITUDE: float(hass.config.longitude),
+    } | overrides
 
 
 async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
@@ -111,6 +134,10 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
     }
     assert result["options"] == {
         CONF_RADIUS_KM: DEFAULT_RADIUS_KM,
+        CONF_USE_CUSTOM_MONITORING_CENTER: False,
+        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
+        CONF_MONITORING_LATITUDE: float(hass.config.latitude),
+        CONF_MONITORING_LONGITUDE: float(hass.config.longitude),
         CONF_FIRE_RISK_RADIUS_KM: DEFAULT_FIRE_RISK_RADIUS_KM,
         CONF_MIN_CONFIDENCE: DEFAULT_MIN_CONFIDENCE,
         CONF_MIN_FRP_MW: DEFAULT_MIN_FRP_MW,
@@ -138,6 +165,10 @@ async def test_goes_user_flow_needs_no_credentials(hass) -> None:
             result["flow_id"],
             {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
         )
+        assert result["step_id"] == "monitoring_center"
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], _default_monitoring_input(hass)
+        )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"] == {
@@ -158,10 +189,68 @@ async def test_goes_user_flow_rejects_unsafe_coverage(hass) -> None:
             result["flow_id"],
             {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
         )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], _default_monitoring_input(hass)
+        )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "user"
+    assert result["step_id"] == "monitoring_center"
     assert result["errors"] == {"base": "goes_not_available"}
+
+
+async def test_goes_user_flow_accepts_custom_covered_center(hass) -> None:
+    """Test GOES coverage is evaluated at the custom center, not Home."""
+    result = await _start_user_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+    )
+    with patch(
+        "custom_components.terralyra.config_flow.select_goes_satellite",
+        return_value=object(),
+    ) as select_satellite:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            _default_monitoring_input(
+                hass,
+                **{
+                    CONF_USE_CUSTOM_MONITORING_CENTER: True,
+                    CONF_MONITORING_CENTER_NAME: "New York",
+                    CONF_MONITORING_LATITUDE: 40.7128,
+                    CONF_MONITORING_LONGITUDE: -74.006,
+                },
+            ),
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["title"] == "TerraLyra · New York"
+    assert result["options"][CONF_USE_CUSTOM_MONITORING_CENTER] is True
+    assert result["options"][CONF_MONITORING_LATITUDE] == 40.7128
+    select_satellite.assert_called_once_with(40.7128, -74.006)
+
+
+async def test_monitoring_center_rejects_invalid_coordinates(hass) -> None:
+    """Test non-finite custom coordinates cannot enter the config entry."""
+    result = await _start_user_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF},
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        _default_monitoring_input(
+            hass,
+            **{
+                CONF_USE_CUSTOM_MONITORING_CENTER: True,
+                CONF_MONITORING_CENTER_NAME: "Invalid",
+                CONF_MONITORING_LATITUDE: float("nan"),
+            },
+        ),
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["step_id"] == "monitoring_center"
+    assert result["errors"] == {"base": "invalid_monitoring_center"}
 
 
 @pytest.mark.parametrize(
@@ -330,6 +419,10 @@ async def test_options_flow_defaults_and_save(hass) -> None:
 
     new_options = {
         CONF_RADIUS_KM: 100.0,
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: "New York",
+        CONF_MONITORING_LATITUDE: 40.7128,
+        CONF_MONITORING_LONGITUDE: -74.006,
         CONF_FIRE_RISK_RADIUS_KM: 250.0,
         CONF_MIN_CONFIDENCE: 0.5,
         CONF_MIN_FRP_MW: 10.0,
@@ -353,6 +446,10 @@ async def test_options_flow_uses_existing_values(hass) -> None:
     """Test options flow presents existing values rather than resetting defaults."""
     existing_options = {
         CONF_RADIUS_KM: 75.0,
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: "Madrid",
+        CONF_MONITORING_LATITUDE: 40.4168,
+        CONF_MONITORING_LONGITUDE: -3.7038,
         CONF_FIRE_RISK_RADIUS_KM: 150.0,
         CONF_MIN_CONFIDENCE: 0.75,
         CONF_MIN_FRP_MW: 20.0,
@@ -390,6 +487,58 @@ async def test_options_flow_uses_existing_values(hass) -> None:
             continue
         assert suggested[key] == value
     assert "geocoding_url" not in suggested
+
+
+async def test_options_reject_invalid_custom_monitoring_center(hass) -> None:
+    """Test invalid custom-center values keep the options form open."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=USERNAME,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={},
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    user_input = {
+        **_default_options_input(),
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: " ",
+    }
+
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_monitoring_center"}
+
+
+async def test_options_reject_uncovered_goes_center(hass) -> None:
+    """Test moving a GOES entry outside coverage is rejected safely."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=ACTIVE_FIRE_PROVIDER_GOES,
+        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+        options={},
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    user_input = {
+        **_default_options_input(),
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: "Budapest",
+    }
+
+    with patch(
+        "custom_components.terralyra.config_flow.select_goes_satellite",
+        return_value=None,
+    ):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], user_input
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "goes_not_available"}
 
 
 async def test_options_enable_firms_validates_and_stores_secret(hass) -> None:

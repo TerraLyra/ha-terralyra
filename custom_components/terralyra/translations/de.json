@@ -7,6 +7,12 @@
         "description": "LSA SAF wird für Europa und angrenzende Regionen empfohlen und erfordert ein kostenloses Konto. NOAA GOES ist für sicher abgedeckte Standorte in der westlichen Hemisphäre gedacht, benötigt kein Konto und lädt zusätzliche Satellitendaten herunter.",
         "data": {"active_fire_provider": "Datenquelle für aktive Brände"}
       },
+      "monitoring_center": {
+        "title": "Zentrum für die Aktivbrandüberwachung auswählen",
+        "description": "Für den normalen Betrieb Zuhause verwenden oder einen anderen Ort zum Testen bzw. Überwachen eines separaten Gebiets eingeben. Dieses Zentrum gilt für Aktivbrandquellen, Entfernungen, Warnungen, NASA FIRMS und Brandmarkierungen. FRMv3-Waldbrandgefahr und Landoberflächentemperatur bleiben an Zuhause gebunden.",
+        "data": {"use_custom_monitoring_center": "Benutzerdefiniertes Überwachungszentrum verwenden", "monitoring_center_name": "Name des Überwachungszentrums", "monitoring_latitude": "Breitengrad", "monitoring_longitude": "Längengrad"},
+        "data_description": {"use_custom_monitoring_center": "Deaktiviert wird der Zuhause-Standort von Home Assistant verwendet.", "monitoring_center_name": "Ein kurzer, erkennbarer Name, zum Beispiel New York oder Ferienhaus.", "monitoring_latitude": "Dezimalgrad von -90 bis 90.", "monitoring_longitude": "Dezimalgrad von -180 bis 180."}
+      },
       "lsa_saf": {
         "title": "Mit dem LSA SAF Data Service verbinden",
         "description": "Gib die Zugangsdaten deines kostenlosen LSA SAF Data Service-Kontos ein. Die Integration stellt MTG-Aktivbranderkennung und die FRMv3-Waldbrandgefahrenvorhersage bereit.",
@@ -20,7 +26,7 @@
         "data_description": {"username": "Benutzername des ursprünglich eingerichteten LSA SAF-Kontos", "password": "Aktuelles Passwort des LSA SAF Data Service"}
       }
     },
-    "error": {"cannot_connect": "Verbindung zum LSA SAF Data Service nicht möglich", "goes_not_available": "Der Zuhause-Standort liegt außerhalb des sicheren NOAA-GOES-Abdeckungsgebiets", "invalid_auth": "Ungültiger Benutzername oder ungültiges Passwort"},
+    "error": {"cannot_connect": "Verbindung zum LSA SAF Data Service nicht möglich", "goes_not_available": "Das ausgewählte Überwachungszentrum liegt außerhalb des sicheren NOAA-GOES-Abdeckungsgebiets", "invalid_monitoring_center": "Gültigen Namen und gültige Koordinaten für das Überwachungszentrum eingeben", "invalid_auth": "Ungültiger Benutzername oder ungültiges Passwort"},
     "abort": {"already_configured": "Dieses LSA SAF-Konto ist bereits eingerichtet", "reauth_successful": "Authentifizierungsdaten erfolgreich aktualisiert", "wrong_account": "Die neuen Zugangsdaten gehören zu einem anderen LSA SAF-Konto"}
   },
   "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (Konto erforderlich)", "noaa_goes": "NOAA GOES-18/19 (kein Konto erforderlich)"}}},
@@ -30,6 +36,10 @@
         "title": "Optionen für die Aktivbrandüberwachung",
         "data": {
           "radius_km": "Überwachungsradius",
+          "use_custom_monitoring_center": "Benutzerdefiniertes Aktivbrand-Überwachungszentrum verwenden",
+          "monitoring_center_name": "Name des Überwachungszentrums",
+          "monitoring_latitude": "Breitengrad des Überwachungszentrums",
+          "monitoring_longitude": "Längengrad des Überwachungszentrums",
           "fire_risk_radius_km": "Radius der Waldbrandgefahrenvorhersage",
           "min_confidence": "Mindestkonfidenz der Branderkennung",
           "min_frp_mw": "Minimale Strahlungsleistung des Feuers",
@@ -43,7 +53,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Nur Erkennungen der ausgewählten Aktivbrand-Datenquelle innerhalb dieser Entfernung vom Zuhause-Standort werden berücksichtigt.",
+          "radius_km": "Nur Erkennungen innerhalb dieser Entfernung vom Aktivbrand-Überwachungszentrum werden berücksichtigt.",
+          "use_custom_monitoring_center": "Deaktiviert wird der Zuhause-Standort von Home Assistant verwendet. Aktiviert gelten der separate Name und die Koordinaten unten für Aktivbranddaten, Entfernungen, Warnungen und NASA FIRMS. Waldbrandgefahr und Landoberflächentemperatur bleiben an Zuhause gebunden.",
+          "monitoring_center_name": "Kurzer Name in Anbieterdetails und Brandwarnungen. Wird nur bei aktiviertem benutzerdefiniertem Zentrum verwendet.",
+          "monitoring_latitude": "Dezimalgrad von -90 bis 90. Wird nur bei aktiviertem benutzerdefiniertem Zentrum verwendet.",
+          "monitoring_longitude": "Dezimalgrad von -180 bis 180. Wird nur bei aktiviertem benutzerdefiniertem Zentrum verwendet.",
           "fire_risk_radius_km": "Auf der FRMv3-Karte angezeigtes und für die höchste regionale Waldbrandgefahr geprüftes Gebiet. Dies ändert die Aktivbrandwarnungen nicht.",
           "min_confidence": "0 berücksichtigt alle Erkennungen; 1 ist der strengste mögliche Filter.",
           "min_frp_mw": "Erkennungen mit einer geringeren FRP in MW werden ignoriert.",
@@ -53,7 +67,7 @@
           "fire_history_hours": "So lange bleiben inaktive Brandmarkierungen auf der Karte sichtbar. Die Unterdrückung wiederholter Warnungen wird dadurch nicht verlängert.",
           "resolve_place_names": "Ermittelt den nächsten Ort lokal anhand der enthaltenen GeoNames-cities500-Datenbank. Es werden keine Koordinaten an externe Dienste gesendet.",
           "enable_land_surface_temperature": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant etwa alle 15 Minuten die Koordinaten des Zuhauses an den offiziellen LSA-SAF-WMS-Dienst adaguc.lsasvcs.ipma.pt.",
-          "enable_firms": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant einen kleinen Begrenzungsbereich um das Zuhause an die offizielle NASA-FIRMS-API, um unabhängige VIIRS-Erkennungen zu suchen. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
+          "enable_firms": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant einen kleinen Begrenzungsbereich um das Aktivbrand-Überwachungszentrum an die offizielle NASA-FIRMS-API. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
           "firms_map_key": "Wird geheim im Home-Assistant-Konfigurationseintrag gespeichert und in Diagnosen ausgeblendet. Leer lassen, um einen bereits gespeicherten Schlüssel beizubehalten."
         }
       }
@@ -61,7 +75,8 @@
     "error": {
       "firms_key_required": "Vor der Aktivierung muss ein NASA FIRMS MAP_KEY eingegeben werden",
       "invalid_firms_key": "Der NASA FIRMS MAP_KEY wurde abgelehnt",
-      "firms_cannot_connect": "Der NASA FIRMS MAP_KEY konnte nicht geprüft werden"
+      "firms_cannot_connect": "Der NASA FIRMS MAP_KEY konnte nicht geprüft werden",
+      "invalid_monitoring_center": "Gültigen Namen und gültige Koordinaten für das Überwachungszentrum eingeben"
     }
   },
   "entity": {

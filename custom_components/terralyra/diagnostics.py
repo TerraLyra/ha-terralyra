@@ -7,9 +7,23 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.core import HomeAssistant
 
 from . import TerraLyraConfigEntry
-from .const import CONF_FIRMS_MAP_KEY, CONF_PASSWORD, CONF_USERNAME
+from .const import (
+    CONF_FIRMS_MAP_KEY,
+    CONF_MONITORING_CENTER_NAME,
+    CONF_MONITORING_LATITUDE,
+    CONF_MONITORING_LONGITUDE,
+    CONF_PASSWORD,
+    CONF_USERNAME,
+)
 
-TO_REDACT = {CONF_USERNAME, CONF_PASSWORD, CONF_FIRMS_MAP_KEY}
+TO_REDACT = {
+    CONF_USERNAME,
+    CONF_PASSWORD,
+    CONF_FIRMS_MAP_KEY,
+    CONF_MONITORING_CENTER_NAME,
+    CONF_MONITORING_LATITUDE,
+    CONF_MONITORING_LONGITUDE,
+}
 
 
 async def async_get_config_entry_diagnostics(
@@ -24,7 +38,7 @@ async def async_get_config_entry_diagnostics(
     return {
         "entry": {
             "data": async_redact_data(dict(entry.data), TO_REDACT),
-            "options": dict(entry.options),
+            "options": async_redact_data(dict(entry.options), TO_REDACT),
         },
         "active_fire": {
             "last_update_success": active.last_update_success,

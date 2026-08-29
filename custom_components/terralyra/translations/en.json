@@ -9,6 +9,22 @@
           "active_fire_provider": "Active-fire data source"
         }
       },
+      "monitoring_center": {
+        "title": "Choose the active-fire monitoring center",
+        "description": "Use Home for normal operation, or enter another location to test or monitor a separate area. This center affects active-fire providers, distances, alerts, NASA FIRMS and fire markers. FRMv3 fire risk and land-surface temperature remain tied to Home.",
+        "data": {
+          "use_custom_monitoring_center": "Use a custom monitoring center",
+          "monitoring_center_name": "Monitoring-center name",
+          "monitoring_latitude": "Latitude",
+          "monitoring_longitude": "Longitude"
+        },
+        "data_description": {
+          "use_custom_monitoring_center": "Leave off to use Home Assistant's Home location.",
+          "monitoring_center_name": "A short recognizable name, such as New York or Holiday home.",
+          "monitoring_latitude": "Decimal degrees from -90 to 90.",
+          "monitoring_longitude": "Decimal degrees from -180 to 180."
+        }
+      },
       "lsa_saf": {
         "title": "Connect to LSA SAF Data Service",
         "description": "Enter the credentials from your free LSA SAF Data Service account. The integration provides MTG Active Fire Detection and the FRMv3 fire-risk forecast.",
@@ -36,7 +52,8 @@
     },
     "error": {
       "cannot_connect": "Could not connect to the LSA SAF Data Service",
-      "goes_not_available": "The Home location is outside the safe NOAA GOES coverage area",
+      "goes_not_available": "The selected monitoring center is outside the safe NOAA GOES coverage area",
+      "invalid_monitoring_center": "Enter a valid monitoring-center name and coordinates",
       "invalid_auth": "Invalid username or password"
     },
     "abort": {
@@ -59,6 +76,10 @@
         "title": "Active fire monitoring options",
         "data": {
           "radius_km": "Monitoring radius",
+          "use_custom_monitoring_center": "Use a custom active-fire monitoring center",
+          "monitoring_center_name": "Monitoring-center name",
+          "monitoring_latitude": "Monitoring-center latitude",
+          "monitoring_longitude": "Monitoring-center longitude",
           "fire_risk_radius_km": "Fire-risk forecast radius",
           "min_confidence": "Minimum fire confidence",
           "min_frp_mw": "Minimum fire radiative power",
@@ -72,7 +93,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Only detections from the selected active-fire provider within this distance of Home Assistant's Home location are considered.",
+          "radius_km": "Only detections within this distance of the active-fire monitoring center are considered.",
+          "use_custom_monitoring_center": "Off uses Home Assistant's Home location. On uses the separate name and coordinates below for active-fire data, distances, alerts and NASA FIRMS. Fire risk and land-surface temperature remain tied to Home.",
+          "monitoring_center_name": "A short name shown in provider details and fire notifications. Used only when the custom center is enabled.",
+          "monitoring_latitude": "Decimal degrees from -90 to 90. Used only when the custom center is enabled.",
+          "monitoring_longitude": "Decimal degrees from -180 to 180. Used only when the custom center is enabled.",
           "fire_risk_radius_km": "Area shown on the FRMv3 map and checked for the highest regional fire risk. This does not change active-fire alerts.",
           "min_confidence": "0 includes all detections; 1 is the strictest possible filter.",
           "min_frp_mw": "Ignore detections weaker than this FRP in MW.",
@@ -82,7 +107,7 @@
           "fire_history_hours": "How long inactive fire markers remain visible on the map. This does not extend repeat-alert suppression.",
           "resolve_place_names": "Find the nearest settlement locally using the bundled GeoNames cities500 database. No coordinates are sent to an external service.",
           "enable_land_surface_temperature": "Optional and off by default. When enabled, Home Assistant sends the Home latitude and longitude about every 15 minutes to the official LSA SAF WMS service at adaguc.lsasvcs.ipma.pt to retrieve the latest satellite-observed land-surface temperature.",
-          "enable_firms": "Optional and off by default. When enabled, Home Assistant sends a small bounding box around Home to the official NASA FIRMS API to look for independent VIIRS detections. A free personal MAP_KEY is required.",
+          "enable_firms": "Optional and off by default. When enabled, Home Assistant sends a small bounding box around the active-fire monitoring center to the official NASA FIRMS API to look for independent VIIRS detections. A free personal MAP_KEY is required.",
           "firms_map_key": "Stored as a secret in the Home Assistant config entry and redacted from diagnostics. Leave blank to keep an already saved key."
         }
       }
@@ -90,7 +115,8 @@
     "error": {
       "firms_key_required": "Enter a NASA FIRMS MAP_KEY before enabling corroboration",
       "invalid_firms_key": "The NASA FIRMS MAP_KEY was rejected",
-      "firms_cannot_connect": "Could not validate the NASA FIRMS MAP_KEY"
+      "firms_cannot_connect": "Could not validate the NASA FIRMS MAP_KEY",
+      "invalid_monitoring_center": "Enter a valid monitoring-center name and coordinates"
     }
   },
   "entity": {

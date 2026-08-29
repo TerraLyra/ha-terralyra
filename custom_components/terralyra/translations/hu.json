@@ -9,6 +9,22 @@
           "active_fire_provider": "Aktívtűz-adatforrás"
         }
       },
+      "monitoring_center": {
+        "title": "Aktívtűz-figyelőközpont kiválasztása",
+        "description": "Normál használathoz válaszd az Otthont, vagy adj meg másik helyet teszteléshez vagy külön terület megfigyeléséhez. Ez a központ hat az aktívtűz-adatokra, távolságokra, riasztásokra, NASA FIRMS-re és tűzjelölőkre. Az FRMv3 tűzkockázat és a felszínhőmérséklet továbbra is az Otthonhoz kötődik.",
+        "data": {
+          "use_custom_monitoring_center": "Egyedi figyelőközpont használata",
+          "monitoring_center_name": "Figyelőközpont neve",
+          "monitoring_latitude": "Szélességi fok",
+          "monitoring_longitude": "Hosszúsági fok"
+        },
+        "data_description": {
+          "use_custom_monitoring_center": "Kikapcsolva a Home Assistant Otthon helyét használja.",
+          "monitoring_center_name": "Rövid, felismerhető név, például New York vagy Nyaraló.",
+          "monitoring_latitude": "Tizedes fok -90 és 90 között.",
+          "monitoring_longitude": "Tizedes fok -180 és 180 között."
+        }
+      },
       "lsa_saf": {
         "title": "Kapcsolódás az LSA SAF Data Service-hez",
         "description": "Add meg az ingyenes LSA SAF Data Service fiókod adatait. Az integráció MTG aktívtűz-észlelést és FRMv3 tűzkockázati előrejelzést biztosít.",
@@ -36,7 +52,8 @@
     },
     "error": {
       "cannot_connect": "Nem sikerült kapcsolódni az LSA SAF Data Service-hez",
-      "goes_not_available": "Az Otthon helye kívül esik a NOAA GOES biztonságos lefedettségi területén",
+      "goes_not_available": "A kiválasztott figyelőközpont kívül esik a NOAA GOES biztonságos lefedettségi területén",
+      "invalid_monitoring_center": "Adj meg érvényes figyelőközpont-nevet és koordinátákat",
       "invalid_auth": "Hibás felhasználónév vagy jelszó"
     },
     "abort": {
@@ -59,6 +76,10 @@
         "title": "Aktív tűzfigyelés beállításai",
         "data": {
           "radius_km": "Figyelési sugár",
+          "use_custom_monitoring_center": "Egyedi aktívtűz-figyelőközpont használata",
+          "monitoring_center_name": "Figyelőközpont neve",
+          "monitoring_latitude": "Figyelőközpont szélességi koordinátája",
+          "monitoring_longitude": "Figyelőközpont hosszúsági koordinátája",
           "fire_risk_radius_km": "Tűzkockázati előrejelzés sugara",
           "min_confidence": "Minimális megbízhatóság",
           "min_frp_mw": "Minimális tűzsugárzási teljesítmény",
@@ -72,7 +93,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Csak a kiválasztott aktívtűz-adatforrás Otthon helyétől ezen a távolságon belüli észlelései számítanak.",
+          "radius_km": "Csak az aktívtűz-figyelőközponttól ezen a távolságon belüli észlelések számítanak.",
+          "use_custom_monitoring_center": "Kikapcsolva a Home Assistant Otthon helyét használja. Bekapcsolva az alábbi külön nevet és koordinátákat használja az aktívtűz-adatokhoz, távolságokhoz, riasztásokhoz és a NASA FIRMS-hez. A tűzkockázat és a felszínhőmérséklet továbbra is az Otthon helyéhez kötődik.",
+          "monitoring_center_name": "A szolgáltatói részletekben és a tűzriasztásokban megjelenő rövid név. Csak az egyedi központ bekapcsolásakor használatos.",
+          "monitoring_latitude": "Tizedes fok -90 és 90 között. Csak az egyedi központ bekapcsolásakor használatos.",
+          "monitoring_longitude": "Tizedes fok -180 és 180 között. Csak az egyedi központ bekapcsolásakor használatos.",
           "fire_risk_radius_km": "Az FRMv3 térképen megjelenő és a legmagasabb regionális tűzkockázathoz vizsgált terület. Az aktívtűz-riasztások sugarát nem módosítja.",
           "min_confidence": "A 0 minden észlelést enged; az 1 a legszigorúbb szűrés.",
           "min_frp_mw": "Az ennél gyengébb FRP-jű észlelések figyelmen kívül maradnak.",
@@ -82,7 +107,7 @@
           "fire_history_hours": "Ennyi ideig maradnak láthatók az inaktív tűzjelölések a térképen. Az ismételt riasztások elnyomását nem hosszabbítja meg.",
           "resolve_place_names": "A legközelebbi települést helyben keresi meg a csomagolt GeoNames cities500 adatbázisból. Koordinátát nem küld külső szolgáltatásnak.",
           "enable_land_surface_temperature": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant körülbelül 15 percenként elküldi az Otthon szélességi és hosszúsági koordinátáját az LSA SAF hivatalos adaguc.lsasvcs.ipma.pt WMS-szolgáltatásának a legfrissebb műholdas felszínhőmérséklet lekéréséhez.",
-          "enable_firms": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant az Otthon körüli kis határolóterületet elküldi a NASA hivatalos FIRMS API-jának, hogy független VIIRS-észleléseket keressen. Saját ingyenes MAP_KEY szükséges.",
+          "enable_firms": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant az aktívtűz-figyelőközpont körüli kis határolóterületet elküldi a NASA hivatalos FIRMS API-jának, hogy független VIIRS-észleléseket keressen. Saját ingyenes MAP_KEY szükséges.",
           "firms_map_key": "Titkos adatként kerül a Home Assistant konfigurációs bejegyzésébe, és a diagnosztikából ki van takarva. Hagyd üresen a már mentett kulcs megtartásához."
         }
       }
@@ -90,7 +115,8 @@
     "error": {
       "firms_key_required": "A megerősítés engedélyezése előtt add meg a NASA FIRMS MAP_KEY értékét",
       "invalid_firms_key": "A NASA FIRMS elutasította a MAP_KEY értékét",
-      "firms_cannot_connect": "A NASA FIRMS MAP_KEY ellenőrzése nem sikerült"
+      "firms_cannot_connect": "A NASA FIRMS MAP_KEY ellenőrzése nem sikerült",
+      "invalid_monitoring_center": "Adj meg érvényes figyelőközpont-nevet és koordinátákat"
     }
   },
   "entity": {

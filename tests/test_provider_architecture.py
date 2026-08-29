@@ -14,6 +14,7 @@ from custom_components.terralyra.models import (
     ProviderSnapshot,
     ProviderStatus,
 )
+from custom_components.terralyra.monitoring import MonitoringCenter
 from custom_components.terralyra.products.fire import (
     FirePixel,
     LsaSafNoDataError,
@@ -226,12 +227,17 @@ def test_active_fire_provider_sensor_has_stable_translated_states(
         provider_name=provider,
         satellite="G19",
         provider_product="ABI-L2-FDCF",
+        monitoring_center=MonitoringCenter("New York", 40.7128, -74.006, True),
     )
 
     assert entity.native_value == expected
     assert entity.extra_state_attributes == {
         "satellite": "G19",
         "product": "ABI-L2-FDCF",
+        "monitoring_center": "New York",
+        "monitoring_latitude": 40.7128,
+        "monitoring_longitude": -74.006,
+        "custom_monitoring_center": True,
     }
 
 

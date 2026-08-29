@@ -7,6 +7,12 @@
         "description": "LSA SAF est recommandé pour l’Europe et les régions voisines et nécessite un compte gratuit. NOAA GOES est destiné aux emplacements couverts de façon sûre dans l’hémisphère occidental, ne nécessite aucun compte et télécharge des données satellitaires supplémentaires.",
         "data": {"active_fire_provider": "Source de données sur les feux actifs"}
       },
+      "monitoring_center": {
+        "title": "Choisir le centre de surveillance des feux actifs",
+        "description": "Utilisez le domicile en fonctionnement normal ou saisissez un autre lieu pour tester ou surveiller une zone distincte. Ce centre s’applique aux sources de feux actifs, distances, alertes, NASA FIRMS et marqueurs. Le risque FRMv3 et la température de surface restent liés au domicile.",
+        "data": {"use_custom_monitoring_center": "Utiliser un centre de surveillance personnalisé", "monitoring_center_name": "Nom du centre", "monitoring_latitude": "Latitude", "monitoring_longitude": "Longitude"},
+        "data_description": {"use_custom_monitoring_center": "Désactivé utilise le domicile de Home Assistant.", "monitoring_center_name": "Un nom court et reconnaissable, par exemple New York ou Maison de vacances.", "monitoring_latitude": "Degrés décimaux de -90 à 90.", "monitoring_longitude": "Degrés décimaux de -180 à 180."}
+      },
       "lsa_saf": {
         "title": "Connexion au service de données LSA SAF",
         "description": "Saisissez les identifiants de votre compte gratuit LSA SAF Data Service. L’intégration fournit la détection des feux actifs MTG et la prévision FRMv3 du risque d’incendie.",
@@ -20,7 +26,7 @@
         "data_description": {"username": "Nom d’utilisateur du compte LSA SAF configuré à l’origine", "password": "Mot de passe actuel du service de données LSA SAF"}
       }
     },
-    "error": {"cannot_connect": "Impossible de se connecter au service de données LSA SAF", "goes_not_available": "L’emplacement du domicile se trouve hors de la zone de couverture sûre de NOAA GOES", "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect"},
+    "error": {"cannot_connect": "Impossible de se connecter au service de données LSA SAF", "goes_not_available": "Le centre de surveillance sélectionné se trouve hors de la zone de couverture sûre de NOAA GOES", "invalid_monitoring_center": "Saisissez un nom et des coordonnées valides pour le centre de surveillance", "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect"},
     "abort": {"already_configured": "Ce compte LSA SAF est déjà configuré", "reauth_successful": "Identifiants mis à jour", "wrong_account": "Les nouveaux identifiants appartiennent à un autre compte LSA SAF"}
   },
   "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (compte requis)", "noaa_goes": "NOAA GOES-18/19 (aucun compte requis)"}}},
@@ -30,6 +36,10 @@
         "title": "Options de surveillance des feux actifs",
         "data": {
           "radius_km": "Rayon de surveillance",
+          "use_custom_monitoring_center": "Utiliser un centre personnalisé de surveillance des feux actifs",
+          "monitoring_center_name": "Nom du centre de surveillance",
+          "monitoring_latitude": "Latitude du centre de surveillance",
+          "monitoring_longitude": "Longitude du centre de surveillance",
           "fire_risk_radius_km": "Rayon de prévision du risque d’incendie",
           "min_confidence": "Confiance minimale de détection",
           "min_frp_mw": "Puissance radiative minimale du feu",
@@ -43,7 +53,11 @@
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
-          "radius_km": "Seules les détections de la source sélectionnée situées dans cette distance du domicile sont prises en compte.",
+          "radius_km": "Seules les détections situées dans cette distance du centre de surveillance des feux actifs sont prises en compte.",
+          "use_custom_monitoring_center": "Désactivé utilise le domicile de Home Assistant. Activé utilise le nom et les coordonnées ci-dessous pour les données, distances, alertes et NASA FIRMS. Le risque d’incendie et la température de surface restent liés au domicile.",
+          "monitoring_center_name": "Nom court affiché dans les détails du fournisseur et les alertes. Utilisé uniquement avec le centre personnalisé activé.",
+          "monitoring_latitude": "Degrés décimaux de -90 à 90. Utilisé uniquement avec le centre personnalisé activé.",
+          "monitoring_longitude": "Degrés décimaux de -180 à 180. Utilisé uniquement avec le centre personnalisé activé.",
           "fire_risk_radius_km": "Zone affichée sur la carte FRMv3 et analysée pour déterminer le risque régional maximal. Cela ne modifie pas les alertes de feu actif.",
           "min_confidence": "0 inclut toutes les détections ; 1 applique le filtre le plus strict.",
           "min_frp_mw": "Ignore les détections dont la FRP en MW est inférieure à cette valeur.",
@@ -53,7 +67,7 @@
           "fire_history_hours": "Durée d’affichage des marqueurs de feux inactifs sur la carte. Elle ne prolonge pas la suppression des alertes répétées.",
           "resolve_place_names": "Recherche localement la localité la plus proche à l’aide de la base GeoNames cities500 incluse. Aucune coordonnée n’est envoyée à un service externe.",
           "enable_land_surface_temperature": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie environ toutes les 15 minutes les coordonnées du domicile au service WMS officiel LSA SAF adaguc.lsasvcs.ipma.pt.",
-          "enable_firms": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie une petite zone autour du domicile à l’API officielle NASA FIRMS afin de rechercher des détections VIIRS indépendantes. Un MAP_KEY personnel gratuit est requis.",
+          "enable_firms": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie une petite zone autour du centre de surveillance à l’API officielle NASA FIRMS. Un MAP_KEY personnel gratuit est requis.",
           "firms_map_key": "Stocké comme secret dans l’entrée de configuration Home Assistant et masqué dans les diagnostics. Laisser vide pour conserver une clé déjà enregistrée."
         }
       }
@@ -61,7 +75,8 @@
     "error": {
       "firms_key_required": "Saisissez un NASA FIRMS MAP_KEY avant d’activer la corroboration",
       "invalid_firms_key": "Le NASA FIRMS MAP_KEY a été refusé",
-      "firms_cannot_connect": "Impossible de valider le NASA FIRMS MAP_KEY"
+      "firms_cannot_connect": "Impossible de valider le NASA FIRMS MAP_KEY",
+      "invalid_monitoring_center": "Saisissez un nom et des coordonnées valides pour le centre de surveillance"
     }
   },
   "entity": {

@@ -28,6 +28,7 @@ from .coordinator import TerraLyraCoordinator
 from .fire_risk_coordinator import FireRiskCoordinator
 from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
+from .monitoring import resolve_monitoring_center
 from .products.fire_risk import FireRiskClient
 from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
@@ -52,14 +53,15 @@ type TerraLyraConfigEntry = ConfigEntry[RuntimeData]
 async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) -> bool:
     """Set up TerraLyra from a config entry."""
     session = async_get_clientsession(hass)
+    monitoring_center = resolve_monitoring_center(hass, entry)
     primary_provider = build_primary_provider(
         session,
         hass.async_add_executor_job,
         provider_name=str(
             entry.data.get(CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER)
         ),
-        latitude=float(hass.config.latitude),
-        longitude=float(hass.config.longitude),
+        latitude=monitoring_center.latitude,
+        longitude=monitoring_center.longitude,
         username=entry.data.get(CONF_USERNAME),
         password=entry.data.get(CONF_PASSWORD),
     )
@@ -70,8 +72,8 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
     corroboration_provider = None
     if entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
         bounds = monitoring_bounds(
-            float(hass.config.latitude),
-            float(hass.config.longitude),
+            monitoring_center.latitude,
+            monitoring_center.longitude,
             float(entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
         )
         corroboration_provider = FirmsMultiSatelliteProvider(
@@ -86,6 +88,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
         entry,
         primary_provider,
         resolver,
+        monitoring_center=monitoring_center,
         corroboration_provider=corroboration_provider,
     )
     await coordinator.async_config_entry_first_refresh()
