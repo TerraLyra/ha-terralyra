@@ -24,7 +24,7 @@ def test_factory_preserves_existing_lsa_saf_provider() -> None:
         latitude=47.49,
         longitude=19.04,
         username="user",
-        password="password",
+        password="test-value",  # pragma: allowlist secret
     )
 
     assert isinstance(provider, MtgActiveFireProvider)
