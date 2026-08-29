@@ -28,6 +28,10 @@ The foundation:
   object size before returning a public download candidate;
 - rejects redirects, oversized/invalid XML, entity declarations, unexpected
   paths and objects larger than 64 MiB.
+- downloads only a previously validated object, verifies the exact advertised
+  byte count, writes bounded chunks outside the event loop, decodes outside the
+  event loop and removes its temporary file after success, failure or
+  cancellation.
 
 ## Official product and access path
 

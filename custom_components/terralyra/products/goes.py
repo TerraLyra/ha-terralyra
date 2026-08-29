@@ -3,7 +3,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
+import asyncio
+from collections.abc import Awaitable, Callable
+from functools import partial
+import os
+from pathlib import Path
 from pathlib import PurePosixPath
+import tempfile
+from typing import Any
 from urllib.parse import quote
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -16,13 +23,19 @@ PRODUCT_PREFIX = "ABI-L2-FDCF"
 MAX_KEYS = 100
 MAX_LIST_BYTES = 512 * 1024
 MAX_OBJECT_BYTES = 64 * 1024 * 1024
+DOWNLOAD_CHUNK_BYTES = 1024 * 1024
 MAX_KEY_LENGTH = 512
 TIMEOUT = ClientTimeout(total=20, connect=6, sock_read=12)
+DOWNLOAD_TIMEOUT = ClientTimeout(total=60, connect=6, sock_read=30)
 USER_AGENT = "ha-terralyra (https://github.com/TerraLyra/ha-terralyra)"
 
 
 class GoesDiscoveryError(Exception):
     """The NOAA product catalogue returned an unsafe or invalid response."""
+
+
+class GoesProductError(Exception):
+    """A GOES product could not be downloaded and decoded safely."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -70,7 +83,7 @@ class GoesDiscoveryClient:
                 },
                 headers={"User-Agent": USER_AGENT},
                 allow_redirects=False,
-                timeout=TIMEOUT,
+                timeout=DOWNLOAD_TIMEOUT,
             ) as response:
                 if response.status != 200:
                     raise GoesDiscoveryError("NOAA GOES catalogue returned an error")
@@ -93,6 +106,94 @@ class GoesDiscoveryClient:
             raise
         except (ClientError, TimeoutError) as err:
             raise GoesDiscoveryError("NOAA GOES catalogue is unavailable") from err
+
+
+class GoesProductClient:
+    """Download one validated object and decode it outside the event loop.
+
+    ``run_in_executor`` is normally ``hass.async_add_executor_job``. Keeping it
+    injectable makes the download boundary testable without starting Home
+    Assistant or importing the native decoder during ordinary discovery.
+    """
+
+    def __init__(
+        self,
+        session: ClientSession,
+        run_in_executor: Callable[..., Awaitable[Any]],
+        *,
+        decoder: Callable[..., Any] | None = None,
+        temp_directory: str | None = None,
+    ) -> None:
+        self._session = session
+        self._run_in_executor = run_in_executor
+        self._decoder = decoder
+        self._temp_directory = temp_directory
+
+    async def async_fetch(self, item: GoesObject) -> Any:
+        """Download, verify, decode and always remove one temporary object."""
+        _validate_download_object(item)
+        path = await self._run_in_executor(
+            _create_temp_file, self._temp_directory
+        )
+        try:
+            await self._async_download(item, path)
+            decoder = self._decoder
+            if decoder is None:
+                from .goes_decoder import decode_goes_fdc
+
+                decoder = decode_goes_fdc
+            return await self._run_in_executor(
+                partial(
+                    decoder,
+                    path,
+                    item.metadata,
+                    source_url=item.public_url,
+                )
+            )
+        except GoesProductError:
+            raise
+        except asyncio.CancelledError:
+            raise
+        except (ClientError, TimeoutError) as err:
+            raise GoesProductError("NOAA GOES product is unavailable") from err
+        except Exception as err:
+            # Decoder details can contain native-library internals and local
+            # paths. Expose only a stable, non-sensitive provider error here.
+            raise GoesProductError("NOAA GOES product is invalid") from err
+        finally:
+            await _async_cleanup(self._run_in_executor, path)
+
+    async def _async_download(self, item: GoesObject, path: Path) -> None:
+        try:
+            async with self._session.get(
+                item.public_url,
+                headers={"User-Agent": USER_AGENT},
+                allow_redirects=False,
+                timeout=TIMEOUT,
+            ) as response:
+                if response.status != 200:
+                    raise GoesProductError("NOAA GOES product returned an error")
+                if (
+                    response.content_length is not None
+                    and response.content_length != item.size
+                ):
+                    raise GoesProductError("NOAA GOES product size changed")
+                downloaded = 0
+                async for chunk in response.content.iter_chunked(
+                    DOWNLOAD_CHUNK_BYTES
+                ):
+                    downloaded += len(chunk)
+                    if downloaded > item.size or downloaded > MAX_OBJECT_BYTES:
+                        raise GoesProductError(
+                            "NOAA GOES product exceeds the safety limit"
+                        )
+                    await self._run_in_executor(_append_file, path, bytes(chunk))
+                if downloaded != item.size:
+                    raise GoesProductError("NOAA GOES product is incomplete")
+        except GoesProductError:
+            raise
+        except (ClientError, TimeoutError) as err:
+            raise GoesProductError("NOAA GOES product is unavailable") from err
 
 
 def catalogue_prefix(satellite: str, hour: datetime) -> str:
@@ -157,3 +258,49 @@ def _as_utc(value: datetime) -> datetime:
     if value.tzinfo is None or value.utcoffset() is None:
         raise ValueError("GOES catalogue time must include a timezone")
     return value.astimezone(UTC)
+
+
+def _validate_download_object(item: GoesObject) -> None:
+    """Revalidate an object before its URL reaches the HTTP client."""
+    bucket = _bucket(item.metadata.satellite)
+    expected_key = (
+        catalogue_prefix(item.metadata.satellite, item.metadata.observation_start)
+        + item.metadata.filename
+    )
+    if (
+        item.size <= 0
+        or item.size > MAX_OBJECT_BYTES
+        or item.key != expected_key
+        or item.public_url
+        != f"https://{bucket}.s3.amazonaws.com/{quote(item.key, safe='/')}"
+    ):
+        raise GoesProductError("NOAA GOES download object is invalid")
+
+
+def _create_temp_file(directory: str | None) -> Path:
+    descriptor, name = tempfile.mkstemp(
+        prefix="terralyra-goes-", suffix=".nc", dir=directory
+    )
+    os.close(descriptor)
+    return Path(name)
+
+
+def _append_file(path: Path, chunk: bytes) -> None:
+    with path.open("ab") as output:
+        output.write(chunk)
+
+
+def _unlink_file(path: Path) -> None:
+    path.unlink(missing_ok=True)
+
+
+async def _async_cleanup(
+    run_in_executor: Callable[..., Awaitable[Any]], path: Path
+) -> None:
+    """Finish cleanup even when the caller is being cancelled."""
+    cleanup = asyncio.create_task(run_in_executor(_unlink_file, path))
+    try:
+        await asyncio.shield(cleanup)
+    except asyncio.CancelledError:
+        await cleanup
+        raise

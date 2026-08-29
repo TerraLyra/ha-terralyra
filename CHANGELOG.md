@@ -20,6 +20,8 @@
   strict dimensions/chunks/units/projection validation, optional-value
   preservation and synthetic miniature fixtures. The decoder remains
   disconnected from normal integration operation pending provider activation.
+- Add redirect-free, advertised-size-verified streaming downloads with
+  executor-backed file writes and cancellation-safe temporary-file cleanup.
 
 ## 0.2.5
 

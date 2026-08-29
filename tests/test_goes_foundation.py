@@ -1,6 +1,7 @@
 """Tests for the production-safe GOES discovery foundation."""
 from __future__ import annotations
 
+import asyncio
 from datetime import UTC, datetime
 
 import pytest
@@ -8,6 +9,8 @@ import pytest
 from custom_components.terralyra.products.goes import (
     GoesDiscoveryClient,
     GoesDiscoveryError,
+    GoesProductClient,
+    GoesProductError,
     MAX_LIST_BYTES,
     catalogue_prefix,
     parse_catalogue,
@@ -109,6 +112,12 @@ class _Content:
         yield self._payload
 
 
+class _CancellingContent:
+    async def iter_chunked(self, _size: int):
+        yield b"da"
+        raise asyncio.CancelledError
+
+
 class _Response:
     def __init__(
         self, payload: bytes, *, status: int = 200, content_length: int | None = None
@@ -182,3 +191,96 @@ async def test_discovery_rejects_redirect_or_oversized_response(
         await GoesDiscoveryClient(session).async_latest(
             "G19", now=datetime(2026, 8, 29, 1, 15, tzinfo=UTC)
         )
+
+
+def _object(*, size: int = 4):
+    prefix = "ABI-L2-FDCF/2026/241/01/"
+    filename = (
+        "OR_ABI-L2-FDCF-M6_G19_s20262410100200_"
+        "e20262410109508_c20262410110123.nc"
+    )
+    return parse_catalogue(
+        _catalogue(prefix + filename, size=size),
+        satellite="G19",
+        prefix=prefix,
+    )[0]
+
+
+async def _executor(function, *args, **kwargs):
+    return function(*args, **kwargs)
+
+
+@pytest.mark.asyncio
+async def test_product_download_is_bounded_decoded_and_removed(tmp_path) -> None:
+    item = _object()
+    response = _Response(b"data")
+    seen = {}
+
+    def decoder(path, metadata, *, source_url):
+        seen["path"] = path
+        assert path.read_bytes() == b"data"
+        assert metadata == item.metadata
+        assert source_url == item.public_url
+        return "snapshot"
+
+    result = await GoesProductClient(
+        _Session([response]),
+        _executor,
+        decoder=decoder,
+        temp_directory=str(tmp_path),
+    ).async_fetch(item)
+
+    assert result == "snapshot"
+    assert not seen["path"].exists()
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_product_download_rejects_changed_size_and_removes_file(
+    tmp_path,
+) -> None:
+    item = _object()
+    response = _Response(b"too much", content_length=item.size)
+
+    with pytest.raises(GoesProductError, match="exceeds the safety limit"):
+        await GoesProductClient(
+            _Session([response]),
+            _executor,
+            decoder=lambda *_args, **_kwargs: None,
+            temp_directory=str(tmp_path),
+        ).async_fetch(item)
+
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_product_download_rejects_redirect_before_decode(tmp_path) -> None:
+    item = _object()
+    response = _Response(b"", status=302, content_length=0)
+
+    with pytest.raises(GoesProductError, match="returned an error"):
+        await GoesProductClient(
+            _Session([response]),
+            _executor,
+            decoder=lambda *_args, **_kwargs: None,
+            temp_directory=str(tmp_path),
+        ).async_fetch(item)
+
+    assert list(tmp_path.iterdir()) == []
+
+
+@pytest.mark.asyncio
+async def test_product_download_cancellation_removes_file(tmp_path) -> None:
+    item = _object()
+    response = _Response(b"data")
+    response.content = _CancellingContent()
+
+    with pytest.raises(asyncio.CancelledError):
+        await GoesProductClient(
+            _Session([response]),
+            _executor,
+            decoder=lambda *_args, **_kwargs: None,
+            temp_directory=str(tmp_path),
+        ).async_fetch(item)
+
+    assert list(tmp_path.iterdir()) == []
