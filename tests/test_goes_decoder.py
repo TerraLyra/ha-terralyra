@@ -3,15 +3,19 @@ from __future__ import annotations
 
 from datetime import UTC, datetime
 from pathlib import Path
+from unittest.mock import AsyncMock
 
 import h5py
 import numpy as np
 import pytest
 
+from custom_components.terralyra.models import ProviderStatus
+from custom_components.terralyra.products.goes import parse_catalogue
 from custom_components.terralyra.products.goes_decoder import (
     GoesDecodeError,
     decode_goes_fdc,
 )
+from custom_components.terralyra.providers.goes_active import GoesActiveFireProvider
 from custom_components.terralyra.providers.goes_spike import parse_fdc_filename
 
 FILENAME = (
@@ -69,6 +73,39 @@ def _decode(path: Path):
     )
 
 
+class _Content:
+    def __init__(self, payload: bytes) -> None:
+        self._payload = payload
+
+    async def iter_chunked(self, _size: int):
+        yield self._payload
+
+
+class _Response:
+    def __init__(self, payload: bytes) -> None:
+        self.status = 200
+        self.content_length = len(payload)
+        self.content = _Content(payload)
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *_args):
+        return None
+
+
+class _Session:
+    def __init__(self, payload: bytes) -> None:
+        self._response = _Response(payload)
+
+    def get(self, _url: str, **_kwargs):
+        return self._response
+
+
+async def _executor(function, *args):
+    return function(*args)
+
+
 def test_decode_tiny_product_preserves_quality_and_optional_values(
     tmp_path: Path,
 ) -> None:
@@ -101,6 +138,47 @@ def test_decode_tiny_product_preserves_quality_and_optional_values(
         for detection in snapshot.detections
     )
     assert len({d.source_detection_id for d in snapshot.detections}) == 4
+
+
+@pytest.mark.asyncio
+async def test_provider_downloads_decodes_and_normalizes_tiny_product(
+    tmp_path: Path,
+) -> None:
+    """Exercise the bounded GOES runtime without NOAA or Home Assistant."""
+    fixture_path = tmp_path / FILENAME
+    _fixture(fixture_path)
+    payload = fixture_path.read_bytes()
+    prefix = "ABI-L2-FDCF/2026/240/12/"
+    catalogue = (
+        '<?xml version="1.0" encoding="UTF-8"?>'
+        '<ListBucketResult xmlns="http://s3.amazonaws.com/doc/2006-03-01/">'
+        f"<Contents><Key>{prefix}{FILENAME}</Key><Size>{len(payload)}</Size></Contents>"
+        "</ListBucketResult>"
+    ).encode()
+    (item,) = parse_catalogue(catalogue, satellite="G19", prefix=prefix)
+    session = _Session(payload)
+    now = item.metadata.observation_end.replace(minute=15)
+    provider = GoesActiveFireProvider(
+        session,
+        _executor,
+        latitude=40.71,
+        longitude=-74.01,
+        now=lambda: now,
+    )
+    download_directory = tmp_path / "downloads"
+    download_directory.mkdir()
+    provider._products._temp_directory = str(download_directory)
+    provider._discovery.async_latest = AsyncMock(return_value=item)
+
+    snapshot = await provider.async_fetch_latest()
+
+    assert snapshot.status is ProviderStatus.AVAILABLE
+    assert snapshot.provider == "noaa_goes"
+    assert snapshot.satellite == "G19"
+    assert snapshot.product == "ABI-L2-FDCF"
+    assert len(snapshot.detections) == 4
+    assert all(detection.provider == "noaa_goes" for detection in snapshot.detections)
+    assert list(download_directory.iterdir()) == []
 
 
 @pytest.mark.parametrize("mask_value", [1, 9, 16, 29, 36, 255])

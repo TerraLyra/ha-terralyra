@@ -17,6 +17,8 @@
 - Show the selected active-fire provider, satellite and product in a translated
   Home Assistant sensor, and expose the `terralyra` map-source identifier on
   the active-fire summary even when no marker is currently available.
+- Add a network-free end-to-end GOES runtime test covering bounded download,
+  temporary-file cleanup, direct NetCDF decoding and provider normalization.
 - Add conservative spherical coverage selection for the operational GOES-18
   and GOES-19 satellites while rejecting Europe and near-limb locations.
 - Add a fixed-host, redirect-free and size-limited NOAA catalogue discovery
