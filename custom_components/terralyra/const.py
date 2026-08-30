@@ -29,6 +29,8 @@ CONF_MONITORING_CENTER_NAME = "monitoring_center_name"
 CONF_MONITORING_LATITUDE = "monitoring_latitude"
 CONF_MONITORING_LONGITUDE = "monitoring_longitude"
 CONF_MONITORED_LOCATIONS = "monitored_locations"
+CONF_MANAGE_MONITORED_LOCATIONS = "manage_monitored_locations"
+CONF_LOCATION_ID = "location_id"
 
 LOCATION_ID = "id"
 LOCATION_NAME = "name"
@@ -74,6 +76,7 @@ DEFAULT_USE_CUSTOM_MONITORING_CENTER = False
 DEFAULT_MONITORING_CENTER_NAME = "Home"
 MIN_RADIUS_KM = 1.0
 MAX_RADIUS_KM = 500.0
+MAX_MONITORED_LOCATIONS = 10
 DEFAULT_UPDATE_INTERVAL = timedelta(minutes=DEFAULT_SCAN_INTERVAL_MINUTES)
 
 PLATFORMS = ["sensor", "event", "number", "select", "camera", "calendar", "geo_location"]

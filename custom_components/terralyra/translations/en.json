@@ -76,6 +76,7 @@
         "title": "Active fire monitoring options",
         "data": {
           "radius_km": "Monitoring radius",
+          "manage_monitored_locations": "Manage monitored locations",
           "use_custom_monitoring_center": "Use a custom active-fire monitoring center",
           "monitoring_center_name": "Monitoring-center name",
           "monitoring_latitude": "Monitoring-center latitude",
@@ -94,6 +95,7 @@
         },
         "data_description": {
           "radius_km": "Only detections within this distance of the active-fire monitoring center are considered.",
+          "manage_monitored_locations": "Select this and save to add, edit, enable, disable or delete monitored locations.",
           "use_custom_monitoring_center": "Off uses Home Assistant's Home location. On uses the separate name and coordinates below for active-fire data, distances, alerts and NASA FIRMS. Fire risk and land-surface temperature remain tied to Home.",
           "monitoring_center_name": "A short name shown in provider details and fire notifications. Used only when the custom center is enabled.",
           "monitoring_latitude": "Decimal degrees from -90 to 90. Used only when the custom center is enabled.",
@@ -110,13 +112,35 @@
           "enable_firms": "Optional and off by default. When enabled, Home Assistant sends a small bounding box around the active-fire monitoring center to the official NASA FIRMS API to look for independent VIIRS detections. A free personal MAP_KEY is required.",
           "firms_map_key": "Stored as a secret in the Home Assistant config entry and redacted from diagnostics. Leave blank to keep an already saved key."
         }
-      }
+      },
+      "monitored_locations": {
+        "title": "Manage monitored locations",
+        "menu_options": {
+          "add_location": "Add a location",
+          "edit_location": "Edit a location",
+          "toggle_location": "Enable or disable a location",
+          "delete_location": "Delete a location"
+        }
+      },
+      "add_location": {
+        "title": "Add monitored location",
+        "data": {"name": "Name", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Monitoring radius", "enabled": "Enabled"}
+      },
+      "edit_location": {
+        "title": "Edit monitored location",
+        "data": {"location_id": "Location", "name": "Name", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Monitoring radius", "enabled": "Enabled"}
+      },
+      "toggle_location": {"title": "Enable or disable location", "data": {"location_id": "Location"}},
+      "delete_location": {"title": "Delete location", "data": {"location_id": "Location"}}
     },
     "error": {
       "firms_key_required": "Enter a NASA FIRMS MAP_KEY before enabling corroboration",
       "invalid_firms_key": "The NASA FIRMS MAP_KEY was rejected",
       "firms_cannot_connect": "Could not validate the NASA FIRMS MAP_KEY",
-      "invalid_monitoring_center": "Enter a valid monitoring-center name and coordinates"
+      "invalid_monitoring_center": "Enter a valid monitoring-center name and coordinates",
+      "invalid_monitored_location": "Enter a valid name, coordinates and radius",
+      "one_location_required": "At least one monitored location must remain enabled",
+      "too_many_locations": "A maximum of 10 monitored locations is supported"
     }
   },
   "entity": {

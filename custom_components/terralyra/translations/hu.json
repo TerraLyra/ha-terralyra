@@ -76,6 +76,7 @@
         "title": "Aktív tűzfigyelés beállításai",
         "data": {
           "radius_km": "Figyelési sugár",
+          "manage_monitored_locations": "Figyelt helyek kezelése",
           "use_custom_monitoring_center": "Egyedi aktívtűz-figyelőközpont használata",
           "monitoring_center_name": "Figyelőközpont neve",
           "monitoring_latitude": "Figyelőközpont szélességi koordinátája",
@@ -94,6 +95,7 @@
         },
         "data_description": {
           "radius_km": "Csak az aktívtűz-figyelőközponttól ezen a távolságon belüli észlelések számítanak.",
+          "manage_monitored_locations": "Jelöld be és mentsd a figyelt helyek hozzáadásához, szerkesztéséhez, ki- és bekapcsolásához vagy törléséhez.",
           "use_custom_monitoring_center": "Kikapcsolva a Home Assistant Otthon helyét használja. Bekapcsolva az alábbi külön nevet és koordinátákat használja az aktívtűz-adatokhoz, távolságokhoz, riasztásokhoz és a NASA FIRMS-hez. A tűzkockázat és a felszínhőmérséklet továbbra is az Otthon helyéhez kötődik.",
           "monitoring_center_name": "A szolgáltatói részletekben és a tűzriasztásokban megjelenő rövid név. Csak az egyedi központ bekapcsolásakor használatos.",
           "monitoring_latitude": "Tizedes fok -90 és 90 között. Csak az egyedi központ bekapcsolásakor használatos.",
@@ -110,13 +112,21 @@
           "enable_firms": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant az aktívtűz-figyelőközpont körüli kis határolóterületet elküldi a NASA hivatalos FIRMS API-jának, hogy független VIIRS-észleléseket keressen. Saját ingyenes MAP_KEY szükséges.",
           "firms_map_key": "Titkos adatként kerül a Home Assistant konfigurációs bejegyzésébe, és a diagnosztikából ki van takarva. Hagyd üresen a már mentett kulcs megtartásához."
         }
-      }
+      },
+      "monitored_locations": {"title": "Figyelt helyek kezelése", "menu_options": {"add_location": "Hely hozzáadása", "edit_location": "Hely szerkesztése", "toggle_location": "Hely be- vagy kikapcsolása", "delete_location": "Hely törlése"}},
+      "add_location": {"title": "Figyelt hely hozzáadása", "data": {"name": "Név", "latitude": "Szélesség", "longitude": "Hosszúság", "radius_km": "Figyelési sugár", "enabled": "Bekapcsolva"}},
+      "edit_location": {"title": "Figyelt hely szerkesztése", "data": {"location_id": "Hely", "name": "Név", "latitude": "Szélesség", "longitude": "Hosszúság", "radius_km": "Figyelési sugár", "enabled": "Bekapcsolva"}},
+      "toggle_location": {"title": "Hely be- vagy kikapcsolása", "data": {"location_id": "Hely"}},
+      "delete_location": {"title": "Hely törlése", "data": {"location_id": "Hely"}}
     },
     "error": {
       "firms_key_required": "A megerősítés engedélyezése előtt add meg a NASA FIRMS MAP_KEY értékét",
       "invalid_firms_key": "A NASA FIRMS elutasította a MAP_KEY értékét",
       "firms_cannot_connect": "A NASA FIRMS MAP_KEY ellenőrzése nem sikerült",
-      "invalid_monitoring_center": "Adj meg érvényes figyelőközpont-nevet és koordinátákat"
+      "invalid_monitoring_center": "Adj meg érvényes figyelőközpont-nevet és koordinátákat",
+      "invalid_monitored_location": "Adj meg érvényes nevet, koordinátákat és sugarat",
+      "one_location_required": "Legalább egy figyelt helynek bekapcsolva kell maradnia",
+      "too_many_locations": "Legfeljebb 10 figyelt hely használható"
     }
   },
   "entity": {

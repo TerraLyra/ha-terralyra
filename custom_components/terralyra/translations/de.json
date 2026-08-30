@@ -36,6 +36,7 @@
         "title": "Optionen für die Aktivbrandüberwachung",
         "data": {
           "radius_km": "Überwachungsradius",
+          "manage_monitored_locations": "Überwachte Orte verwalten",
           "use_custom_monitoring_center": "Benutzerdefiniertes Aktivbrand-Überwachungszentrum verwenden",
           "monitoring_center_name": "Name des Überwachungszentrums",
           "monitoring_latitude": "Breitengrad des Überwachungszentrums",
@@ -54,6 +55,7 @@
         },
         "data_description": {
           "radius_km": "Nur Erkennungen innerhalb dieser Entfernung vom Aktivbrand-Überwachungszentrum werden berücksichtigt.",
+          "manage_monitored_locations": "Auswählen und speichern, um überwachte Orte hinzuzufügen, zu bearbeiten, zu aktivieren, zu deaktivieren oder zu löschen.",
           "use_custom_monitoring_center": "Deaktiviert wird der Zuhause-Standort von Home Assistant verwendet. Aktiviert gelten der separate Name und die Koordinaten unten für Aktivbranddaten, Entfernungen, Warnungen und NASA FIRMS. Waldbrandgefahr und Landoberflächentemperatur bleiben an Zuhause gebunden.",
           "monitoring_center_name": "Kurzer Name in Anbieterdetails und Brandwarnungen. Wird nur bei aktiviertem benutzerdefiniertem Zentrum verwendet.",
           "monitoring_latitude": "Dezimalgrad von -90 bis 90. Wird nur bei aktiviertem benutzerdefiniertem Zentrum verwendet.",
@@ -70,13 +72,21 @@
           "enable_firms": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant einen kleinen Begrenzungsbereich um das Aktivbrand-Überwachungszentrum an die offizielle NASA-FIRMS-API. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
           "firms_map_key": "Wird geheim im Home-Assistant-Konfigurationseintrag gespeichert und in Diagnosen ausgeblendet. Leer lassen, um einen bereits gespeicherten Schlüssel beizubehalten."
         }
-      }
+      },
+      "monitored_locations": {"title": "Überwachte Orte verwalten", "menu_options": {"add_location": "Ort hinzufügen", "edit_location": "Ort bearbeiten", "toggle_location": "Ort aktivieren oder deaktivieren", "delete_location": "Ort löschen"}},
+      "add_location": {"title": "Überwachten Ort hinzufügen", "data": {"name": "Name", "latitude": "Breitengrad", "longitude": "Längengrad", "radius_km": "Überwachungsradius", "enabled": "Aktiviert"}},
+      "edit_location": {"title": "Überwachten Ort bearbeiten", "data": {"location_id": "Ort", "name": "Name", "latitude": "Breitengrad", "longitude": "Längengrad", "radius_km": "Überwachungsradius", "enabled": "Aktiviert"}},
+      "toggle_location": {"title": "Ort aktivieren oder deaktivieren", "data": {"location_id": "Ort"}},
+      "delete_location": {"title": "Ort löschen", "data": {"location_id": "Ort"}}
     },
     "error": {
       "firms_key_required": "Vor der Aktivierung muss ein NASA FIRMS MAP_KEY eingegeben werden",
       "invalid_firms_key": "Der NASA FIRMS MAP_KEY wurde abgelehnt",
       "firms_cannot_connect": "Der NASA FIRMS MAP_KEY konnte nicht geprüft werden",
-      "invalid_monitoring_center": "Gültigen Namen und gültige Koordinaten für das Überwachungszentrum eingeben"
+      "invalid_monitoring_center": "Gültigen Namen und gültige Koordinaten für das Überwachungszentrum eingeben",
+      "invalid_monitored_location": "Gültigen Namen, Koordinaten und Radius eingeben",
+      "one_location_required": "Mindestens ein überwachter Ort muss aktiviert bleiben",
+      "too_many_locations": "Es werden höchstens 10 überwachte Orte unterstützt"
     }
   },
   "entity": {

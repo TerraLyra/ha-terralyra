@@ -36,6 +36,7 @@
         "title": "Opciones de vigilancia de incendios activos",
         "data": {
           "radius_km": "Radio de vigilancia",
+          "manage_monitored_locations": "Gestionar ubicaciones vigiladas",
           "use_custom_monitoring_center": "Usar un centro personalizado de vigilancia de incendios activos",
           "monitoring_center_name": "Nombre del centro de vigilancia",
           "monitoring_latitude": "Latitud del centro de vigilancia",
@@ -54,6 +55,7 @@
         },
         "data_description": {
           "radius_km": "Solo se consideran las detecciones dentro de esta distancia del centro de vigilancia de incendios activos.",
+          "manage_monitored_locations": "Selecciona y guarda para añadir, editar, activar, desactivar o eliminar ubicaciones vigiladas.",
           "use_custom_monitoring_center": "Desactivado usa la ubicación Casa de Home Assistant. Activado usa el nombre y las coordenadas de abajo para datos, distancias, alertas y NASA FIRMS. El riesgo de incendio y la temperatura de la superficie siguen vinculados a Casa.",
           "monitoring_center_name": "Nombre corto mostrado en los detalles del proveedor y las alertas. Solo se usa con el centro personalizado activado.",
           "monitoring_latitude": "Grados decimales de -90 a 90. Solo se usa con el centro personalizado activado.",
@@ -70,13 +72,21 @@
           "enable_firms": "Opcional y desactivado por defecto. Al activarlo, Home Assistant envía una pequeña zona alrededor del centro de vigilancia a la API oficial NASA FIRMS. Se requiere un MAP_KEY personal gratuito.",
           "firms_map_key": "Se guarda como secreto en la entrada de configuración de Home Assistant y se oculta en los diagnósticos. Déjalo vacío para conservar una clave ya guardada."
         }
-      }
+      },
+      "monitored_locations": {"title": "Gestionar ubicaciones vigiladas", "menu_options": {"add_location": "Añadir ubicación", "edit_location": "Editar ubicación", "toggle_location": "Activar o desactivar ubicación", "delete_location": "Eliminar ubicación"}},
+      "add_location": {"title": "Añadir ubicación vigilada", "data": {"name": "Nombre", "latitude": "Latitud", "longitude": "Longitud", "radius_km": "Radio de vigilancia", "enabled": "Activada"}},
+      "edit_location": {"title": "Editar ubicación vigilada", "data": {"location_id": "Ubicación", "name": "Nombre", "latitude": "Latitud", "longitude": "Longitud", "radius_km": "Radio de vigilancia", "enabled": "Activada"}},
+      "toggle_location": {"title": "Activar o desactivar ubicación", "data": {"location_id": "Ubicación"}},
+      "delete_location": {"title": "Eliminar ubicación", "data": {"location_id": "Ubicación"}}
     },
     "error": {
       "firms_key_required": "Introduce un NASA FIRMS MAP_KEY antes de activar la corroboración",
       "invalid_firms_key": "NASA FIRMS rechazó el MAP_KEY",
       "firms_cannot_connect": "No se pudo validar el NASA FIRMS MAP_KEY",
-      "invalid_monitoring_center": "Introduce un nombre y unas coordenadas válidos para el centro de vigilancia"
+      "invalid_monitoring_center": "Introduce un nombre y unas coordenadas válidos para el centro de vigilancia",
+      "invalid_monitored_location": "Introduce un nombre, coordenadas y radio válidos",
+      "one_location_required": "Debe quedar activa al menos una ubicación vigilada",
+      "too_many_locations": "Se admite un máximo de 10 ubicaciones vigiladas"
     }
   },
   "entity": {

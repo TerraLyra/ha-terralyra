@@ -20,6 +20,8 @@ from custom_components.terralyra.const import (
     CONF_FIRMS_MAP_KEY,
     CONF_FIRE_RISK_RADIUS_KM,
     CONF_FIRE_HISTORY_HOURS,
+    CONF_LOCATION_ID,
+    CONF_MANAGE_MONITORED_LOCATIONS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
     CONF_MONITORED_LOCATIONS,
@@ -45,7 +47,12 @@ from custom_components.terralyra.const import (
     DEFAULT_RESOLVE_PLACE_NAMES,
     DEFAULT_SCAN_INTERVAL_MINUTES,
     DOMAIN,
+    LOCATION_ENABLED,
+    LOCATION_ID,
     LOCATION_LATITUDE,
+    LOCATION_LONGITUDE,
+    LOCATION_NAME,
+    LOCATION_RADIUS_KM,
     LOCATION_SOURCE,
     LOCATION_SOURCE_MANUAL,
 )
@@ -761,3 +768,162 @@ async def test_options_firms_validation_errors_recover(
 
     assert result["type"] is FlowResultType.FORM
     assert result["errors"] == expected_errors
+
+
+def _stored_location(
+    location_id: str = "home", *, enabled: bool = True
+) -> dict[str, object]:
+    return {
+        LOCATION_ID: location_id,
+        LOCATION_NAME: "Home" if location_id == "home" else "Cabin",
+        LOCATION_LATITUDE: 47.4979,
+        LOCATION_LONGITUDE: 19.0402,
+        LOCATION_RADIUS_KM: 25.0,
+        LOCATION_ENABLED: enabled,
+        LOCATION_SOURCE: (
+            "home_assistant" if location_id == "home" else LOCATION_SOURCE_MANUAL
+        ),
+    }
+
+
+async def _start_location_management(hass, entry: MockConfigEntry):
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    return await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            **_default_options_input(),
+            CONF_MANAGE_MONITORED_LOCATIONS: True,
+        },
+    )
+
+
+async def test_options_add_monitored_location(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    assert result["type"] is FlowResultType.MENU
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "add_location"}
+    )
+    assert result["step_id"] == "add_location"
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            LOCATION_NAME: "Cabin",
+            LOCATION_LATITUDE: 46.5,
+            LOCATION_LONGITUDE: 18.5,
+            LOCATION_RADIUS_KM: 40.0,
+            LOCATION_ENABLED: True,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    locations = result["data"][CONF_MONITORED_LOCATIONS]
+    assert len(locations) == 2
+    assert locations[1][LOCATION_NAME] == "Cabin"
+    assert locations[1][LOCATION_ID].startswith("manual-")
+
+
+async def test_options_edit_monitored_location(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "edit_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_LOCATION_ID: "home"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            LOCATION_NAME: "My home",
+            LOCATION_LATITUDE: 47.5,
+            LOCATION_LONGITUDE: 19.1,
+            LOCATION_RADIUS_KM: 30.0,
+            LOCATION_ENABLED: True,
+        },
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    location = result["data"][CONF_MONITORED_LOCATIONS][0]
+    assert location[LOCATION_ID] == "home"
+    assert location[LOCATION_NAME] == "My home"
+
+
+async def test_options_cannot_disable_or_delete_last_location(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "toggle_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_LOCATION_ID: "home"}
+    )
+    assert result["errors"] == {"base": "one_location_required"}
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {**_default_options_input(), CONF_MANAGE_MONITORED_LOCATIONS: True},
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "delete_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_LOCATION_ID: "home"}
+    )
+    assert result["errors"] == {"base": "one_location_required"}
+
+
+async def test_options_toggle_and_delete_with_two_locations(hass) -> None:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={
+            CONF_MONITORED_LOCATIONS: [
+                _stored_location(),
+                _stored_location("cabin"),
+            ]
+        },
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "toggle_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_LOCATION_ID: "cabin"}
+    )
+    assert result["data"][CONF_MONITORED_LOCATIONS][1][LOCATION_ENABLED] is False
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={
+            CONF_MONITORED_LOCATIONS: [
+                _stored_location(),
+                _stored_location("cabin"),
+            ]
+        },
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "delete_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_LOCATION_ID: "cabin"}
+    )
+    assert len(result["data"][CONF_MONITORED_LOCATIONS]) == 1

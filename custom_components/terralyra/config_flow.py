@@ -34,6 +34,8 @@ from .const import (
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
     CONF_MONITORED_LOCATIONS,
+    CONF_MANAGE_MONITORED_LOCATIONS,
+    CONF_LOCATION_ID,
     CONF_MONITORING_CENTER_NAME,
     CONF_MONITORING_LATITUDE,
     CONF_MONITORING_LONGITUDE,
@@ -57,14 +59,26 @@ from .const import (
     DEFAULT_SCAN_INTERVAL_MINUTES,
     DEFAULT_USE_CUSTOM_MONITORING_CENTER,
     DOMAIN,
+    LOCATION_ENABLED,
+    LOCATION_ID,
+    LOCATION_LATITUDE,
+    LOCATION_LONGITUDE,
+    LOCATION_NAME,
+    LOCATION_RADIUS_KM,
+    LOCATION_SOURCE,
+    LOCATION_SOURCE_HOME_ASSISTANT,
     MAX_RADIUS_KM,
+    MAX_MONITORED_LOCATIONS,
     MIN_RADIUS_KM,
     LOCATION_SOURCE_MANUAL,
 )
 from .monitoring import (
+    MonitoredLocation,
     MonitoringCenter,
     monitored_location_from_center,
+    new_manual_location_id,
     resolve_monitored_locations,
+    validate_monitored_locations,
     validate_monitoring_center,
 )
 from .products.fire import ActiveFireClient
@@ -272,10 +286,16 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 class TerraLyraOptionsFlow(OptionsFlowWithReload):
     """Handle TerraLyra integration options."""
 
+    def __init__(self) -> None:
+        """Initialize location-management state."""
+        self._selected_location_id: str | None = None
+
     async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             options = dict(user_input)
+            if options.pop(CONF_MANAGE_MONITORED_LOCATIONS, False):
+                return await self.async_step_monitored_locations()
             try:
                 center = _monitoring_center_from_input(self.hass, options)
             except (KeyError, TypeError, ValueError):
@@ -366,6 +386,9 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                 vol.Required(CONF_RADIUS_KM): NumberSelector(
                     NumberSelectorConfig(min=MIN_RADIUS_KM, max=MAX_RADIUS_KM, step=1, unit_of_measurement="km", mode=NumberSelectorMode.BOX)
                 ),
+                vol.Optional(
+                    CONF_MANAGE_MONITORED_LOCATIONS, default=False
+                ): bool,
                 vol.Required(CONF_USE_CUSTOM_MONITORING_CENTER): bool,
                 vol.Required(CONF_MONITORING_CENTER_NAME): TextSelector(
                     TextSelectorConfig()
@@ -421,6 +444,179 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
             errors=errors,
         )
 
+    async def async_step_monitored_locations(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Show the available local location-management actions."""
+        return self.async_show_menu(
+            step_id="monitored_locations",
+            menu_options=[
+                "add_location",
+                "edit_location",
+                "toggle_location",
+                "delete_location",
+            ],
+        )
+
+    async def async_step_add_location(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Add one manually configured monitored location."""
+        errors: dict[str, str] = {}
+        locations = list(resolve_monitored_locations(self.hass, self.config_entry))
+        if user_input is not None:
+            try:
+                if len(locations) >= MAX_MONITORED_LOCATIONS:
+                    raise OverflowError
+                location = _manual_location_from_input(
+                    user_input, new_manual_location_id()
+                )
+                _validate_provider_location(self.config_entry, location)
+                validate_monitored_locations(tuple([*locations, location]))
+            except OverflowError:
+                errors["base"] = "too_many_locations"
+            except (KeyError, TypeError, ValueError):
+                errors["base"] = "invalid_monitored_location"
+            else:
+                return self._save_locations([*locations, location])
+        return self.async_show_form(
+            step_id="add_location",
+            data_schema=self.add_suggested_values_to_schema(
+                _location_schema(),
+                {
+                    LOCATION_NAME: "",
+                    LOCATION_LATITUDE: float(self.hass.config.latitude),
+                    LOCATION_LONGITUDE: float(self.hass.config.longitude),
+                    LOCATION_RADIUS_KM: DEFAULT_RADIUS_KM,
+                    LOCATION_ENABLED: True,
+                },
+            ),
+            errors=errors,
+        )
+
+    async def async_step_edit_location(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Select and edit an existing monitored location."""
+        locations = list(resolve_monitored_locations(self.hass, self.config_entry))
+        if self._selected_location_id is None:
+            if user_input is not None:
+                self._selected_location_id = str(user_input[CONF_LOCATION_ID])
+                return await self.async_step_edit_location()
+            return self._location_selector_form("edit_location", locations)
+        location = _find_location(locations, self._selected_location_id)
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            try:
+                updated = _location_from_edit_input(user_input, location)
+                _validate_provider_location(self.config_entry, updated)
+                replacement = [updated if item.id == updated.id else item for item in locations]
+                validate_monitored_locations(tuple(replacement))
+                if not any(item.enabled for item in replacement):
+                    raise ValueError
+            except (KeyError, TypeError, ValueError):
+                errors["base"] = "invalid_monitored_location"
+            else:
+                return self._save_locations(replacement)
+        return self.async_show_form(
+            step_id="edit_location",
+            data_schema=self.add_suggested_values_to_schema(
+                _location_schema(),
+                {
+                    LOCATION_NAME: location.name,
+                    LOCATION_LATITUDE: location.latitude,
+                    LOCATION_LONGITUDE: location.longitude,
+                    LOCATION_RADIUS_KM: location.radius_km,
+                    LOCATION_ENABLED: location.enabled,
+                },
+            ),
+            errors=errors,
+        )
+
+    async def async_step_toggle_location(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Enable or disable one location while preserving a live center."""
+        locations = list(resolve_monitored_locations(self.hass, self.config_entry))
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            selected = _find_location(locations, str(user_input[CONF_LOCATION_ID]))
+            replacement = [
+                MonitoredLocation(
+                    id=item.id,
+                    name=item.name,
+                    latitude=item.latitude,
+                    longitude=item.longitude,
+                    radius_km=item.radius_km,
+                    enabled=not item.enabled,
+                    source=item.source,
+                )
+                if item.id == selected.id
+                else item
+                for item in locations
+            ]
+            if not any(item.enabled for item in replacement):
+                errors["base"] = "one_location_required"
+            else:
+                return self._save_locations(replacement)
+        return self._location_selector_form(
+            "toggle_location", locations, errors=errors
+        )
+
+    async def async_step_delete_location(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Delete one location without allowing an empty active list."""
+        locations = list(resolve_monitored_locations(self.hass, self.config_entry))
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            selected_id = str(user_input[CONF_LOCATION_ID])
+            replacement = [item for item in locations if item.id != selected_id]
+            if len(replacement) == len(locations):
+                errors["base"] = "invalid_monitored_location"
+            elif not any(item.enabled for item in replacement):
+                errors["base"] = "one_location_required"
+            else:
+                return self._save_locations(replacement)
+        return self._location_selector_form(
+            "delete_location", locations, errors=errors
+        )
+
+    def _location_selector_form(
+        self,
+        step_id: str,
+        locations: list[MonitoredLocation],
+        *,
+        errors: dict[str, str] | None = None,
+    ) -> ConfigFlowResult:
+        return self.async_show_form(
+            step_id=step_id,
+            data_schema=vol.Schema(
+                {
+                    vol.Required(CONF_LOCATION_ID): SelectSelector(
+                        SelectSelectorConfig(
+                            options=[
+                                {"value": item.id, "label": item.name}
+                                for item in locations
+                            ]
+                        )
+                    )
+                }
+            ),
+            errors=errors or {},
+        )
+
+    def _save_locations(
+        self, locations: list[MonitoredLocation]
+    ) -> ConfigFlowResult:
+        options = dict(self.config_entry.options)
+        options[CONF_MONITORED_LOCATIONS] = [
+            location.as_dict() for location in locations
+        ]
+        primary = next(location for location in locations if location.enabled)
+        options[CONF_RADIUS_KM] = primary.radius_km
+        return self.async_create_entry(data=options)
+
 
 def _default_options() -> dict[str, Any]:
     return {
@@ -438,6 +634,92 @@ def _default_options() -> dict[str, Any]:
         ),
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
+
+
+def _location_schema() -> vol.Schema:
+    """Return the shared manual monitored-location form."""
+    return vol.Schema(
+        {
+            vol.Required(LOCATION_NAME): TextSelector(TextSelectorConfig()),
+            vol.Required(LOCATION_LATITUDE): NumberSelector(
+                NumberSelectorConfig(
+                    min=-90, max=90, step="any", mode=NumberSelectorMode.BOX
+                )
+            ),
+            vol.Required(LOCATION_LONGITUDE): NumberSelector(
+                NumberSelectorConfig(
+                    min=-180, max=180, step="any", mode=NumberSelectorMode.BOX
+                )
+            ),
+            vol.Required(LOCATION_RADIUS_KM): NumberSelector(
+                NumberSelectorConfig(
+                    min=MIN_RADIUS_KM,
+                    max=MAX_RADIUS_KM,
+                    step=1,
+                    unit_of_measurement="km",
+                    mode=NumberSelectorMode.BOX,
+                )
+            ),
+            vol.Required(LOCATION_ENABLED): bool,
+        }
+    )
+
+
+def _manual_location_from_input(
+    values: dict[str, Any], location_id: str
+) -> MonitoredLocation:
+    """Build one validated manual location from an options form."""
+    location = MonitoredLocation(
+        id=location_id,
+        name=str(values[LOCATION_NAME]).strip(),
+        latitude=float(values[LOCATION_LATITUDE]),
+        longitude=float(values[LOCATION_LONGITUDE]),
+        radius_km=float(values[LOCATION_RADIUS_KM]),
+        enabled=bool(values[LOCATION_ENABLED]),
+        source=LOCATION_SOURCE_MANUAL,
+    )
+    validate_monitored_locations((location,))
+    return location
+
+
+def _location_from_edit_input(
+    values: dict[str, Any], existing: MonitoredLocation
+) -> MonitoredLocation:
+    """Preserve stable identity and source while editing a location."""
+    updated = _manual_location_from_input(values, existing.id)
+    return MonitoredLocation(
+        id=updated.id,
+        name=updated.name,
+        latitude=updated.latitude,
+        longitude=updated.longitude,
+        radius_km=updated.radius_km,
+        enabled=updated.enabled,
+        source=existing.source,
+    )
+
+
+def _find_location(
+    locations: list[MonitoredLocation], location_id: str
+) -> MonitoredLocation:
+    """Resolve a submitted opaque ID without accepting arbitrary records."""
+    location = next((item for item in locations if item.id == location_id), None)
+    if location is None:
+        raise ValueError("Unknown monitored location")
+    return location
+
+
+def _validate_provider_location(
+    entry: config_entries.ConfigEntry, location: MonitoredLocation
+) -> None:
+    """Reject locations unavailable from the configured primary provider."""
+    if (
+        entry.data.get(
+            CONF_ACTIVE_FIRE_PROVIDER, ACTIVE_FIRE_PROVIDER_LSA_SAF
+        )
+        == ACTIVE_FIRE_PROVIDER_GOES
+        and select_goes_satellite(location.latitude, location.longitude) is None
+    ):
+        raise ValueError("Location is outside NOAA GOES coverage")
 
 
 def _serialized_monitoring_options(

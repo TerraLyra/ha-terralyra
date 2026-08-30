@@ -36,6 +36,7 @@
         "title": "Options de surveillance des feux actifs",
         "data": {
           "radius_km": "Rayon de surveillance",
+          "manage_monitored_locations": "Gérer les lieux surveillés",
           "use_custom_monitoring_center": "Utiliser un centre personnalisé de surveillance des feux actifs",
           "monitoring_center_name": "Nom du centre de surveillance",
           "monitoring_latitude": "Latitude du centre de surveillance",
@@ -54,6 +55,7 @@
         },
         "data_description": {
           "radius_km": "Seules les détections situées dans cette distance du centre de surveillance des feux actifs sont prises en compte.",
+          "manage_monitored_locations": "Sélectionnez puis enregistrez pour ajouter, modifier, activer, désactiver ou supprimer des lieux surveillés.",
           "use_custom_monitoring_center": "Désactivé utilise le domicile de Home Assistant. Activé utilise le nom et les coordonnées ci-dessous pour les données, distances, alertes et NASA FIRMS. Le risque d’incendie et la température de surface restent liés au domicile.",
           "monitoring_center_name": "Nom court affiché dans les détails du fournisseur et les alertes. Utilisé uniquement avec le centre personnalisé activé.",
           "monitoring_latitude": "Degrés décimaux de -90 à 90. Utilisé uniquement avec le centre personnalisé activé.",
@@ -70,13 +72,21 @@
           "enable_firms": "Option désactivée par défaut. Si elle est activée, Home Assistant envoie une petite zone autour du centre de surveillance à l’API officielle NASA FIRMS. Un MAP_KEY personnel gratuit est requis.",
           "firms_map_key": "Stocké comme secret dans l’entrée de configuration Home Assistant et masqué dans les diagnostics. Laisser vide pour conserver une clé déjà enregistrée."
         }
-      }
+      },
+      "monitored_locations": {"title": "Gérer les lieux surveillés", "menu_options": {"add_location": "Ajouter un lieu", "edit_location": "Modifier un lieu", "toggle_location": "Activer ou désactiver un lieu", "delete_location": "Supprimer un lieu"}},
+      "add_location": {"title": "Ajouter un lieu surveillé", "data": {"name": "Nom", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
+      "edit_location": {"title": "Modifier un lieu surveillé", "data": {"location_id": "Lieu", "name": "Nom", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
+      "toggle_location": {"title": "Activer ou désactiver un lieu", "data": {"location_id": "Lieu"}},
+      "delete_location": {"title": "Supprimer un lieu", "data": {"location_id": "Lieu"}}
     },
     "error": {
       "firms_key_required": "Saisissez un NASA FIRMS MAP_KEY avant d’activer la corroboration",
       "invalid_firms_key": "Le NASA FIRMS MAP_KEY a été refusé",
       "firms_cannot_connect": "Impossible de valider le NASA FIRMS MAP_KEY",
-      "invalid_monitoring_center": "Saisissez un nom et des coordonnées valides pour le centre de surveillance"
+      "invalid_monitoring_center": "Saisissez un nom et des coordonnées valides pour le centre de surveillance",
+      "invalid_monitored_location": "Saisissez un nom, des coordonnées et un rayon valides",
+      "one_location_required": "Au moins un lieu surveillé doit rester activé",
+      "too_many_locations": "Un maximum de 10 lieux surveillés est pris en charge"
     }
   },
   "entity": {

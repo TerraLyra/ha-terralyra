@@ -36,6 +36,7 @@
         "title": "Opzioni di monitoraggio degli incendi attivi",
         "data": {
           "radius_km": "Raggio di monitoraggio",
+          "manage_monitored_locations": "Gestisci località monitorate",
           "use_custom_monitoring_center": "Usa un centro personalizzato di monitoraggio degli incendi attivi",
           "monitoring_center_name": "Nome del centro di monitoraggio",
           "monitoring_latitude": "Latitudine del centro di monitoraggio",
@@ -54,6 +55,7 @@
         },
         "data_description": {
           "radius_km": "Vengono considerati solo i rilevamenti entro questa distanza dal centro di monitoraggio degli incendi attivi.",
+          "manage_monitored_locations": "Seleziona e salva per aggiungere, modificare, attivare, disattivare o eliminare località monitorate.",
           "use_custom_monitoring_center": "Disattivato usa la posizione Casa di Home Assistant. Attivato usa il nome e le coordinate qui sotto per dati, distanze, avvisi e NASA FIRMS. Il rischio di incendio e la temperatura superficiale restano legati a Casa.",
           "monitoring_center_name": "Nome breve mostrato nei dettagli del fornitore e negli avvisi. Usato solo con il centro personalizzato attivato.",
           "monitoring_latitude": "Gradi decimali da -90 a 90. Usato solo con il centro personalizzato attivato.",
@@ -70,13 +72,21 @@
           "enable_firms": "Opzionale e disattivata per impostazione predefinita. Se attivata, Home Assistant invia una piccola area attorno al centro di monitoraggio all’API ufficiale NASA FIRMS. È richiesto un MAP_KEY personale gratuito.",
           "firms_map_key": "Viene archiviato come segreto nella voce di configurazione di Home Assistant e oscurato nella diagnostica. Lascia vuoto per mantenere una chiave già salvata."
         }
-      }
+      },
+      "monitored_locations": {"title": "Gestisci località monitorate", "menu_options": {"add_location": "Aggiungi località", "edit_location": "Modifica località", "toggle_location": "Attiva o disattiva località", "delete_location": "Elimina località"}},
+      "add_location": {"title": "Aggiungi località monitorata", "data": {"name": "Nome", "latitude": "Latitudine", "longitude": "Longitudine", "radius_km": "Raggio di monitoraggio", "enabled": "Attivata"}},
+      "edit_location": {"title": "Modifica località monitorata", "data": {"location_id": "Località", "name": "Nome", "latitude": "Latitudine", "longitude": "Longitudine", "radius_km": "Raggio di monitoraggio", "enabled": "Attivata"}},
+      "toggle_location": {"title": "Attiva o disattiva località", "data": {"location_id": "Località"}},
+      "delete_location": {"title": "Elimina località", "data": {"location_id": "Località"}}
     },
     "error": {
       "firms_key_required": "Inserisci un NASA FIRMS MAP_KEY prima di abilitare la conferma",
       "invalid_firms_key": "Il NASA FIRMS MAP_KEY è stato rifiutato",
       "firms_cannot_connect": "Impossibile convalidare il NASA FIRMS MAP_KEY",
-      "invalid_monitoring_center": "Inserisci un nome e coordinate validi per il centro di monitoraggio"
+      "invalid_monitoring_center": "Inserisci un nome e coordinate validi per il centro di monitoraggio",
+      "invalid_monitored_location": "Inserisci nome, coordinate e raggio validi",
+      "one_location_required": "Almeno una località monitorata deve rimanere attiva",
+      "too_many_locations": "Sono supportate al massimo 10 località monitorate"
     }
   },
   "entity": {
