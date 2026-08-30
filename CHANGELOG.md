@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.4.1
+
+- Fix migration of legacy custom monitoring centers when Home Assistant uses an
+  uppercase config-entry identifier by assigning a stable, validated local
+  location ID instead of deriving one from the config entry.
+
 ## 0.4.0
 
 - Replace the single custom monitoring center with a locally managed list of

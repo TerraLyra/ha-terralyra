@@ -19,6 +19,7 @@ from custom_components.terralyra.const import (
     LOCATION_SOURCE,
     LOCATION_SOURCE_HOME_ASSISTANT,
     LOCATION_SOURCE_MANUAL,
+    LEGACY_CUSTOM_LOCATION_ID,
 )
 
 
@@ -54,7 +55,9 @@ async def test_v1_custom_entry_migrates_to_opaque_manual_id() -> None:
     """A private legacy center migrates without embedding private data in its ID."""
     hass = _hass()
     entry = SimpleNamespace(
-        entry_id="private-entry",
+        # Recent Home Assistant versions may use uppercase ULID entry IDs.
+        # Migration must not copy that implementation detail into a location ID.
+        entry_id="01K4ABCDEF1234567890XYZABC",
         version=1,
         options={
             CONF_RADIUS_KM: 75.0,
@@ -69,7 +72,7 @@ async def test_v1_custom_entry_migrates_to_opaque_manual_id() -> None:
 
     options = hass.config_entries.async_update_entry.call_args.kwargs["options"]
     location = options[CONF_MONITORED_LOCATIONS][0]
-    assert location[LOCATION_ID] == "manual-private-entry"
+    assert location[LOCATION_ID] == LEGACY_CUSTOM_LOCATION_ID
     assert "Private" not in location[LOCATION_ID]
     assert "46.123456" not in location[LOCATION_ID]
     assert location[LOCATION_SOURCE] == LOCATION_SOURCE_MANUAL

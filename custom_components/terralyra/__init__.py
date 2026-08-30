@@ -27,6 +27,7 @@ from .const import (
     DEFAULT_RADIUS_KM,
     DEFAULT_RESOLVE_PLACE_NAMES,
     DOMAIN,
+    LEGACY_CUSTOM_LOCATION_ID,
     PLATFORMS,
 )
 from .coordinator import TerraLyraCoordinator
@@ -78,7 +79,7 @@ async def async_migrate_entry(
             monitored_location_from_center(
                 center,
                 radius_km,
-                manual_id=f"manual-{entry.entry_id}",
+                manual_id=LEGACY_CUSTOM_LOCATION_ID,
             ).as_dict()
         ]
     for legacy_key in (
