@@ -89,6 +89,11 @@
       "too_many_locations": "Es werden höchstens 10 überwachte Orte unterstützt"
     }
   },
+  "issues": {
+    "provider_authentication": {"title": "Authentifizierung beim Aktivbrandanbieter fehlgeschlagen", "description": "TerraLyra kann sich beim konfigurierten Aktivbrandanbieter nicht authentifizieren. Prüfen Sie die Zugangsdaten in den Integrationseinstellungen und laden Sie die Integration neu."},
+    "provider_outage": {"title": "Aktivbrandanbieter ist wiederholt nicht verfügbar", "description": "Der konfigurierte Anbieter ist bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. Prüfen Sie den Dienst und den Internetzugang von Home Assistant und laden Sie die Integration neu."},
+    "provider_coverage": {"title": "Aktivbrandanbieter deckt nicht alle überwachten Orte ab", "description": "Der ausgewählte Anbieter deckt folgende Orte nicht zuverlässig ab: {locations}. Wählen Sie in den TerraLyra-Einstellungen einen geeigneten Anbieter oder ändern Sie die überwachten Orte."}
+  },
   "entity": {
     "sensor": {
       "nearest_fire": {"name": "Nächstes aktives Feuer"},

@@ -89,6 +89,11 @@
       "too_many_locations": "Se admite un máximo de 10 ubicaciones vigiladas"
     }
   },
+  "issues": {
+    "provider_authentication": {"title": "Falló la autenticación del proveedor de incendios activos", "description": "TerraLyra no puede autenticarse con el proveedor configurado. Comprueba las credenciales en los ajustes de la integración y vuelve a cargarla."},
+    "provider_outage": {"title": "El proveedor de incendios activos no está disponible repetidamente", "description": "El proveedor configurado falló en {failures} actualizaciones consecutivas. Comprueba el servicio y el acceso a Internet de Home Assistant y vuelve a cargar la integración."},
+    "provider_coverage": {"title": "El proveedor no cubre todas las ubicaciones vigiladas", "description": "El proveedor principal seleccionado no cubre de forma fiable: {locations}. Elige un proveedor adecuado en los ajustes de TerraLyra o modifica las ubicaciones vigiladas."}
+  },
   "entity": {
     "sensor": {
       "nearest_fire": {"name": "Incendio activo más cercano"},

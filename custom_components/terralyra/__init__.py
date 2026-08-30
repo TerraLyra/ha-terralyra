@@ -30,6 +30,7 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import TerraLyraCoordinator
+from .coverage import assess_location_coverage
 from .fire_risk_coordinator import FireRiskCoordinator
 from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
@@ -43,6 +44,7 @@ from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
 from .providers.factory import build_primary_provider
 from .providers.firms import FirmsMultiSatelliteProvider, monitoring_bounds
+from .repairs import async_sync_coverage_issue
 
 
 @dataclass
@@ -106,6 +108,17 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
         longitude=monitoring_center.longitude,
         username=entry.data.get(CONF_USERNAME),
         password=entry.data.get(CONF_PASSWORD),
+    )
+    provider_name = str(
+        entry.data.get(CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER)
+    )
+    async_sync_coverage_issue(
+        hass,
+        entry,
+        tuple(
+            assess_location_coverage(provider_name, location)
+            for location in monitored_locations
+        ),
     )
     resolver = None
     if entry.options.get(CONF_RESOLVE_PLACE_NAMES, DEFAULT_RESOLVE_PLACE_NAMES):

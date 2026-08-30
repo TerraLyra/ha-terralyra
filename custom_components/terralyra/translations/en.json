@@ -143,6 +143,11 @@
       "too_many_locations": "A maximum of 10 monitored locations is supported"
     }
   },
+  "issues": {
+    "provider_authentication": {"title": "Active-fire provider authentication failed", "description": "TerraLyra cannot authenticate with the configured active-fire provider. Open the integration settings, verify the credentials, and reload the integration."},
+    "provider_outage": {"title": "Active-fire provider is repeatedly unavailable", "description": "The configured active-fire provider failed {failures} consecutive updates. Check the provider service and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."},
+    "provider_coverage": {"title": "Active-fire provider does not cover every monitored location", "description": "The selected primary provider does not reliably cover: {locations}. Open TerraLyra settings and select an appropriate provider or change the monitored locations."}
+  },
   "entity": {
     "sensor": {
       "nearest_fire": {

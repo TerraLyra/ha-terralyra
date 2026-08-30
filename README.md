@@ -552,6 +552,15 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 - surface solar radiation
 - selected vegetation metrics where satellite resolution is meaningful
 
+## Home Assistant Repairs
+
+TerraLyra creates an actionable Home Assistant repair notice when provider
+credentials are rejected, when the primary active-fire provider fails at least
+three consecutive updates, or when that provider does not geographically cover
+one or more enabled monitored locations. A successful update or corrected
+configuration removes the corresponding notice automatically. Isolated
+network failures do not create a repair notice.
+
 ## Important limitations
 
 Satellite fire detection is **not an emergency warning service**. Cloud, viewing geometry, product latency, spatial resolution and algorithmic false positives/negatives can delay or prevent detection. Do not use this integration as the sole life-safety or property-protection warning system.

@@ -89,6 +89,11 @@
       "too_many_locations": "Un maximum de 10 lieux surveillés est pris en charge"
     }
   },
+  "issues": {
+    "provider_authentication": {"title": "Échec d’authentification du fournisseur de feux actifs", "description": "TerraLyra ne peut pas s’authentifier auprès du fournisseur configuré. Vérifiez les identifiants dans les paramètres de l’intégration, puis rechargez-la."},
+    "provider_outage": {"title": "Le fournisseur de feux actifs est indisponible de façon répétée", "description": "Le fournisseur configuré a échoué lors de {failures} mises à jour consécutives. Vérifiez le service et l’accès Internet de Home Assistant, puis rechargez l’intégration."},
+    "provider_coverage": {"title": "Le fournisseur ne couvre pas tous les lieux surveillés", "description": "Le fournisseur principal sélectionné ne couvre pas de manière fiable : {locations}. Choisissez un fournisseur adapté dans les paramètres TerraLyra ou modifiez les lieux surveillés."}
+  },
   "entity": {
     "sensor": {
       "nearest_fire": {"name": "Feu actif le plus proche"},

@@ -129,6 +129,11 @@
       "too_many_locations": "Legfeljebb 10 figyelt hely használható"
     }
   },
+  "issues": {
+    "provider_authentication": {"title": "Sikertelen hitelesítés az aktívtűz-adatforrásnál", "description": "A TerraLyra nem tud hitelesíteni a beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."},
+    "provider_outage": {"title": "Az aktívtűz-adatforrás ismételten nem érhető el", "description": "A beállított adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a szolgáltatást és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."},
+    "provider_coverage": {"title": "Az aktívtűz-adatforrás nem fed le minden figyelt helyet", "description": "A kiválasztott elsődleges adatforrás nem fedi le megbízhatóan ezeket a helyeket: {locations}. A TerraLyra beállításaiban válassz megfelelő adatforrást, vagy módosítsd a figyelt helyeket."}
+  },
   "entity": {
     "sensor": {
       "nearest_fire": {

@@ -66,6 +66,10 @@ from .providers.base import (
     ProviderNoDataError,
     ProviderUnavailableError,
 )
+from .repairs import (
+    async_set_authentication_issue,
+    async_set_provider_outage_issue,
+)
 from .situation import SituationAssessment, assess_situation
 from .tracking import update_incidents
 
@@ -143,6 +147,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._initialized = False
         self._place_resolver = place_resolver
         self._pending_place_ids: set[str] = set()
+        self._consecutive_provider_failures = 0
         super().__init__(
             hass,
             _LOGGER,
@@ -185,14 +190,22 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             snapshot = await self.provider.async_fetch_latest()
         except ProviderAuthenticationError as err:
             self._set_provider_failure_status(ProviderStatus.AUTH_ERROR)
+            async_set_authentication_issue(self.hass, self.entry, active=True)
             raise ConfigEntryAuthFailed from err
         except ProviderNoDataError as err:
             self._set_provider_failure_status(ProviderStatus.NO_PRODUCT)
+            self._record_provider_outage()
             raise UpdateFailed(str(err)) from err
         except ProviderUnavailableError as err:
             self._set_provider_failure_status(ProviderStatus.OUTAGE)
+            self._record_provider_outage()
             raise UpdateFailed(str(err)) from err
 
+        self._consecutive_provider_failures = 0
+        async_set_authentication_issue(self.hass, self.entry, active=False)
+        async_set_provider_outage_issue(
+            self.hass, self.entry, consecutive_failures=0
+        )
         self.provider_status = snapshot.status
         self.provider_name = snapshot.provider
         self.satellite = snapshot.satellite
@@ -439,6 +452,15 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             return
         self.provider_status = status
         self.async_update_listeners()
+
+    def _record_provider_outage(self) -> None:
+        """Count repeated failures and synchronize the repair issue."""
+        self._consecutive_provider_failures += 1
+        async_set_provider_outage_issue(
+            self.hass,
+            self.entry,
+            consecutive_failures=self._consecutive_provider_failures,
+        )
 
     async def _async_resolve_new_fire_place(
         self, track: dict[str, Any], cluster: FireCluster
