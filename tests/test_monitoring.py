@@ -25,6 +25,7 @@ from custom_components.terralyra.monitoring import (
     monitored_location_from_dict,
     resolve_monitoring_center,
     resolve_monitored_locations,
+    update_primary_location_radius,
     validate_monitoring_center,
     validate_monitored_locations,
 )
@@ -119,6 +120,22 @@ def test_stored_location_list_round_trips() -> None:
     assert location.enabled is False
 
 
+def test_stored_home_location_follows_current_home_coordinates() -> None:
+    """Moving Home in Home Assistant does not leave a stale stored coordinate."""
+    hass = SimpleNamespace(config=SimpleNamespace(latitude=48.2, longitude=20.3))
+    values = MonitoredLocation(
+        "home", "Home", 47.5, 19.04, 25.0, True, "home_assistant"
+    ).as_dict()
+    entry = SimpleNamespace(options={CONF_MONITORED_LOCATIONS: [values]})
+
+    location = resolve_monitored_locations(hass, entry)[0]
+    center = resolve_monitoring_center(hass, entry)
+
+    assert (location.latitude, location.longitude) == (48.2, 20.3)
+    assert (center.latitude, center.longitude) == (48.2, 20.3)
+    assert center.custom is False
+
+
 def test_duplicate_location_ids_are_rejected() -> None:
     """Stable IDs remain unambiguous for events and persisted matches."""
     location = MonitoredLocation(
@@ -165,6 +182,21 @@ def test_stored_location_list_rejects_non_mapping_records() -> None:
 
     with pytest.raises(ValueError, match="invalid record"):
         resolve_monitored_locations(hass, entry)
+
+
+def test_transition_radius_update_keeps_location_list_in_sync() -> None:
+    """The existing dashboard number does not leave migrated data stale."""
+    options = {
+        CONF_MONITORED_LOCATIONS: [
+            MonitoredLocation(
+                "home", "Home", 47.5, 19.04, 25.0, True, "home_assistant"
+            ).as_dict()
+        ]
+    }
+
+    update_primary_location_radius(options, 80.0)
+
+    assert options[CONF_MONITORED_LOCATIONS][0][LOCATION_RADIUS_KM] == 80.0
 
 
 @pytest.mark.parametrize(

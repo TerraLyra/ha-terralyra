@@ -33,6 +33,7 @@ from .const import (
     CONF_FIRE_HISTORY_HOURS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
+    CONF_MONITORED_LOCATIONS,
     CONF_MONITORING_CENTER_NAME,
     CONF_MONITORING_LATITUDE,
     CONF_MONITORING_LONGITUDE,
@@ -58,8 +59,14 @@ from .const import (
     DOMAIN,
     MAX_RADIUS_KM,
     MIN_RADIUS_KM,
+    LOCATION_SOURCE_MANUAL,
 )
-from .monitoring import MonitoringCenter, validate_monitoring_center
+from .monitoring import (
+    MonitoringCenter,
+    monitored_location_from_center,
+    resolve_monitored_locations,
+    validate_monitoring_center,
+)
 from .products.fire import ActiveFireClient
 from .products.firms import FirmsAuthenticationError, FirmsClient, FirmsError
 from .providers.goes import select_goes_satellite
@@ -70,7 +77,7 @@ FIRMS_VALIDATION_SOURCE = "VIIRS_NOAA20_NRT"
 class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a TerraLyra config flow."""
 
-    VERSION = 1
+    VERSION = 2
 
     def __init__(self) -> None:
         """Initialize temporary setup state."""
@@ -136,7 +143,10 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     return self.async_create_entry(
                         title=_entry_title(center),
                         data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
-                        options=_default_options() | self._monitoring_options,
+                        options=_default_options()
+                        | _serialized_monitoring_options(
+                            center, DEFAULT_RADIUS_KM
+                        ),
                     )
 
         defaults = _home_monitoring_options(self.hass)
@@ -183,7 +193,8 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         CONF_USERNAME: user_input[CONF_USERNAME].strip(),
                         CONF_PASSWORD: user_input[CONF_PASSWORD],
                     },
-                    options=_default_options() | self._monitoring_options,
+                    options=_default_options()
+                    | _serialized_monitoring_options(center, DEFAULT_RADIUS_KM),
                 )
 
         return self.async_show_form(
@@ -316,6 +327,13 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                     except Exception:  # noqa: BLE001
                         errors["base"] = "firms_cannot_connect"
                     else:
+                        _replace_location_options(
+                            options,
+                            center,
+                            manual_id=_existing_manual_location_id(
+                                self.hass, self.config_entry
+                            ),
+                        )
                         if submitted_key:
                             self.hass.config_entries.async_update_entry(
                                 self.config_entry,
@@ -326,11 +344,17 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                             )
                         return self.async_create_entry(data=options)
             elif not errors:
+                _replace_location_options(
+                    options,
+                    center,
+                    manual_id=_existing_manual_location_id(
+                        self.hass, self.config_entry
+                    ),
+                )
                 return self.async_create_entry(data=options)
 
         current = _default_options() | dict(self.config_entry.options)
-        current.setdefault(CONF_MONITORING_LATITUDE, float(self.hass.config.latitude))
-        current.setdefault(CONF_MONITORING_LONGITUDE, float(self.hass.config.longitude))
+        current |= _monitoring_form_values(self.hass, self.config_entry)
         if user_input is not None:
             current |= {
                 key: value
@@ -401,8 +425,6 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
 def _default_options() -> dict[str, Any]:
     return {
         CONF_RADIUS_KM: DEFAULT_RADIUS_KM,
-        CONF_USE_CUSTOM_MONITORING_CENTER: DEFAULT_USE_CUSTOM_MONITORING_CENTER,
-        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
         CONF_FIRE_RISK_RADIUS_KM: DEFAULT_FIRE_RISK_RADIUS_KM,
         CONF_MIN_CONFIDENCE: DEFAULT_MIN_CONFIDENCE,
         CONF_MIN_FRP_MW: DEFAULT_MIN_FRP_MW,
@@ -416,6 +438,80 @@ def _default_options() -> dict[str, Any]:
         ),
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
+
+
+def _serialized_monitoring_options(
+    center: MonitoringCenter, radius_km: float
+) -> dict[str, Any]:
+    """Return the version-2 local location-list representation."""
+    return {
+        CONF_MONITORED_LOCATIONS: [
+            monitored_location_from_center(center, radius_km).as_dict()
+        ]
+    }
+
+
+def _replace_location_options(
+    options: dict[str, Any],
+    center: MonitoringCenter,
+    *,
+    manual_id: str | None = None,
+) -> None:
+    """Replace temporary form fields with the local location list."""
+    options.update(
+        {
+            CONF_MONITORED_LOCATIONS: [
+                monitored_location_from_center(
+                    center,
+                    float(options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
+                    manual_id=manual_id,
+                ).as_dict()
+            ]
+        }
+    )
+    for key in (
+        CONF_USE_CUSTOM_MONITORING_CENTER,
+        CONF_MONITORING_CENTER_NAME,
+        CONF_MONITORING_LATITUDE,
+        CONF_MONITORING_LONGITUDE,
+    ):
+        options.pop(key, None)
+
+
+def _monitoring_form_values(
+    hass: HomeAssistant, entry: config_entries.ConfigEntry
+) -> dict[str, Any]:
+    """Adapt the first enabled stored location to the transition form."""
+    locations = resolve_monitored_locations(hass, entry)
+    location = next(
+        (candidate for candidate in locations if candidate.enabled),
+        locations[0] if locations else None,
+    )
+    if location is None:
+        return _home_monitoring_options(hass)
+    return {
+        CONF_USE_CUSTOM_MONITORING_CENTER: (
+            location.source == LOCATION_SOURCE_MANUAL
+        ),
+        CONF_MONITORING_CENTER_NAME: location.name,
+        CONF_MONITORING_LATITUDE: location.latitude,
+        CONF_MONITORING_LONGITUDE: location.longitude,
+        CONF_RADIUS_KM: location.radius_km,
+    }
+
+
+def _existing_manual_location_id(
+    hass: HomeAssistant, entry: config_entries.ConfigEntry
+) -> str | None:
+    """Preserve a manual location ID while transition options are edited."""
+    return next(
+        (
+            location.id
+            for location in resolve_monitored_locations(hass, entry)
+            if location.source == LOCATION_SOURCE_MANUAL
+        ),
+        None,
+    )
 
 
 def _monitoring_center_schema() -> vol.Schema:

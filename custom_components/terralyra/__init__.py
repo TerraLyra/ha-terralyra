@@ -12,9 +12,14 @@ from .const import (
     CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
     CONF_FIRMS_MAP_KEY,
+    CONF_MONITORED_LOCATIONS,
+    CONF_MONITORING_CENTER_NAME,
+    CONF_MONITORING_LATITUDE,
+    CONF_MONITORING_LONGITUDE,
     CONF_PASSWORD,
     CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
+    CONF_USE_CUSTOM_MONITORING_CENTER,
     CONF_USERNAME,
     DEFAULT_ACTIVE_FIRE_PROVIDER,
     DEFAULT_ENABLE_FIRMS,
@@ -28,7 +33,7 @@ from .coordinator import TerraLyraCoordinator
 from .fire_risk_coordinator import FireRiskCoordinator
 from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
-from .monitoring import resolve_monitoring_center
+from .monitoring import monitored_location_from_center, resolve_monitoring_center
 from .products.fire_risk import FireRiskClient
 from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
@@ -48,6 +53,38 @@ class RuntimeData:
 
 
 type TerraLyraConfigEntry = ConfigEntry[RuntimeData]
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant, entry: TerraLyraConfigEntry
+) -> bool:
+    """Migrate the single-center v1 config into the local location list."""
+    if entry.version > 2:
+        return False
+    if entry.version == 2:
+        return True
+
+    options = dict(entry.options)
+    if CONF_MONITORED_LOCATIONS not in options:
+        center = resolve_monitoring_center(hass, entry)
+        radius_km = float(options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM))
+        options[CONF_MONITORED_LOCATIONS] = [
+            monitored_location_from_center(
+                center,
+                radius_km,
+                manual_id=f"manual-{entry.entry_id}",
+            ).as_dict()
+        ]
+    for legacy_key in (
+        CONF_USE_CUSTOM_MONITORING_CENTER,
+        CONF_MONITORING_CENTER_NAME,
+        CONF_MONITORING_LATITUDE,
+        CONF_MONITORING_LONGITUDE,
+    ):
+        options.pop(legacy_key, None)
+
+    hass.config_entries.async_update_entry(entry, options=options, version=2)
+    return True
 
 
 async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) -> bool:

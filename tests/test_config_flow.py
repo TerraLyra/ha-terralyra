@@ -22,6 +22,7 @@ from custom_components.terralyra.const import (
     CONF_FIRE_HISTORY_HOURS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
+    CONF_MONITORED_LOCATIONS,
     CONF_MONITORING_CENTER_NAME,
     CONF_MONITORING_LATITUDE,
     CONF_MONITORING_LONGITUDE,
@@ -44,6 +45,9 @@ from custom_components.terralyra.const import (
     DEFAULT_RESOLVE_PLACE_NAMES,
     DEFAULT_SCAN_INTERVAL_MINUTES,
     DOMAIN,
+    LOCATION_LATITUDE,
+    LOCATION_SOURCE,
+    LOCATION_SOURCE_MANUAL,
 )
 from custom_components.terralyra.products.firms import FirmsError
 
@@ -134,10 +138,17 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
     }
     assert result["options"] == {
         CONF_RADIUS_KM: DEFAULT_RADIUS_KM,
-        CONF_USE_CUSTOM_MONITORING_CENTER: False,
-        CONF_MONITORING_CENTER_NAME: DEFAULT_MONITORING_CENTER_NAME,
-        CONF_MONITORING_LATITUDE: float(hass.config.latitude),
-        CONF_MONITORING_LONGITUDE: float(hass.config.longitude),
+        CONF_MONITORED_LOCATIONS: [
+            {
+                "id": "home",
+                "name": "Home",
+                "latitude": float(hass.config.latitude),
+                "longitude": float(hass.config.longitude),
+                "radius_km": DEFAULT_RADIUS_KM,
+                "enabled": True,
+                "source": "home_assistant",
+            }
+        ],
         CONF_FIRE_RISK_RADIUS_KM: DEFAULT_FIRE_RISK_RADIUS_KM,
         CONF_MIN_CONFIDENCE: DEFAULT_MIN_CONFIDENCE,
         CONF_MIN_FRP_MW: DEFAULT_MIN_FRP_MW,
@@ -224,8 +235,9 @@ async def test_goes_user_flow_accepts_custom_covered_center(hass) -> None:
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "TerraLyra · New York"
-    assert result["options"][CONF_USE_CUSTOM_MONITORING_CENTER] is True
-    assert result["options"][CONF_MONITORING_LATITUDE] == 40.7128
+    location = result["options"][CONF_MONITORED_LOCATIONS][0]
+    assert location[LOCATION_LATITUDE] == 40.7128
+    assert location[LOCATION_SOURCE] == LOCATION_SOURCE_MANUAL
     select_satellite.assert_called_once_with(40.7128, -74.006)
 
 
@@ -439,7 +451,13 @@ async def test_options_flow_defaults_and_save(hass) -> None:
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == new_options
+    assert result["data"][CONF_RADIUS_KM] == 100.0
+    assert CONF_USE_CUSTOM_MONITORING_CENTER not in result["data"]
+    location = result["data"][CONF_MONITORED_LOCATIONS][0]
+    assert location["name"] == "New York"
+    assert location["latitude"] == 40.7128
+    assert location["radius_km"] == 100.0
+    assert location["source"] == LOCATION_SOURCE_MANUAL
 
 
 async def test_options_flow_uses_existing_values(hass) -> None:
@@ -487,6 +505,79 @@ async def test_options_flow_uses_existing_values(hass) -> None:
             continue
         assert suggested[key] == value
     assert "geocoding_url" not in suggested
+
+
+async def test_options_flow_preserves_stored_manual_location_id(hass) -> None:
+    """Editing transition options does not change the stable location ID."""
+    options = {
+        **{
+            key: value
+            for key, value in _default_options_input().items()
+            if key
+            not in {
+                CONF_USE_CUSTOM_MONITORING_CENTER,
+                CONF_MONITORING_CENTER_NAME,
+                CONF_MONITORING_LATITUDE,
+                CONF_MONITORING_LONGITUDE,
+            }
+        },
+        CONF_MONITORED_LOCATIONS: [
+            {
+                "id": "manual-stable",
+                "name": "Farm",
+                "latitude": 46.0,
+                "longitude": 20.0,
+                "radius_km": 25.0,
+                "enabled": True,
+                "source": LOCATION_SOURCE_MANUAL,
+            }
+        ],
+    }
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=USERNAME,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options=options,
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    submission = {
+        **_default_options_input(),
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: "Renamed farm",
+        CONF_MONITORING_LATITUDE: 46.1,
+        CONF_MONITORING_LONGITUDE: 20.1,
+    }
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], submission
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    location = result["data"][CONF_MONITORED_LOCATIONS][0]
+    assert location["id"] == "manual-stable"
+    assert location["name"] == "Renamed farm"
+
+
+async def test_options_flow_empty_location_list_falls_back_to_home(hass) -> None:
+    """A damaged empty development list remains recoverable in the UI."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=USERNAME,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: []},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    suggested = {
+        marker.schema: marker.description.get("suggested_value")
+        for marker in result["data_schema"].schema
+        if marker.description is not None
+    }
+
+    assert suggested[CONF_USE_CUSTOM_MONITORING_CENTER] is False
+    assert suggested[CONF_MONITORING_LATITUDE] == float(hass.config.latitude)
 
 
 async def test_options_reject_invalid_custom_monitoring_center(hass) -> None:

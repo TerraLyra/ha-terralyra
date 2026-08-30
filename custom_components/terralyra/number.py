@@ -18,6 +18,7 @@ from .const import (
     MIN_RADIUS_KM,
 )
 from .entity import TerraLyraEntity, TerraLyraFireRiskEntity
+from .monitoring import update_primary_location_radius
 
 
 async def async_setup_entry(
@@ -54,6 +55,7 @@ class MonitoringRadiusNumber(TerraLyraEntity, NumberEntity):
     async def async_set_native_value(self, value: float) -> None:
         options = dict(self.entry.options)
         options[CONF_RADIUS_KM] = float(value)
+        update_primary_location_radius(options, value)
         self.hass.config_entries.async_update_entry(self.entry, options=options)
         await self.coordinator.async_request_refresh()
         self.entry.async_create_background_task(
