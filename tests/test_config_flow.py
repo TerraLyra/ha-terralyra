@@ -4,7 +4,7 @@ from __future__ import annotations
 from unittest.mock import AsyncMock, patch
 
 from homeassistant import config_entries
-from homeassistant.data_entry_flow import FlowResultType
+from homeassistant.data_entry_flow import FlowResultType, InvalidData
 import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
@@ -1022,13 +1022,7 @@ async def test_options_reject_unknown_location_id(hass, step_id: str) -> None:
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": step_id}
     )
-    if step_id == "toggle_location":
-        with pytest.raises(ValueError, match="Unknown monitored location"):
-            await hass.config_entries.options.async_configure(
-                result["flow_id"], {CONF_LOCATION_ID: "unknown"}
-            )
-    else:
-        result = await hass.config_entries.options.async_configure(
+    with pytest.raises(InvalidData, match="Schema validation failed"):
+        await hass.config_entries.options.async_configure(
             result["flow_id"], {CONF_LOCATION_ID: "unknown"}
         )
-        assert result["errors"] == {"base": "invalid_monitored_location"}

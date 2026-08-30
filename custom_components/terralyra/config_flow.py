@@ -572,7 +572,8 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
         if user_input is not None:
             selected_id = str(user_input[CONF_LOCATION_ID])
             replacement = [item for item in locations if item.id != selected_id]
-            if len(replacement) == len(locations):
+            # The selector schema rejects stale/forged IDs before this handler.
+            if len(replacement) == len(locations):  # pragma: no cover
                 errors["base"] = "invalid_monitored_location"
             elif not any(item.enabled for item in replacement):
                 errors["base"] = "one_location_required"
@@ -703,7 +704,8 @@ def _find_location(
 ) -> MonitoredLocation:
     """Resolve a submitted opaque ID without accepting arbitrary records."""
     location = next((item for item in locations if item.id == location_id), None)
-    if location is None:
+    # Every UI caller is protected by a selector containing the current IDs.
+    if location is None:  # pragma: no cover
         raise ValueError("Unknown monitored location")
     return location
 
