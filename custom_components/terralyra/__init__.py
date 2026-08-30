@@ -33,7 +33,11 @@ from .coordinator import TerraLyraCoordinator
 from .fire_risk_coordinator import FireRiskCoordinator
 from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
-from .monitoring import monitored_location_from_center, resolve_monitoring_center
+from .monitoring import (
+    monitored_location_from_center,
+    resolve_monitored_locations,
+    resolve_monitoring_center,
+)
 from .products.fire_risk import FireRiskClient
 from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
@@ -90,6 +94,7 @@ async def async_migrate_entry(
 async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) -> bool:
     """Set up TerraLyra from a config entry."""
     session = async_get_clientsession(hass)
+    monitored_locations = resolve_monitored_locations(hass, entry)
     monitoring_center = resolve_monitoring_center(hass, entry)
     primary_provider = build_primary_provider(
         session,
@@ -126,6 +131,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
         primary_provider,
         resolver,
         monitoring_center=monitoring_center,
+        monitored_locations=monitored_locations,
         corroboration_provider=corroboration_provider,
     )
     await coordinator.async_config_entry_first_refresh()

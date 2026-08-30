@@ -1,7 +1,7 @@
 """Provider-neutral coordinator for active-fire detections."""
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime, timedelta
 import logging
 from typing import Any
@@ -44,16 +44,22 @@ from .geocoding import (
     PlaceLookupError,
     PlaceNameResolver,
 )
+from .location_matching import match_incident_to_locations
 from .models import (
     ConfirmationLevel,
     DistanceTrend,
     FireCluster,
     FireDetection,
     FireLifecycle,
+    IncidentLocationMatch,
     MetricTrend,
     ProviderStatus,
 )
-from .monitoring import MonitoringCenter
+from .monitoring import (
+    MonitoredLocation,
+    MonitoringCenter,
+    monitored_location_from_center,
+)
 from .providers.base import (
     ActiveFireProvider,
     ProviderAuthenticationError,
@@ -96,6 +102,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         place_resolver: PlaceNameResolver | None = None,
         *,
         monitoring_center: MonitoringCenter | None = None,
+        monitored_locations: tuple[MonitoredLocation, ...] | None = None,
         corroboration_provider: ActiveFireProvider | None = None,
     ) -> None:
         self.entry = entry
@@ -104,6 +111,13 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             float(hass.config.latitude),
             float(hass.config.longitude),
             False,
+        )
+        self.monitored_locations = monitored_locations or (
+            monitored_location_from_center(
+                self.monitoring_center,
+                float(entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
+                manual_id="runtime-primary",
+            ),
         )
         self.provider = provider
         self.corroboration_provider = corroboration_provider
@@ -236,7 +250,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             distance = haversine_km(
                 home_lat, home_lon, detection.latitude, detection.longitude
             )
-            if distance <= radius_km:
+            if _inside_any_location(detection, self.monitored_locations):
                 filtered.append((detection, distance))
 
         clusters = cluster_detections(
@@ -251,13 +265,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             secondary = tuple(
                 detection
                 for detection in corroboration_snapshot.detections
-                if haversine_km(
-                    home_lat,
-                    home_lon,
-                    detection.latitude,
-                    detection.longitude,
-                )
-                <= radius_km
+                if _inside_any_location(detection, self.monitored_locations)
             )
             correlated = correlate_detections(
                 tuple(detection for detection, _distance in filtered), secondary
@@ -287,15 +295,16 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         existing_firms_tracks = (
             self._firms_tracks if self.corroboration_provider is not None else []
         )
+        firms_clusters = _firms_only_clusters(
+            correlated,
+            secondary,
+            home_lat=home_lat,
+            home_lon=home_lon,
+            cluster_radius_km=max(0.5, dedup_radius * 0.66),
+        )
         firms_tracking = update_incidents(
             existing_firms_tracks,
-            _firms_only_clusters(
-                correlated,
-                secondary,
-                home_lat=home_lat,
-                home_lon=home_lon,
-                cluster_radius_km=max(0.5, dedup_radius * 0.66),
-            ),
+            firms_clusters,
             now=(
                 corroboration_snapshot.product_timestamp
                 if corroboration_snapshot is not None
@@ -309,7 +318,11 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         for track in self._firms_tracks:
             track_id = str(track.get("track_id", ""))
             if track_id and not track_id.startswith("firms-"):
-                track["track_id"] = f"firms-{track_id}"
+                prefixed_track_id = f"firms-{track_id}"
+                track["track_id"] = prefixed_track_id
+                for cluster in firms_clusters:
+                    if cluster.track_id == track_id:
+                        cluster.track_id = prefixed_track_id
         if corroboration_snapshot is not None:
             for track in self._firms_tracks:
                 track["source_url"] = corroboration_snapshot.source_url
@@ -320,6 +333,12 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             self._tracks,
             matching_radius_km=dedup_radius,
             matching_window=timedelta(hours=dedup_hours),
+        )
+        _attach_location_matches(
+            self._tracks, clusters, self.monitored_locations
+        )
+        _attach_location_matches(
+            self._firms_tracks, firms_clusters, self.monitored_locations
         )
         changed = tracking.changed
         for track, cluster in tracking.new_incidents:
@@ -386,6 +405,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             home_lat,
             home_lon,
             visible_since=visible_since,
+            monitored_locations=self.monitored_locations,
         )
         tracked_fires.extend(
             _tracked_fire_clusters(
@@ -393,6 +413,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 home_lat,
                 home_lon,
                 visible_since=visible_since,
+                monitored_locations=self.monitored_locations,
             )
         )
         tracked_fires.sort(key=lambda cluster: cluster.distance_km)
@@ -719,6 +740,7 @@ def _tracked_fire_clusters(
     home_lon: float,
     *,
     visible_since: datetime | None = None,
+    monitored_locations: tuple[MonitoredLocation, ...] = (),
 ) -> list[FireCluster]:
     """Convert persisted recent tracks into map-ready fire clusters."""
     result: list[FireCluster] = []
@@ -774,8 +796,7 @@ def _tracked_fire_clusters(
         except (KeyError, TypeError, ValueError):
             # Tracks written before v0.1.5 do not contain enough map metadata.
             continue
-        result.append(
-            FireCluster(
+        cluster = FireCluster(
                 latitude=latitude,
                 longitude=longitude,
                 distance_km=haversine_km(home_lat, home_lon, latitude, longitude),
@@ -807,8 +828,101 @@ def _tracked_fire_clusters(
                 corroborating_detections=corroborating_detections,
                 source_url=_optional_text(track.get("source_url")),
             )
-        )
+        if monitored_locations:
+            cluster.location_matches = _matches_from_track(
+                track, cluster, monitored_locations
+            )
+        result.append(cluster)
     return sorted(result, key=lambda cluster: cluster.distance_km)
+
+
+def _inside_any_location(
+    detection: FireDetection,
+    locations: tuple[MonitoredLocation, ...],
+) -> bool:
+    """Return whether a detection is relevant to any enabled location."""
+    return any(
+        location.enabled
+        and haversine_km(
+            location.latitude,
+            location.longitude,
+            detection.latitude,
+            detection.longitude,
+        )
+        <= location.radius_km
+        for location in locations
+    )
+
+
+def _attach_location_matches(
+    tracks: list[dict[str, Any]],
+    clusters: list[FireCluster],
+    locations: tuple[MonitoredLocation, ...],
+) -> None:
+    """Attach and persist current per-location relevance for live incidents."""
+    tracks_by_id = {str(track.get("track_id", "")): track for track in tracks}
+    for cluster in clusters:
+        if cluster.track_id is None:
+            continue
+        track = tracks_by_id.get(cluster.track_id)
+        if track is None:
+            continue
+        cluster.location_matches = _matches_from_track(
+            track, cluster, locations, update_state=True
+        )
+
+
+def _matches_from_track(
+    track: dict[str, Any],
+    cluster: FireCluster,
+    locations: tuple[MonitoredLocation, ...],
+    *,
+    update_state: bool = False,
+) -> tuple[IncidentLocationMatch, ...]:
+    """Build matches and maintain one bounded latest-distance state per pair."""
+    raw_distances = track.get("location_distances")
+    previous_distances: dict[str, float] = {}
+    if isinstance(raw_distances, dict):
+        for location_id, distance in raw_distances.items():
+            if not isinstance(location_id, str):
+                continue
+            try:
+                parsed_distance = float(distance)
+            except (TypeError, ValueError):
+                continue
+            if parsed_distance >= 0:
+                previous_distances[location_id] = parsed_distance
+    raw_trends = track.get("location_distance_trends")
+    stored_trends = raw_trends if isinstance(raw_trends, dict) else {}
+    observed_at = str(track.get("last_seen", ""))
+    same_observation = track.get("location_matches_observed_at") == observed_at
+    matches = match_incident_to_locations(
+        str(track["track_id"]),
+        cluster.latitude,
+        cluster.longitude,
+        locations,
+        previous_distances=previous_distances if not same_observation else None,
+    )
+    if same_observation:
+        restored_matches = []
+        for match in matches:
+            try:
+                trend = DistanceTrend(
+                    str(stored_trends.get(match.location_id, "unknown"))
+                )
+            except ValueError:
+                trend = DistanceTrend.UNKNOWN
+            restored_matches.append(replace(match, distance_trend=trend))
+        matches = tuple(restored_matches)
+    if update_state:
+        track["location_distances"] = {
+            match.location_id: round(match.distance_km, 3) for match in matches
+        }
+        track["location_distance_trends"] = {
+            match.location_id: match.distance_trend.value for match in matches
+        }
+        track["location_matches_observed_at"] = observed_at
+    return matches
 
 
 def _optional_text(value: Any) -> str | None:

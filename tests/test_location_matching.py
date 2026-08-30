@@ -6,7 +6,15 @@ import pytest
 from custom_components.terralyra.location_matching import (
     match_incident_to_locations,
 )
-from custom_components.terralyra.models import DistanceTrend, FireCluster
+from custom_components.terralyra.coordinator import (
+    _attach_location_matches,
+    _inside_any_location,
+)
+from custom_components.terralyra.models import (
+    DistanceTrend,
+    FireCluster,
+    FireDetection,
+)
 from custom_components.terralyra.monitoring import MonitoredLocation
 
 
@@ -122,3 +130,68 @@ def test_invalid_incident_coordinates_are_rejected(
             longitude,
             (_location("home", "Home", 47.0, 19.0, 10),),
         )
+
+
+def test_runtime_filter_accepts_detection_relevant_to_second_location() -> None:
+    detection = FireDetection(
+        provider="test",
+        satellite="test",
+        product="test",
+        timestamp=datetime(2026, 8, 30, tzinfo=UTC),
+        latitude=40.0,
+        longitude=-74.0,
+    )
+    assert _inside_any_location(
+        detection,
+        (
+            _location("home", "Home", 47.0, 19.0, 25),
+            _location("new-york", "New York", 40.0, -74.0, 25),
+        ),
+    )
+
+
+def test_runtime_persists_and_restores_per_location_trend() -> None:
+    locations = (_location("home", "Home", 47.0, 19.0, 100),)
+    track = {
+        "track_id": "incident-runtime",
+        "last_seen": "2026-08-30T10:00:00+00:00",
+    }
+    first = FireCluster(
+        latitude=47.0,
+        longitude=19.5,
+        distance_km=38,
+        confidence=0.8,
+        frp_mw=5,
+        acquired=datetime(2026, 8, 30, 10, tzinfo=UTC),
+        pixel_count=1,
+        track_id="incident-runtime",
+    )
+    _attach_location_matches([track], [first], locations)
+    assert first.location_matches[0].distance_trend is DistanceTrend.UNKNOWN
+
+    track["last_seen"] = "2026-08-30T10:10:00+00:00"
+    closer = FireCluster(
+        latitude=47.0,
+        longitude=19.4,
+        distance_km=30,
+        confidence=0.8,
+        frp_mw=5,
+        acquired=datetime(2026, 8, 30, 10, 10, tzinfo=UTC),
+        pixel_count=1,
+        track_id="incident-runtime",
+    )
+    _attach_location_matches([track], [closer], locations)
+    assert closer.location_matches[0].distance_trend is DistanceTrend.APPROACHING
+
+    restored = FireCluster(
+        latitude=closer.latitude,
+        longitude=closer.longitude,
+        distance_km=closer.distance_km,
+        confidence=closer.confidence,
+        frp_mw=closer.frp_mw,
+        acquired=closer.acquired,
+        pixel_count=closer.pixel_count,
+        track_id="incident-runtime",
+    )
+    _attach_location_matches([track], [restored], locations)
+    assert restored.location_matches[0].distance_trend is DistanceTrend.APPROACHING
