@@ -14,11 +14,17 @@ from .const import (
     ATTR_CORROBORATING_DETECTIONS,
     ATTR_DISTANCE_KM,
     ATTR_DISTANCE_TREND,
+    ATTR_DIRECTION,
     ATTR_DURATION_MINUTES,
     ATTR_FIRST_SEEN,
     ATTR_FRP_MW,
     ATTR_FRP_TREND,
     ATTR_LATITUDE,
+    ATTR_INSIDE_RADIUS,
+    ATTR_LOCATION_ID,
+    ATTR_LOCATION_MATCHES,
+    ATTR_LOCATION_NAME,
+    ATTR_LOCATION_RADIUS_KM,
     ATTR_LOCATION_DESCRIPTION,
     ATTR_LONGITUDE,
     ATTR_NEAREST_SETTLEMENT,
@@ -88,6 +94,33 @@ class ConfirmationLevel(StrEnum):
     NO_ACTIVE_FIRE = "no_active_fire"
     SINGLE_SOURCE = "single_source"
     MULTI_SOURCE = "multi_source"
+
+
+@dataclass(frozen=True, slots=True)
+class IncidentLocationMatch:
+    """Relevance of one incident to one locally monitored location."""
+
+    incident_id: str
+    location_id: str
+    location_name: str
+    distance_km: float
+    radius_km: float
+    direction: str
+    inside_radius: bool
+    distance_trend: DistanceTrend = DistanceTrend.UNKNOWN
+
+    def attrs(self) -> dict[str, str | float | bool]:
+        """Return a bounded, privacy-local representation for HA attributes."""
+        return {
+            ATTR_INCIDENT_ID: self.incident_id,
+            ATTR_LOCATION_ID: self.location_id,
+            ATTR_LOCATION_NAME: self.location_name,
+            ATTR_DISTANCE_KM: round(self.distance_km, 2),
+            ATTR_LOCATION_RADIUS_KM: round(self.radius_km, 2),
+            ATTR_DIRECTION: self.direction,
+            ATTR_INSIDE_RADIUS: self.inside_radius,
+            ATTR_DISTANCE_TREND: self.distance_trend.value,
+        }
 
 
 @dataclass(frozen=True, slots=True)
@@ -161,6 +194,7 @@ class FireCluster:
     providers: tuple[str, ...] = ("eumetsat_lsa_saf",)
     corroborating_detections: int = 0
     source_url: str | None = None
+    location_matches: tuple[IncidentLocationMatch, ...] = ()
 
     def attrs(self) -> dict[str, Any]:
         """Return bounded Home Assistant state attributes."""
@@ -221,4 +255,8 @@ class FireCluster:
         attrs[ATTR_CORROBORATING_DETECTIONS] = self.corroborating_detections
         if self.source_url is not None:
             attrs[ATTR_SOURCE_URL] = self.source_url
+        if self.location_matches:
+            attrs[ATTR_LOCATION_MATCHES] = [
+                match.attrs() for match in self.location_matches
+            ]
         return attrs
