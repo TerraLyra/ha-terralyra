@@ -74,8 +74,8 @@
         }
       },
       "monitored_locations": {"title": "Überwachte Orte verwalten", "menu_options": {"add_location": "Ort hinzufügen", "edit_location": "Ort bearbeiten", "toggle_location": "Ort aktivieren oder deaktivieren", "delete_location": "Ort löschen"}},
-      "add_location": {"title": "Überwachten Ort hinzufügen", "data": {"name": "Name", "latitude": "Breitengrad", "longitude": "Längengrad", "radius_km": "Überwachungsradius", "enabled": "Aktiviert"}},
-      "edit_location": {"title": "Überwachten Ort bearbeiten", "data": {"location_id": "Ort", "name": "Name", "latitude": "Breitengrad", "longitude": "Längengrad", "radius_km": "Überwachungsradius", "enabled": "Aktiviert"}},
+      "add_location": {"title": "Überwachten Ort hinzufügen", "data": {"name": "Bezeichnung", "latitude": "Breitengrad", "longitude": "Längengrad", "radius_km": "Überwachungsradius", "enabled": "Aktiviert"}},
+      "edit_location": {"title": "Überwachten Ort bearbeiten", "data": {"location_id": "Ort", "name": "Bezeichnung", "latitude": "Breitengrad", "longitude": "Längengrad", "radius_km": "Überwachungsradius", "enabled": "Aktiviert"}},
       "toggle_location": {"title": "Ort aktivieren oder deaktivieren", "data": {"location_id": "Ort"}},
       "delete_location": {"title": "Ort löschen", "data": {"location_id": "Ort"}}
     },

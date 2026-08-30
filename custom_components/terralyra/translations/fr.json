@@ -74,8 +74,8 @@
         }
       },
       "monitored_locations": {"title": "Gérer les lieux surveillés", "menu_options": {"add_location": "Ajouter un lieu", "edit_location": "Modifier un lieu", "toggle_location": "Activer ou désactiver un lieu", "delete_location": "Supprimer un lieu"}},
-      "add_location": {"title": "Ajouter un lieu surveillé", "data": {"name": "Nom", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
-      "edit_location": {"title": "Modifier un lieu surveillé", "data": {"location_id": "Lieu", "name": "Nom", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
+      "add_location": {"title": "Ajouter un lieu surveillé", "data": {"name": "Nom", "latitude": "Latitude géographique", "longitude": "Longitude géographique", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
+      "edit_location": {"title": "Modifier un lieu surveillé", "data": {"location_id": "Lieu", "name": "Nom", "latitude": "Latitude géographique", "longitude": "Longitude géographique", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
       "toggle_location": {"title": "Activer ou désactiver un lieu", "data": {"location_id": "Lieu"}},
       "delete_location": {"title": "Supprimer un lieu", "data": {"location_id": "Lieu"}}
     },
