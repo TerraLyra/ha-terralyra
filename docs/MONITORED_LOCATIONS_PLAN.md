@@ -63,6 +63,36 @@ refer to one center. Events do not yet contain stable `location_id` and
 location as its scalar distance while exposing all matches as bounded
 attributes.
 
+### Provider-source clarity and coverage
+
+The current UI can show `EUMETSAT LSA SAF` as the selected primary source while
+the Home Assistant map simultaneously displays NASA FIRMS geo-location entities
+from TerraLyra or another integration. A map centered on a custom coordinate
+only proves that location handling works; it does not prove that the selected
+primary satellite covers that location or produced the visible detections.
+
+This ambiguity must be removed before public distribution:
+
+- rename the current source sensor to **Primary active-fire data source**;
+- distinguish configured primary source, optional corroborating sources, and
+  the actual provider(s) of every incident;
+- display provider attribution prominently on every TerraLyra map entity and
+  incident dialog, including `LSA SAF`, `NOAA GOES`, `NASA FIRMS`, or
+  `multiple sources`;
+- calculate and expose coverage per monitored location rather than treating a
+  healthy provider endpoint as proof of geographic coverage;
+- describe provider health and geographic coverage as separate states;
+- reject unsupported locations or show a clear warning with the appropriate
+  alternative provider recommendation;
+- never translate an out-of-coverage location into `no active fire`;
+- document that Home Assistant map cards may combine geo-location entities
+  from multiple integrations and sources.
+
+California with LSA SAF is the regression case: the map may correctly center
+on the submitted coordinates and NASA FIRMS may show valid fires, while the
+primary LSA SAF product does not cover the location. The UI must make all three
+facts simultaneously clear.
+
 ### Provider geometry
 
 GOES selection currently depends on one coordinate. Multiple locations may
@@ -258,6 +288,20 @@ Changes:
    all relevant matches as attributes.
 4. Keep the primary entity set small; avoid location × provider entity
    multiplication.
+5. Rename the selected-source sensor to make its **primary/configured** meaning
+   explicit and expose actual incident providers on map entities.
+6. Keep provider availability, product freshness, and geographic coverage as
+   separate user-visible concepts.
+
+Acceptance criteria:
+
+- clicking a TerraLyra fire marker identifies its actual provider(s) without
+  opening Developer Tools;
+- a FIRMS-only incident never appears to be an LSA SAF detection;
+- an out-of-coverage location does not report a misleading hazard-free state;
+- mixed Home Assistant map sources are documented and visually distinguishable;
+- provider labels and coverage messages are localized in every supported
+  language.
 5. Localize natural notification text for each relevant location.
 
 ### Stage 7 — Provider request planning
