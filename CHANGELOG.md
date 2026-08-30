@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0
+
+- Replace the single custom monitoring center with a locally managed list of
+  enabled monitored locations, each with its own name, coordinates and active-
+  fire radius.
+- Match active-fire incidents to every affected monitored location while
+  retaining a stable primary-location distance for Home Assistant entities.
+- Add translated location-management flows with strict validation and safe
+  migration of existing single-center installations.
+- Distinguish the configured primary active-fire provider from the provider
+  actually observed in the latest product, avoiding misleading source labels.
+- Add conservative per-location EUMETSAT LSA SAF and NOAA GOES coverage
+  reporting, including an appropriate-provider recommendation when uncovered.
+- Add actionable Home Assistant Repairs for rejected provider credentials,
+  three consecutive provider failures and uncovered monitored locations.
+  Repairs clear automatically when the underlying condition is corrected.
+- Extend regression coverage and documentation for multi-location matching,
+  provider identity, geographic coverage and repair-notice behavior.
+
 ## 0.3.0
 
 - Add a setup and options workflow for choosing Home or one named custom
