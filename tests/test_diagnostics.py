@@ -8,6 +8,7 @@ import pytest
 
 from custom_components.terralyra.const import (
     CONF_FIRMS_MAP_KEY,
+    CONF_MONITORED_LOCATIONS,
     CONF_MONITORING_CENTER_NAME,
     CONF_MONITORING_LATITUDE,
     CONF_MONITORING_LONGITUDE,
@@ -55,6 +56,17 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
             CONF_MONITORING_CENTER_NAME: "Secret cabin",
             CONF_MONITORING_LATITUDE: 45.123456,
             CONF_MONITORING_LONGITUDE: 17.654321,
+            CONF_MONITORED_LOCATIONS: [
+                {
+                    "id": "private-place",
+                    "name": "Private property",
+                    "latitude": 44.111111,
+                    "longitude": 16.222222,
+                    "radius_km": 20,
+                    "enabled": True,
+                    "source": "manual",
+                }
+            ],
         },
         runtime_data=SimpleNamespace(
             coordinator=SimpleNamespace(
@@ -95,6 +107,9 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
     assert "Secret cabin" not in serialized
     assert "45.123456" not in serialized
     assert "17.654321" not in serialized
+    assert "Private property" not in serialized
+    assert "44.111111" not in serialized
+    assert "16.222222" not in serialized
     assert "example.invalid" not in serialized
 
 

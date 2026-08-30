@@ -1,20 +1,141 @@
-"""Resolve the active-fire monitoring center independently from Home."""
+"""Local monitored-location models and single-center compatibility helpers."""
 from __future__ import annotations
 
 from dataclasses import dataclass
 import math
+import re
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 
 from .const import (
+    CONF_MONITORED_LOCATIONS,
     CONF_MONITORING_CENTER_NAME,
     CONF_MONITORING_LATITUDE,
     CONF_MONITORING_LONGITUDE,
+    CONF_RADIUS_KM,
     CONF_USE_CUSTOM_MONITORING_CENTER,
     DEFAULT_MONITORING_CENTER_NAME,
+    DEFAULT_RADIUS_KM,
     DEFAULT_USE_CUSTOM_MONITORING_CENTER,
+    HOME_LOCATION_ID,
+    LEGACY_CUSTOM_LOCATION_ID,
+    LOCATION_ENABLED,
+    LOCATION_ID,
+    LOCATION_LATITUDE,
+    LOCATION_LONGITUDE,
+    LOCATION_NAME,
+    LOCATION_RADIUS_KM,
+    LOCATION_SOURCE,
+    LOCATION_SOURCE_HOME_ASSISTANT,
+    LOCATION_SOURCE_MANUAL,
+    MAX_RADIUS_KM,
+    MIN_RADIUS_KM,
 )
+
+
+@dataclass(frozen=True, slots=True)
+class MonitoredLocation:
+    """One locally configured place relevant to hazard monitoring."""
+
+    id: str
+    name: str
+    latitude: float
+    longitude: float
+    radius_km: float
+    enabled: bool
+    source: str
+
+    def as_dict(self) -> dict[str, str | float | bool]:
+        """Return the stable config-entry representation."""
+        return {
+            LOCATION_ID: self.id,
+            LOCATION_NAME: self.name,
+            LOCATION_LATITUDE: self.latitude,
+            LOCATION_LONGITUDE: self.longitude,
+            LOCATION_RADIUS_KM: self.radius_km,
+            LOCATION_ENABLED: self.enabled,
+            LOCATION_SOURCE: self.source,
+        }
+
+
+def validate_monitored_location(location: MonitoredLocation) -> None:
+    """Reject unsafe or ambiguous local monitored-location records."""
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,63}", location.id):
+        raise ValueError("Monitored-location ID has an invalid format")
+    validate_monitoring_center(location.latitude, location.longitude, location.name)
+    if not math.isfinite(location.radius_km) or not (
+        MIN_RADIUS_KM <= location.radius_km <= MAX_RADIUS_KM
+    ):
+        raise ValueError("Monitored-location radius is out of range")
+    if location.source not in {
+        LOCATION_SOURCE_HOME_ASSISTANT,
+        LOCATION_SOURCE_MANUAL,
+    }:
+        raise ValueError("Unknown monitored-location source")
+
+
+def monitored_location_from_dict(values: dict[str, object]) -> MonitoredLocation:
+    """Validate and deserialize one config-entry location record."""
+    if type(values[LOCATION_ENABLED]) is not bool:
+        raise ValueError("Monitored-location enabled state must be boolean")
+    location = MonitoredLocation(
+        id=str(values[LOCATION_ID]).strip(),
+        name=str(values[LOCATION_NAME]).strip(),
+        latitude=float(values[LOCATION_LATITUDE]),
+        longitude=float(values[LOCATION_LONGITUDE]),
+        radius_km=float(values[LOCATION_RADIUS_KM]),
+        enabled=values[LOCATION_ENABLED],
+        source=str(values[LOCATION_SOURCE]),
+    )
+    validate_monitored_location(location)
+    return location
+
+
+def validate_monitored_locations(
+    locations: tuple[MonitoredLocation, ...],
+) -> None:
+    """Validate a deterministic local list and reject duplicate IDs."""
+    seen: set[str] = set()
+    for location in locations:
+        validate_monitored_location(location)
+        if location.id in seen:
+            raise ValueError("Duplicate monitored-location ID")
+        seen.add(location.id)
+
+
+def resolve_monitored_locations(
+    hass: HomeAssistant, entry: ConfigEntry
+) -> tuple[MonitoredLocation, ...]:
+    """Resolve a stored list or adapt the current single-center options."""
+    configured = entry.options.get(CONF_MONITORED_LOCATIONS)
+    if isinstance(configured, list):
+        if not all(isinstance(item, dict) for item in configured):
+            raise ValueError("Monitored-location list contains an invalid record")
+        locations = tuple(
+            monitored_location_from_dict(item)
+            for item in configured
+        )
+        validate_monitored_locations(locations)
+        return locations
+
+    center = resolve_monitoring_center(hass, entry)
+    radius_km = float(entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM))
+    location = MonitoredLocation(
+        id=LEGACY_CUSTOM_LOCATION_ID if center.custom else HOME_LOCATION_ID,
+        name=center.name,
+        latitude=center.latitude,
+        longitude=center.longitude,
+        radius_km=radius_km,
+        enabled=True,
+        source=(
+            LOCATION_SOURCE_MANUAL
+            if center.custom
+            else LOCATION_SOURCE_HOME_ASSISTANT
+        ),
+    )
+    validate_monitored_location(location)
+    return (location,)
 
 
 @dataclass(frozen=True, slots=True)
