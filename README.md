@@ -76,7 +76,12 @@ alert flood.
 ### Entities
 
 - `sensor.*_nearest_active_fire` – distance to the nearest active fire cluster
-- `sensor.*_active_fire_clusters` – number of active clusters in the configured radius
+- `sensor.*_primary_source_active_fire_clusters` – current clusters from the
+  configured primary provider only
+- `sensor.*_nasa_firms_supplemental_fire_clusters` – current FIRMS-only
+  clusters after removing matches already represented by the primary provider
+- `sensor.*_all_active_fire_clusters` – deduplicated current total across the
+  primary provider and supplemental NASA FIRMS observations
 - `sensor.*_fire_pixels_in_radius` – raw provider detections after filters
 - `sensor.*_latest_fire_product_time` – time of the latest processed provider product
 - `sensor.*_fire_product_age` – age of the latest product in minutes
@@ -324,6 +329,10 @@ FIRMS-only detections can appear as supplemental **NASA FIRMS · …** map marke
 but they do not independently trigger TerraLyra new-fire alerts or change the
 Active Fire Situation score. Cross-refresh reconciliation prevents a matching
 primary and supplemental incident from remaining as duplicate map entities.
+For the same reason, the primary count can correctly be zero while the
+supplemental or combined count is non-zero. The separate sensors make that
+distinction explicit instead of presenting the map and primary health summary
+as if they described the same source scope.
 
 Enabling the option sends the configured monitoring-area bounding coordinates
 and the user's MAP_KEY to the official NASA FIRMS service. The key is stored in

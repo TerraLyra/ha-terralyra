@@ -36,6 +36,8 @@ async def async_setup_entry(
     entities = [
         NearestFireSensor(entry),
         ActiveFireCountSensor(entry),
+        SupplementalFireCountSensor(entry),
+        CombinedFireCountSensor(entry),
         RawPixelCountSensor(entry),
         ProductTimeSensor(entry),
         ProductAgeSensor(entry),
@@ -159,10 +161,69 @@ class ActiveFireCountSensor(TerraLyraEntity, SensorEntity):
             for cluster in data.tracked_fires
         )
         return {
+            "count_scope": "configured_primary_provider_only",
+            "configured_primary_provider": self.entry.data.get(
+                CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
+            ),
             "tracked_incidents": len(data.tracked_fires),
             "inactive_incidents": inactive,
             "map_markers": len(data.tracked_fires),
             "map_source": "terralyra",
+        }
+
+
+class SupplementalFireCountSensor(TerraLyraEntity, SensorEntity):
+    """Count current NASA FIRMS-only clusters, excluding correlated duplicates."""
+
+    _attr_translation_key = "supplemental_fire_count"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:satellite-uplink"
+
+    def __init__(self, entry: TerraLyraConfigEntry) -> None:
+        super().__init__(entry)
+        self._attr_unique_id = f"{entry.entry_id}_supplemental_fire_count"
+
+    @property
+    def native_value(self) -> int:
+        data = self.coordinator.data
+        return len(data.supplemental_clusters) if data else 0
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return {
+            "provider": "nasa_firms",
+            "count_scope": "supplemental_unmatched_clusters_only",
+            "deduplicated_against_primary": True,
+        }
+
+
+class CombinedFireCountSensor(TerraLyraEntity, SensorEntity):
+    """Count distinct current clusters across primary and supplemental sources."""
+
+    _attr_translation_key = "combined_fire_count"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:fire-circle"
+
+    def __init__(self, entry: TerraLyraConfigEntry) -> None:
+        super().__init__(entry)
+        self._attr_unique_id = f"{entry.entry_id}_combined_fire_count"
+
+    @property
+    def native_value(self) -> int:
+        data = self.coordinator.data
+        if data is None:
+            return 0
+        return len(data.active_clusters) + len(data.supplemental_clusters)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        data = self.coordinator.data
+        primary = len(data.active_clusters) if data else 0
+        supplemental = len(data.supplemental_clusters) if data else 0
+        return {
+            "primary_clusters": primary,
+            "nasa_firms_supplemental_clusters": supplemental,
+            "count_scope": "deduplicated_current_clusters_all_sources",
         }
 
 

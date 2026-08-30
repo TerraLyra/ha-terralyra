@@ -153,9 +153,9 @@
       "nearest_fire": {
         "name": "Nearest active fire"
       },
-      "active_fire_count": {
-        "name": "Active fire clusters"
-      },
+      "active_fire_count": {"name": "Primary-source active-fire clusters"},
+      "supplemental_fire_count": {"name": "NASA FIRMS supplemental fire clusters"},
+      "combined_fire_count": {"name": "All active-fire clusters"},
       "raw_pixel_count": {
         "name": "Fire pixels in radius"
       },

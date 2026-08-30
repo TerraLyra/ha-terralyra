@@ -1,7 +1,7 @@
 """Provider-neutral coordinator for active-fire detections."""
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 import logging
 from typing import Any
@@ -91,6 +91,7 @@ class CoordinatorData:
     raw_pixels_in_radius: int
     activity: ActivitySummary
     situation: SituationAssessment
+    supplemental_clusters: list[FireCluster] = field(default_factory=list)
     confirmation_level: ConfirmationLevel = ConfirmationLevel.DISABLED
     corroborating_detections: int = 0
 
@@ -442,6 +443,7 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             raw_pixels_in_radius=len(filtered),
             activity=activity,
             situation=situation,
+            supplemental_clusters=firms_clusters,
             confirmation_level=confirmation_level,
             corroborating_detections=corroborating_count,
         )

@@ -140,7 +140,13 @@
         "name": "Legközelebbi aktív tűz"
       },
       "active_fire_count": {
-        "name": "Aktív tűzcsoportok"
+        "name": "Elsődleges forrás aktív tűzcsoportjai"
+      },
+      "supplemental_fire_count": {
+        "name": "NASA FIRMS kiegészítő tűzcsoportok"
+      },
+      "combined_fire_count": {
+        "name": "Összes aktív tűzcsoport"
       },
       "raw_pixel_count": {
         "name": "Tűzpixelek a körön belül"

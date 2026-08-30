@@ -35,8 +35,10 @@ from custom_components.terralyra.providers.mtg import (
 from custom_components.terralyra.sensor import (
     ActiveFireCountSensor,
     ActiveFireProviderSensor,
+    CombinedFireCountSensor,
     ProviderStatusSensor,
     ProviderCoverageSensor,
+    SupplementalFireCountSensor,
 )
 
 
@@ -292,7 +294,37 @@ def test_provider_coverage_sensor_separates_health_and_geography() -> None:
 def test_active_fire_summary_identifies_terralyra_map_source(data: object) -> None:
     """Map-card support information stays explicit even with no detections."""
     entity = object.__new__(ActiveFireCountSensor)
+    entity.entry = SimpleNamespace(data={})
     entity.coordinator = SimpleNamespace(data=data)
 
     assert entity.extra_state_attributes["map_source"] == "terralyra"
     assert entity.extra_state_attributes["map_markers"] == 0
+
+
+def test_source_specific_and_combined_counts_do_not_double_count() -> None:
+    """The combined count adds only unmatched supplemental FIRMS clusters."""
+    data = SimpleNamespace(
+        active_clusters=[object(), object()],
+        supplemental_clusters=[object(), object(), object()],
+        tracked_fires=[],
+    )
+    primary = object.__new__(ActiveFireCountSensor)
+    primary.entry = SimpleNamespace(data={CONF_ACTIVE_FIRE_PROVIDER: "noaa_goes"})
+    primary.coordinator = SimpleNamespace(data=data)
+    supplemental = object.__new__(SupplementalFireCountSensor)
+    supplemental.coordinator = SimpleNamespace(data=data)
+    combined = object.__new__(CombinedFireCountSensor)
+    combined.coordinator = SimpleNamespace(data=data)
+
+    assert primary.native_value == 2
+    assert supplemental.native_value == 3
+    assert combined.native_value == 5
+    assert primary.extra_state_attributes["count_scope"] == (
+        "configured_primary_provider_only"
+    )
+    assert supplemental.extra_state_attributes["deduplicated_against_primary"] is True
+    assert combined.extra_state_attributes == {
+        "primary_clusters": 2,
+        "nasa_firms_supplemental_clusters": 3,
+        "count_scope": "deduplicated_current_clusters_all_sources",
+    }

@@ -97,7 +97,9 @@
   "entity": {
     "sensor": {
       "nearest_fire": {"name": "Feu actif le plus proche"},
-      "active_fire_count": {"name": "Groupes de feux actifs"},
+      "active_fire_count": {"name": "Groupes de feux actifs de la source principale"},
+      "supplemental_fire_count": {"name": "Groupes de feux supplémentaires NASA FIRMS"},
+      "combined_fire_count": {"name": "Tous les groupes de feux actifs"},
       "raw_pixel_count": {"name": "Pixels de feu dans le rayon"},
       "product_time": {"name": "Heure du dernier produit incendie"},
       "product_age": {"name": "Âge du produit incendie"},
