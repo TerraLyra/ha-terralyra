@@ -17,6 +17,7 @@ from custom_components.terralyra.const import (
 )
 from custom_components.terralyra.diagnostics import async_get_config_entry_diagnostics
 from custom_components.terralyra.models import ProviderStatus
+from custom_components.terralyra.monitoring import MonitoredLocation
 from custom_components.terralyra.products.fire_risk import FireRiskDay, FireRiskForecast
 
 
@@ -78,6 +79,17 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
                 provider_product="MTFRPPixel",
                 product_timestamp=product_time,
                 received_timestamp=generated_at,
+                monitored_locations=(
+                    MonitoredLocation(
+                        id="private-place",
+                        name="Private property",
+                        latitude=44.111111,
+                        longitude=16.222222,
+                        radius_km=20,
+                        enabled=True,
+                        source="manual",
+                    ),
+                ),
             ),
             fire_risk_coordinator=SimpleNamespace(
                 data=risk_data, last_update_success=True
@@ -97,6 +109,17 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
         "inactive": 0,
     }
     assert result["active_fire"]["provider_status"] == "available"
+    assert result["active_fire"]["geographic_coverage"] == {
+        "status": "covered",
+        "enabled_location_count": 1,
+        "covered_location_count": 1,
+        "uncovered_location_count": 0,
+        "recommendation_counts": {
+            "eumetsat_lsa_saf": 0,
+            "noaa_goes": 0,
+            "nasa_firms": 0,
+        },
+    }
     assert result["fire_risk"]["near_home_risk"] == "extreme"
     assert result["fire_risk"]["area_risk"] == "very_high"
     assert account_value not in serialized
@@ -130,6 +153,7 @@ async def test_diagnostics_handle_coordinators_without_data(hass) -> None:
                 provider_product=None,
                 product_timestamp=None,
                 received_timestamp=None,
+                monitored_locations=(),
             ),
             fire_risk_coordinator=SimpleNamespace(
                 data=None, last_update_success=False

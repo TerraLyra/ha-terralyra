@@ -250,6 +250,21 @@ the time Home Assistant received the product. Failed refreshes retain the last
 successful data and persistent fire tracks; they are never converted into a
 false zero-fire observation.
 
+Provider health and geographic coverage are intentionally separate. The
+**Primary provider geographic coverage** sensor evaluates every enabled
+monitored location using conservative pre-download satellite geometry and
+reports `covered`, `partially covered`, or `not covered`. Its attributes list
+each location without repeating coordinates and recommend NOAA GOES, LSA SAF,
+or NASA FIRMS when the configured primary provider cannot cover it. An
+available provider endpoint therefore never implies that an unsupported
+location has no active fire.
+
+The **Primary active-fire data source** sensor identifies the configured
+provider. Every TerraLyra map marker separately names the provider that
+actually supplied the incident evidence: LSA SAF, NOAA GOES, NASA FIRMS, or
+multiple sources. Home Assistant map cards may also combine geo-location
+entities from other integrations.
+
 ## Installation through HACS
 
 1. In HACS, add `TerraLyra/ha-terralyra` as a **Custom repository** of type

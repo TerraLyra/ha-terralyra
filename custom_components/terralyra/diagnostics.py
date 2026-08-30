@@ -8,6 +8,7 @@ from homeassistant.core import HomeAssistant
 
 from . import TerraLyraConfigEntry
 from .const import (
+    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_FIRMS_MAP_KEY,
     CONF_MONITORED_LOCATIONS,
     CONF_MONITORING_CENTER_NAME,
@@ -15,7 +16,9 @@ from .const import (
     CONF_MONITORING_LONGITUDE,
     CONF_PASSWORD,
     CONF_USERNAME,
+    DEFAULT_ACTIVE_FIRE_PROVIDER,
 )
+from .coverage import assess_location_coverage, summarize_coverage
 
 TO_REDACT = {
     CONF_USERNAME,
@@ -36,6 +39,14 @@ async def async_get_config_entry_diagnostics(
     risk = entry.runtime_data.fire_risk_coordinator
     active_data = active.data
     risk_data = risk.data
+    configured_provider = str(
+        entry.data.get(CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER)
+    )
+    coverage = tuple(
+        assess_location_coverage(configured_provider, location)
+        for location in getattr(active, "monitored_locations", ())
+        if location.enabled
+    )
 
     return {
         "entry": {
@@ -46,6 +57,25 @@ async def async_get_config_entry_diagnostics(
             "last_update_success": active.last_update_success,
             "provider_status": active.provider_status.value,
             "provider": active.provider_name,
+            "configured_primary_provider": configured_provider,
+            "geographic_coverage": {
+                "status": summarize_coverage(coverage),
+                "enabled_location_count": len(coverage),
+                "covered_location_count": sum(item.covered for item in coverage),
+                "uncovered_location_count": sum(
+                    not item.covered for item in coverage
+                ),
+                "recommendation_counts": {
+                    provider: sum(
+                        item.recommended_provider == provider for item in coverage
+                    )
+                    for provider in (
+                        "eumetsat_lsa_saf",
+                        "noaa_goes",
+                        "nasa_firms",
+                    )
+                },
+            },
             "satellite": active.satellite,
             "product": active.provider_product,
             "product_time": (

@@ -179,6 +179,15 @@
           "unknown": "Unknown"
         }
       },
+      "provider_coverage": {
+        "name": "Primary provider geographic coverage",
+        "state": {
+          "covered": "Covered",
+          "partial": "Partially covered",
+          "not_covered": "Not covered",
+          "unknown": "Unknown"
+        }
+      },
       "fire_risk_today": {
         "name": "Fire risk near Home",
         "state": {

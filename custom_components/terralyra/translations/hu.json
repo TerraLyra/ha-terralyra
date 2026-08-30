@@ -165,6 +165,15 @@
           "unknown": "Ismeretlen"
         }
       },
+      "provider_coverage": {
+        "name": "Az elsődleges szolgáltató földrajzi lefedettsége",
+        "state": {
+          "covered": "Lefedett",
+          "partial": "Részben lefedett",
+          "not_covered": "Nem lefedett",
+          "unknown": "Ismeretlen"
+        }
+      },
       "fire_risk_today": {
         "name": "Tűzkockázat az otthon közelében",
         "state": {

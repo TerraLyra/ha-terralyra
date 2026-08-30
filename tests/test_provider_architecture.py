@@ -15,7 +15,7 @@ from custom_components.terralyra.models import (
     ProviderSnapshot,
     ProviderStatus,
 )
-from custom_components.terralyra.monitoring import MonitoringCenter
+from custom_components.terralyra.monitoring import MonitoredLocation, MonitoringCenter
 from custom_components.terralyra.products.fire import (
     FirePixel,
     LsaSafNoDataError,
@@ -36,6 +36,7 @@ from custom_components.terralyra.sensor import (
     ActiveFireCountSensor,
     ActiveFireProviderSensor,
     ProviderStatusSensor,
+    ProviderCoverageSensor,
 )
 
 
@@ -248,6 +249,43 @@ def test_active_fire_provider_sensor_has_stable_translated_states(
         "monitoring_longitude": -74.006,
         "custom_monitoring_center": True,
     }
+
+
+def test_provider_coverage_sensor_separates_health_and_geography() -> None:
+    entity = object.__new__(ProviderCoverageSensor)
+    entity.entry = SimpleNamespace(
+        data={CONF_ACTIVE_FIRE_PROVIDER: "eumetsat_lsa_saf"}
+    )
+    entity.coordinator = SimpleNamespace(
+        provider_status=ProviderStatus.AVAILABLE,
+        monitored_locations=(
+            MonitoredLocation(
+                id="home",
+                name="Budapest",
+                latitude=47.4979,
+                longitude=19.0402,
+                radius_km=25,
+                enabled=True,
+                source="manual",
+            ),
+            MonitoredLocation(
+                id="test",
+                name="California test",
+                latitude=38.5618,
+                longitude=-121.6263,
+                radius_km=100,
+                enabled=True,
+                source="manual",
+            ),
+        ),
+    )
+
+    assert entity.native_value == "partial"
+    attrs = entity.extra_state_attributes
+    assert attrs["provider_status"] == "available"
+    assert attrs["covered_locations"] == 1
+    assert attrs["uncovered_locations"] == 1
+    assert attrs["locations"][1]["recommended_provider"] == "noaa_goes"
 
 
 @pytest.mark.parametrize("data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])])

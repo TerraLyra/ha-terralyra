@@ -18,6 +18,7 @@ from .const import (
     DEFAULT_ACTIVE_FIRE_PROVIDER,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
 )
+from .coverage import assess_location_coverage, summarize_coverage
 from .entity import (
     TerraLyraEntity,
     TerraLyraFireRiskEntity,
@@ -40,6 +41,7 @@ async def async_setup_entry(
         ProductAgeSensor(entry),
         ProviderStatusSensor(entry),
         ActiveFireProviderSensor(entry),
+        ProviderCoverageSensor(entry),
         RecentDetectionsSensor(entry),
         FireActivityFrpChangeSensor(entry),
         NewIncidents24hSensor(entry),
@@ -293,6 +295,48 @@ class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
             "monitoring_latitude": round(center.latitude, 6),
             "monitoring_longitude": round(center.longitude, 6),
             "custom_monitoring_center": center.custom,
+        }
+
+
+class ProviderCoverageSensor(TerraLyraEntity, SensorEntity):
+    """Expose provider health separately from geographic coverage."""
+
+    _attr_translation_key = "provider_coverage"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["covered", "partial", "not_covered", "unknown"]
+    _attr_icon = "mdi:map-marker-check-outline"
+
+    def __init__(self, entry: TerraLyraConfigEntry) -> None:
+        super().__init__(entry)
+        self._attr_unique_id = f"{entry.entry_id}_provider_coverage"
+
+    def _coverage(self):
+        provider = str(
+            self.entry.data.get(
+                CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
+            )
+        )
+        return provider, tuple(
+            assess_location_coverage(provider, location)
+            for location in self.coordinator.monitored_locations
+            if location.enabled
+        )
+
+    @property
+    def native_value(self) -> str:
+        _, results = self._coverage()
+        return summarize_coverage(results)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        provider, results = self._coverage()
+        return {
+            "configured_primary_provider": provider,
+            "provider_status": self.coordinator.provider_status.value,
+            "covered_locations": sum(result.covered for result in results),
+            "uncovered_locations": sum(not result.covered for result in results),
+            "locations": [result.attrs() for result in results],
+            "assessment": "conservative_pre_download_geographic_gate",
         }
 
 

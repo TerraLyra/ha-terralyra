@@ -98,6 +98,7 @@
       "product_age": {"name": "Antigüedad del producto de incendios"},
       "provider_status": {"name": "Estado de los datos de incendios activos", "state": {"initializing": "Inicializando", "available": "Disponible", "delayed": "Retrasado", "no_product": "Sin producto actual", "outage": "Interrupción del proveedor", "auth_error": "Error de autenticación"}},
       "active_fire_provider": {"name": "Fuente principal de datos de incendios activos", "state": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF", "noaa_goes": "NOAA GOES-18/19", "unknown": "Desconocida"}},
+      "provider_coverage": {"name": "Cobertura geográfica del proveedor principal", "state": {"covered": "Cubierta", "partial": "Parcialmente cubierta", "not_covered": "Sin cobertura", "unknown": "Desconocida"}},
       "fire_risk_today": {"name": "Riesgo de incendio cerca de Casa", "state": {"low": "Bajo", "moderate": "Moderado", "high": "Alto", "very_high": "Muy alto", "extreme": "Extremo", "unknown": "Desconocido"}},
       "fire_risk_area_maximum": {"name": "Mayor riesgo de incendio en la zona vigilada", "state": {"low": "Bajo", "moderate": "Moderado", "high": "Alto", "very_high": "Muy alto", "extreme": "Extremo", "unknown": "Desconocido"}},
       "fire_risk_update": {"name": "Última actualización de la previsión del riesgo de incendio"},
