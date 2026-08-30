@@ -158,7 +158,7 @@
         }
       },
       "active_fire_provider": {
-        "name": "Aktívtűz-adatforrás",
+        "name": "Elsődleges aktívtűz-adatforrás",
         "state": {
           "eumetsat_lsa_saf": "EUMETSAT LSA SAF",
           "noaa_goes": "NOAA GOES-18/19",

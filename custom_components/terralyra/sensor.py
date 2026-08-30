@@ -13,7 +13,9 @@ from . import TerraLyraConfigEntry
 from .const import (
     ACTIVE_FIRE_PROVIDER_GOES,
     ACTIVE_FIRE_PROVIDER_LSA_SAF,
+    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
+    DEFAULT_ACTIVE_FIRE_PROVIDER,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
 )
 from .entity import (
@@ -255,7 +257,7 @@ class ProviderStatusSensor(TerraLyraEntity, SensorEntity):
 
 
 class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
-    """Expose the selected primary provider as a translated entity state."""
+    """Expose the configured primary provider independently of observations."""
 
     _attr_translation_key = "active_fire_provider"
     _attr_device_class = SensorDeviceClass.ENUM
@@ -272,13 +274,19 @@ class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
 
     @property
     def native_value(self) -> str:
-        provider = self.coordinator.provider_name
+        provider = self.entry.data.get(
+            CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
+        )
         return provider if provider in self._attr_options else "unknown"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         center = self.coordinator.monitoring_center
         return {
+            "observed_provider": self.coordinator.provider_name,
+            "corroborating_provider": (
+                self.coordinator.corroboration_provider_name
+            ),
             "satellite": self.coordinator.satellite,
             "product": self.coordinator.provider_product,
             "monitoring_center": center.name,

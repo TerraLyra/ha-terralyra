@@ -8,6 +8,7 @@ from unittest.mock import Mock
 from custom_components.terralyra.activity import ActivitySummary
 from custom_components.terralyra.const import (
     ATTR_ACTIVITY_TREND,
+    ATTR_CONFIGURED_PRIMARY_PROVIDER,
     ATTR_DISTANCE_TREND,
     ATTR_LATITUDE,
     ATTR_DETECTIONS_TOTAL,
@@ -19,6 +20,7 @@ from custom_components.terralyra.const import (
     ATTR_NEAREST_SETTLEMENT,
     ATTR_PEAK_FRP_MW,
     ATTR_PRODUCT_TIME,
+    ATTR_PROVIDER_ATTRIBUTION,
     ATTR_SOURCE_URL,
     ATTR_TRACK_ID,
     DOMAIN,
@@ -69,6 +71,7 @@ def _cluster(**changes) -> FireCluster:
 def _entity(cluster: FireCluster) -> TerraLyraFireLocation:
     entity = object.__new__(TerraLyraFireLocation)
     entity._cluster = cluster
+    entity.entry = SimpleNamespace(data={})
     entity.coordinator = SimpleNamespace(
         data=CoordinatorData(
             product_time=datetime(2026, 8, 25, 20, 30, tzinfo=UTC),
@@ -115,6 +118,11 @@ def test_map_entity_exposes_location_distance_and_details() -> None:
     assert entity.extra_state_attributes[ATTR_TRACK_ID] == "abcdef123456"
     assert entity.extra_state_attributes[ATTR_PEAK_FRP_MW] == 51.0
     assert entity.extra_state_attributes[ATTR_PRODUCT_TIME] == "2026-08-25T20:30:00+00:00"
+    assert (
+        entity.extra_state_attributes[ATTR_CONFIGURED_PRIMARY_PROVIDER]
+        == "eumetsat_lsa_saf"
+    )
+    assert entity.extra_state_attributes[ATTR_PROVIDER_ATTRIBUTION] == "LSA SAF"
     assert entity.extra_state_attributes[ATTR_SOURCE_URL].startswith("https://datalsasaf.")
 
 
@@ -151,6 +159,21 @@ def test_firms_only_map_entity_has_explicit_provider_name() -> None:
     assert entity.name == "NASA FIRMS · Trebišov közelében észlelt tűz"
 
 
+def test_multi_source_map_entity_has_explicit_provider_name() -> None:
+    cluster = _cluster(
+        providers=("eumetsat_lsa_saf", "nasa_firms"),
+        location_description="Trebišov közelében észlelt tűz",
+    )
+    entity = _entity(cluster)
+    entity.set_cluster(cluster)
+
+    assert entity.name == "Multiple sources · Trebišov közelében észlelt tűz"
+    assert (
+        entity.extra_state_attributes[ATTR_PROVIDER_ATTRIBUTION]
+        == "Multiple sources"
+    )
+
+
 def test_map_entity_updates_existing_track_without_changing_identity() -> None:
     entity = _entity(_cluster())
     entity.async_write_ha_state = Mock()
@@ -168,7 +191,7 @@ def test_map_entity_updates_existing_track_without_changing_identity() -> None:
     assert entity.latitude == 46.5
     assert entity.longitude == 20.5
     assert entity.distance == 31.0
-    assert entity.name == "Szeged közelében észlelt tűz"
+    assert entity.name == "LSA SAF · Szeged közelében észlelt tűz"
     assert entity.extra_state_attributes[ATTR_LATITUDE] == 46.5
     assert entity.extra_state_attributes[ATTR_LONGITUDE] == 20.5
     assert entity.extra_state_attributes[ATTR_NEAREST_SETTLEMENT] == "Szeged"

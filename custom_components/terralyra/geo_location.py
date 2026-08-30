@@ -10,7 +10,15 @@ from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TerraLyraConfigEntry
-from .const import ATTR_PRODUCT_TIME, ATTR_SOURCE_URL, DOMAIN
+from .const import (
+    ATTR_CONFIGURED_PRIMARY_PROVIDER,
+    ATTR_PRODUCT_TIME,
+    ATTR_PROVIDER_ATTRIBUTION,
+    ATTR_SOURCE_URL,
+    CONF_ACTIVE_FIRE_PROVIDER,
+    DEFAULT_ACTIVE_FIRE_PROVIDER,
+    DOMAIN,
+)
 from .coordinator import FireCluster
 from .entity import TerraLyraEntity
 
@@ -133,6 +141,12 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data
         attrs = self._cluster.attrs()
+        attrs[ATTR_CONFIGURED_PRIMARY_PROVIDER] = self.entry.data.get(
+            CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
+        )
+        attrs[ATTR_PROVIDER_ATTRIBUTION] = _provider_attribution(
+            self._cluster.providers
+        )
         if data:
             attrs[ATTR_PRODUCT_TIME] = data.product_time.isoformat()
             attrs.setdefault(ATTR_SOURCE_URL, data.source_url)
@@ -140,9 +154,22 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
 
 
 def _display_name(cluster: FireCluster) -> str:
-    """Return a map label that makes supplemental FIRMS markers explicit."""
+    """Return a map label that makes the actual observation source explicit."""
     track_id = cluster.track_id or "unknown"
     name = cluster.location_description or f"Fire detection {track_id[:6]}"
-    if cluster.providers == ("nasa_firms",):
-        return f"NASA FIRMS · {name}"
-    return name
+    return f"{_provider_attribution(cluster.providers)} · {name}"
+
+
+def _provider_attribution(providers: tuple[str, ...]) -> str:
+    """Return a stable, human-readable attribution for one incident."""
+    labels = {
+        "eumetsat_lsa_saf": "LSA SAF",
+        "noaa_goes": "NOAA GOES",
+        "nasa_firms": "NASA FIRMS",
+    }
+    unique = tuple(dict.fromkeys(providers))
+    if len(unique) > 1:
+        return "Multiple sources"
+    if unique:
+        return labels.get(unique[0], unique[0])
+    return "Unknown source"

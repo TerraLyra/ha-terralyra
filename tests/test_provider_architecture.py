@@ -9,6 +9,7 @@ import pytest
 
 from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
 from custom_components.terralyra.clustering import cluster_detections
+from custom_components.terralyra.const import CONF_ACTIVE_FIRE_PROVIDER
 from custom_components.terralyra.models import (
     FireDetection,
     ProviderSnapshot,
@@ -215,7 +216,7 @@ def test_provider_status_sensor_remains_available_during_outage() -> None:
     [
         ("eumetsat_lsa_saf", "eumetsat_lsa_saf"),
         ("noaa_goes", "noaa_goes"),
-        (None, "unknown"),
+        (None, "eumetsat_lsa_saf"),
         ("unexpected", "unknown"),
     ],
 )
@@ -223,8 +224,14 @@ def test_active_fire_provider_sensor_has_stable_translated_states(
     provider: str | None, expected: str
 ) -> None:
     entity = object.__new__(ActiveFireProviderSensor)
+    entity.entry = SimpleNamespace(
+        data={CONF_ACTIVE_FIRE_PROVIDER: provider}
+        if provider is not None
+        else {}
+    )
     entity.coordinator = SimpleNamespace(
-        provider_name=provider,
+        provider_name="nasa_firms",
+        corroboration_provider_name="nasa_firms",
         satellite="G19",
         provider_product="ABI-L2-FDCF",
         monitoring_center=MonitoringCenter("New York", 40.7128, -74.006, True),
@@ -232,6 +239,8 @@ def test_active_fire_provider_sensor_has_stable_translated_states(
 
     assert entity.native_value == expected
     assert entity.extra_state_attributes == {
+        "observed_provider": "nasa_firms",
+        "corroborating_provider": "nasa_firms",
         "satellite": "G19",
         "product": "ABI-L2-FDCF",
         "monitoring_center": "New York",
