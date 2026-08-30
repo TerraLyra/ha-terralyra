@@ -55,6 +55,7 @@ from custom_components.terralyra.const import (
     LOCATION_RADIUS_KM,
     LOCATION_SOURCE,
     LOCATION_SOURCE_MANUAL,
+    MAX_MONITORED_LOCATIONS,
 )
 from custom_components.terralyra.products.firms import FirmsError
 
@@ -927,3 +928,107 @@ async def test_options_toggle_and_delete_with_two_locations(hass) -> None:
         result["flow_id"], {CONF_LOCATION_ID: "cabin"}
     )
     assert len(result["data"][CONF_MONITORED_LOCATIONS]) == 1
+
+
+async def test_options_add_location_reports_limit_and_provider_coverage(hass) -> None:
+    """Adding remains recoverable at the local limit and outside GOES coverage."""
+    locations = [
+        {
+            **_stored_location(f"location-{index}"),
+            LOCATION_NAME: f"Location {index}",
+        }
+        for index in range(MAX_MONITORED_LOCATIONS)
+    ]
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+        options={CONF_MONITORED_LOCATIONS: locations},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "add_location"}
+    )
+    location_input = {
+        LOCATION_NAME: "Remote site",
+        LOCATION_LATITUDE: 47.0,
+        LOCATION_LONGITUDE: 19.0,
+        LOCATION_RADIUS_KM: 25.0,
+        LOCATION_ENABLED: True,
+    }
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], location_input
+    )
+    assert result["errors"] == {"base": "too_many_locations"}
+
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "add_location"}
+    )
+    with patch(
+        "custom_components.terralyra.config_flow.select_goes_satellite",
+        return_value=None,
+    ):
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], location_input
+        )
+    assert result["errors"] == {"base": "invalid_monitored_location"}
+
+
+async def test_options_edit_cannot_disable_last_location(hass) -> None:
+    """Editing cannot leave the installation without an enabled location."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "edit_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {CONF_LOCATION_ID: "home"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            LOCATION_NAME: "Home",
+            LOCATION_LATITUDE: 47.4979,
+            LOCATION_LONGITUDE: 19.0402,
+            LOCATION_RADIUS_KM: 25.0,
+            LOCATION_ENABLED: False,
+        },
+    )
+    assert result["errors"] == {"base": "invalid_monitored_location"}
+
+
+@pytest.mark.parametrize("step_id", ["toggle_location", "delete_location"])
+async def test_options_reject_unknown_location_id(hass, step_id: str) -> None:
+    """Forged or stale opaque location IDs never mutate stored options."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": step_id}
+    )
+    if step_id == "toggle_location":
+        with pytest.raises(ValueError, match="Unknown monitored location"):
+            await hass.config_entries.options.async_configure(
+                result["flow_id"], {CONF_LOCATION_ID: "unknown"}
+            )
+    else:
+        result = await hass.config_entries.options.async_configure(
+            result["flow_id"], {CONF_LOCATION_ID: "unknown"}
+        )
+        assert result["errors"] == {"base": "invalid_monitored_location"}
