@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.5.0
+
+- Rename the existing active-fire cluster sensor to make clear that it counts
+  only detections from the configured primary provider.
+- Add a separate NASA FIRMS supplemental-cluster sensor containing only
+  detections that are not already represented by a correlated primary-source
+  incident.
+- Add a combined active-fire cluster sensor that reports the deduplicated
+  current total across the primary provider and supplemental NASA FIRMS data.
+- Expose explicit count-scope and provider attributes, update all supported
+  translations, and document why the primary count can be zero while the map
+  still contains supplemental observations.
+
 ## 0.4.1
 
 - Fix migration of legacy custom monitoring centers when Home Assistant uses an
