@@ -318,7 +318,10 @@ async def test_sources_validate_and_store_firms_key(hass) -> None:
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["data"] == {CONF_FIRMS_MAP_KEY: "B" * 32}
     assert result["options"][CONF_ENABLE_FIRMS] is True
-    validate.assert_awaited_once()
+    assert any(
+        call.kwargs.get("source") == "VIIRS_NOAA20_NRT"
+        for call in validate.await_args_list
+    )
 
 
 async def test_monitoring_center_rejects_invalid_coordinates(hass) -> None:
