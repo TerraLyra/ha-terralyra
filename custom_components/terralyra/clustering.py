@@ -27,7 +27,13 @@ def cluster_detections(
     home_longitude: float,
     cluster_radius_km: float,
 ) -> list[FireCluster]:
-    """Greedily group adjacent detections from the same provider product."""
+    """Group connected nearby detections from the same provider product.
+
+    A connected-component pass avoids splitting one continuous group merely
+    because its outermost pixels are farther apart than the configured radius.
+    Every pixel must still be connected to another pixel in the same group by
+    a hop no longer than ``cluster_radius_km``.
+    """
     groups: list[list[FireDetection]] = []
     ordered = sorted(
         detections,
@@ -35,24 +41,31 @@ def cluster_detections(
         reverse=True,
     )
     for detection, _distance in ordered:
-        target: list[FireDetection] | None = None
-        for group in groups:
-            reference = group[0]
-            if (
+        connected = [
+            group
+            for group in groups
+            if any(
                 haversine_km(
                     detection.latitude,
                     detection.longitude,
-                    reference.latitude,
-                    reference.longitude,
+                    member.latitude,
+                    member.longitude,
                 )
                 <= cluster_radius_km
-            ):
-                target = group
-                break
-        if target is None:
+                for member in group
+            )
+        ]
+        if not connected:
             groups.append([detection])
         else:
+            target = connected[0]
             target.append(detection)
+            # The new detection can bridge groups that were previously
+            # separate. Merge those groups now so one incident cannot produce
+            # overlapping map markers solely because of input ordering.
+            for other in connected[1:]:
+                target.extend(other)
+                groups.remove(other)
 
     clusters: list[FireCluster] = []
     for group in groups:

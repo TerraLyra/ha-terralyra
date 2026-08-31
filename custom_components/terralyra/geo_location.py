@@ -113,6 +113,11 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
             raise ValueError("A map entity requires a tracked fire cluster")
         self._cluster = cluster
         self._attr_unique_id = f"{entry.entry_id}_fire_{cluster.track_id}"
+        # Home Assistant records history by entity_id. Deriving the object ID
+        # from the changing display name allowed a later fire near the same
+        # settlement to reuse an expired entity's history. The incident ID is
+        # stable and unique for the lifetime of one tracked fire.
+        self._attr_suggested_object_id = _suggested_object_id(cluster.track_id)
         self._attr_name = _display_name(cluster)
 
     @callback
@@ -156,8 +161,19 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
 def _display_name(cluster: FireCluster) -> str:
     """Return a map label that makes the actual observation source explicit."""
     track_id = cluster.track_id or "unknown"
-    name = cluster.location_description or f"Fire detection {track_id[:6]}"
+    name = cluster.location_description or f"Fire detection {_short_id(track_id)}"
     return f"{_provider_attribution(cluster.providers)} · {name}"
+
+
+def _short_id(track_id: str) -> str:
+    """Return a useful short incident ID without an internal source prefix."""
+    source_id = track_id.removeprefix("firms-")
+    return (source_id or "unknown")[:6]
+
+
+def _suggested_object_id(track_id: str) -> str:
+    """Bind Home Assistant history to one incident instead of its place name."""
+    return f"{DOMAIN}_fire_{track_id}"
 
 
 def _provider_attribution(providers: tuple[str, ...]) -> str:

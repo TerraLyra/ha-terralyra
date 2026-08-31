@@ -9,11 +9,11 @@ from custom_components.terralyra.activity import ActivitySummary
 from custom_components.terralyra.const import (
     ATTR_ACTIVITY_TREND,
     ATTR_CONFIGURED_PRIMARY_PROVIDER,
-    ATTR_DISTANCE_TREND,
-    ATTR_LATITUDE,
     ATTR_DETECTIONS_TOTAL,
+    ATTR_DISTANCE_TREND,
     ATTR_DURATION_MINUTES,
     ATTR_FRP_TREND,
+    ATTR_LATITUDE,
     ATTR_LIFECYCLE,
     ATTR_LOCATION_DESCRIPTION,
     ATTR_LONGITUDE,
@@ -30,6 +30,12 @@ from custom_components.terralyra.coordinator import (
     FireCluster,
     _tracked_fire_clusters,
 )
+from custom_components.terralyra.geo_location import (
+    TerraLyraFireLocation,
+    _async_remove_expired_entity,
+    _display_name,
+    _suggested_object_id,
+)
 from custom_components.terralyra.models import (
     DistanceTrend,
     FireLifecycle,
@@ -37,10 +43,6 @@ from custom_components.terralyra.models import (
     ProviderStatus,
 )
 from custom_components.terralyra.situation import assess_situation
-from custom_components.terralyra.geo_location import (
-    TerraLyraFireLocation,
-    _async_remove_expired_entity,
-)
 
 
 def _cluster(**changes) -> FireCluster:
@@ -157,6 +159,23 @@ def test_firms_only_map_entity_has_explicit_provider_name() -> None:
     entity.set_cluster(cluster)
 
     assert entity.name == "NASA FIRMS · Trebišov közelében észlelt tűz"
+
+
+def test_firms_fallback_name_omits_internal_track_prefix() -> None:
+    cluster = _cluster(
+        track_id="firms-812165abcdef",
+        providers=("nasa_firms",),
+        location_description=None,
+    )
+
+    assert _display_name(cluster) == "NASA FIRMS · Fire detection 812165"
+
+
+def test_map_entity_object_id_is_bound_to_incident_not_place_name() -> None:
+    assert (
+        _suggested_object_id("firms-812165abcdef")
+        == "terralyra_fire_firms-812165abcdef"
+    )
 
 
 def test_multi_source_map_entity_has_explicit_provider_name() -> None:

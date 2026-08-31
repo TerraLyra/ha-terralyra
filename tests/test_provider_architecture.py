@@ -36,8 +36,8 @@ from custom_components.terralyra.sensor import (
     ActiveFireCountSensor,
     ActiveFireProviderSensor,
     CombinedFireCountSensor,
-    ProviderStatusSensor,
     ProviderCoverageSensor,
+    ProviderStatusSensor,
     SupplementalFireCountSensor,
 )
 
@@ -174,6 +174,38 @@ def test_common_clustering_preserves_mtg_aggregation() -> None:
     assert clusters[0].confidence == 0.95
     assert clusters[0].latitude == pytest.approx(46.25075)
     assert clusters[0].longitude == pytest.approx(20.14075)
+
+
+def test_clustering_merges_connected_pixels_independent_of_seed_distance() -> None:
+    """A bridging pixel keeps one continuous fire group as one cluster."""
+    detections = [
+        (
+            _detection(provider="nasa_firms", latitude=46.000, longitude=20.000),
+            0.0,
+        ),
+        (
+            _detection(
+                provider="nasa_firms", latitude=46.009, longitude=20.000
+            ),
+            1.0,
+        ),
+        (
+            _detection(
+                provider="nasa_firms", latitude=46.018, longitude=20.000
+            ),
+            2.0,
+        ),
+    ]
+
+    clusters = cluster_detections(
+        detections,
+        home_latitude=46.0,
+        home_longitude=20.0,
+        cluster_radius_km=1.1,
+    )
+
+    assert len(clusters) == 1
+    assert clusters[0].pixel_count == 3
 
 
 def test_common_model_accepts_provider_specific_missing_values() -> None:
