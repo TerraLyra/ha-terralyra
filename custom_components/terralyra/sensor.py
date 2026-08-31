@@ -21,7 +21,7 @@ from .const import (
     DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
 )
-from .coverage import plan_location_sources, summarize_coverage
+from .coverage import plan_location_sources, summarize_source_plans
 from .entity import (
     TerraLyraEntity,
     TerraLyraFireRiskEntity,
@@ -381,7 +381,7 @@ class ProviderCoverageSensor(TerraLyraEntity, SensorEntity):
     @property
     def native_value(self) -> str:
         _, results = self._coverage()
-        return summarize_coverage(results)
+        return summarize_source_plans(results)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

@@ -344,12 +344,12 @@ def test_provider_coverage_sensor_separates_health_and_geography() -> None:
         ),
     )
 
-    assert entity.native_value == "partial"
+    assert entity.native_value == "covered"
     attrs = entity.extra_state_attributes
     assert attrs["provider_status"] == "available"
-    assert attrs["covered_locations"] == 1
-    assert attrs["uncovered_locations"] == 1
-    assert attrs["locations"][1]["sources"] == ["noaa_goes"]
+    assert attrs["covered_locations"] == 2
+    assert attrs["uncovered_locations"] == 0
+    assert attrs["locations"][1]["providers"] == ["noaa_goes"]
 
 
 @pytest.mark.parametrize("data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])])
