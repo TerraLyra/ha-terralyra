@@ -8,7 +8,6 @@ from unittest.mock import Mock
 from custom_components.terralyra.activity import ActivitySummary
 from custom_components.terralyra.const import (
     ATTR_ACTIVITY_TREND,
-    ATTR_CONFIGURED_PRIMARY_PROVIDER,
     ATTR_DETECTIONS_TOTAL,
     ATTR_DISTANCE_TREND,
     ATTR_DURATION_MINUTES,
@@ -65,6 +64,7 @@ def _cluster(**changes) -> FireCluster:
         "distance_trend": DistanceTrend.APPROACHING,
         "trend_samples": 4,
         "trend_window_minutes": 30,
+        "providers": ("eumetsat_lsa_saf",),
     }
     values.update(changes)
     return FireCluster(**values)
@@ -120,10 +120,6 @@ def test_map_entity_exposes_location_distance_and_details() -> None:
     assert entity.extra_state_attributes[ATTR_TRACK_ID] == "abcdef123456"
     assert entity.extra_state_attributes[ATTR_PEAK_FRP_MW] == 51.0
     assert entity.extra_state_attributes[ATTR_PRODUCT_TIME] == "2026-08-25T20:30:00+00:00"
-    assert (
-        entity.extra_state_attributes[ATTR_CONFIGURED_PRIMARY_PROVIDER]
-        == "eumetsat_lsa_saf"
-    )
     assert entity.extra_state_attributes[ATTR_PROVIDER_ATTRIBUTION] == "LSA SAF"
     assert entity.extra_state_attributes[ATTR_SOURCE_URL].startswith("https://datalsasaf.")
 

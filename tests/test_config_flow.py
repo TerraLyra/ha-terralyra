@@ -199,7 +199,19 @@ async def test_goes_user_flow_needs_no_credentials(hass) -> None:
 
 async def test_goes_user_flow_rejects_unsafe_coverage(hass) -> None:
     """Test setup explains when no automatic source covers a location."""
-    result = await _start_lsa_saf_flow(hass)
+    result = await _start_user_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        _default_monitoring_input(
+            hass,
+            **{
+                CONF_USE_CUSTOM_MONITORING_CENTER: True,
+                CONF_MONITORING_CENTER_NAME: "Budapest",
+                CONF_MONITORING_LATITUDE: 47.4979,
+                CONF_MONITORING_LONGITUDE: 19.0402,
+            },
+        ),
+    )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         {CONF_USERNAME: "", CONF_PASSWORD: "", CONF_FIRMS_MAP_KEY: ""},

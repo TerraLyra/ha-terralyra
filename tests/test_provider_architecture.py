@@ -9,13 +9,12 @@ import pytest
 
 from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
 from custom_components.terralyra.clustering import cluster_detections
-from custom_components.terralyra.const import CONF_ACTIVE_FIRE_PROVIDER
 from custom_components.terralyra.models import (
     FireDetection,
     ProviderSnapshot,
     ProviderStatus,
 )
-from custom_components.terralyra.monitoring import MonitoredLocation, MonitoringCenter
+from custom_components.terralyra.monitoring import MonitoredLocation
 from custom_components.terralyra.products.fire import (
     FirePixel,
     LsaSafNoDataError,
@@ -298,49 +297,28 @@ def test_provider_status_sensor_remains_available_during_outage() -> None:
     }
 
 
-@pytest.mark.parametrize(
-    ("provider", "expected"),
-    [
-        ("eumetsat_lsa_saf", "eumetsat_lsa_saf"),
-        ("noaa_goes", "noaa_goes"),
-        (None, "eumetsat_lsa_saf"),
-        ("unexpected", "unknown"),
-    ],
-)
-def test_active_fire_provider_sensor_has_stable_translated_states(
-    provider: str | None, expected: str
-) -> None:
+def test_active_fire_provider_sensor_exposes_equal_automatic_sources() -> None:
     entity = object.__new__(ActiveFireProviderSensor)
-    entity.entry = SimpleNamespace(
-        data={CONF_ACTIVE_FIRE_PROVIDER: provider}
-        if provider is not None
-        else {}
-    )
+    binding = SimpleNamespace(provider_id="noaa_goes", satellite="G19")
+    health = SimpleNamespace(attrs=lambda: {"provider": "noaa_goes", "status": "available"})
     entity.coordinator = SimpleNamespace(
-        provider_name="nasa_firms",
-        corroboration_provider_name="nasa_firms",
-        satellite="G19",
-        provider_product="ABI-L2-FDCF",
-        monitoring_center=MonitoringCenter("New York", 40.7128, -74.006, True),
+        provider=SimpleNamespace(bindings=(binding,), health=(health,)),
     )
 
-    assert entity.native_value == expected
+    assert entity.native_value == "automatic"
     assert entity.extra_state_attributes == {
-        "observed_provider": "nasa_firms",
-        "corroborating_provider": "nasa_firms",
-        "satellite": "G19",
-        "product": "ABI-L2-FDCF",
-        "monitoring_center": "New York",
-        "monitoring_latitude": 40.7128,
-        "monitoring_longitude": -74.006,
-        "custom_monitoring_center": True,
+        "selection_mode": "automatic_by_location_coverage",
+        "providers": ["noaa_goes"],
+        "satellites": ["G19"],
+        "provider_health": [{"provider": "noaa_goes", "status": "available"}],
     }
 
 
 def test_provider_coverage_sensor_separates_health_and_geography() -> None:
     entity = object.__new__(ProviderCoverageSensor)
     entity.entry = SimpleNamespace(
-        data={CONF_ACTIVE_FIRE_PROVIDER: "eumetsat_lsa_saf"}
+        data={"username": "user", "password": "secret"},
+        options={},
     )
     entity.coordinator = SimpleNamespace(
         provider_status=ProviderStatus.AVAILABLE,
@@ -371,7 +349,7 @@ def test_provider_coverage_sensor_separates_health_and_geography() -> None:
     assert attrs["provider_status"] == "available"
     assert attrs["covered_locations"] == 1
     assert attrs["uncovered_locations"] == 1
-    assert attrs["locations"][1]["recommended_provider"] == "noaa_goes"
+    assert attrs["locations"][1]["sources"] == ["noaa_goes"]
 
 
 @pytest.mark.parametrize("data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])])
@@ -388,12 +366,13 @@ def test_active_fire_summary_identifies_terralyra_map_source(data: object) -> No
 def test_source_specific_and_combined_counts_do_not_double_count() -> None:
     """The combined count adds only unmatched supplemental FIRMS clusters."""
     data = SimpleNamespace(
-        active_clusters=[object(), object()],
-        supplemental_clusters=[object(), object(), object()],
+        active_clusters=[
+            SimpleNamespace(providers=("noaa_goes",)),
+            SimpleNamespace(providers=("nasa_firms",)),
+        ],
         tracked_fires=[],
     )
     primary = object.__new__(ActiveFireCountSensor)
-    primary.entry = SimpleNamespace(data={CONF_ACTIVE_FIRE_PROVIDER: "noaa_goes"})
     primary.coordinator = SimpleNamespace(data=data)
     supplemental = object.__new__(SupplementalFireCountSensor)
     supplemental.coordinator = SimpleNamespace(data=data)
@@ -401,14 +380,11 @@ def test_source_specific_and_combined_counts_do_not_double_count() -> None:
     combined.coordinator = SimpleNamespace(data=data)
 
     assert primary.native_value == 2
-    assert supplemental.native_value == 3
-    assert combined.native_value == 5
-    assert primary.extra_state_attributes["count_scope"] == (
-        "configured_primary_provider_only"
-    )
-    assert supplemental.extra_state_attributes["deduplicated_against_primary"] is True
+    assert supplemental.native_value == 1
+    assert combined.native_value == 2
+    assert primary.extra_state_attributes["count_scope"] == "all_assigned_sources_deduplicated"
+    assert supplemental.extra_state_attributes["provider_role"] == "equal_peer"
     assert combined.extra_state_attributes == {
-        "primary_clusters": 2,
-        "nasa_firms_supplemental_clusters": 3,
+        "distinct_clusters": 2,
         "count_scope": "deduplicated_current_clusters_all_sources",
     }
