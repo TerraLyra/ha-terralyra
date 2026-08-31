@@ -1,9 +1,17 @@
 """Tests for localized fire-notification text."""
 from __future__ import annotations
 
+from datetime import UTC, datetime
+
 import pytest
 
-from custom_components.terralyra.coordinator import _notification_text
+from custom_components.terralyra.coordinator import (
+    _notification_location_context,
+    _notification_text,
+)
+from custom_components.terralyra.location_matching import match_incident_to_locations
+from custom_components.terralyra.models import FireCluster
+from custom_components.terralyra.monitoring import MonitoredLocation
 
 
 def test_hungarian_notification_prefers_settlement() -> None:
@@ -68,4 +76,72 @@ def test_notification_names_custom_monitoring_center() -> None:
     assert message == (
         "Fire detected near Albany, 24.7 km from New York. "
         "Confidence: 91%."
+    )
+
+
+def test_notification_uses_nearest_affected_location_and_lists_others() -> None:
+    locations = (
+        MonitoredLocation(
+            id="home",
+            name="Home",
+            latitude=47.0,
+            longitude=19.0,
+            radius_km=100,
+            enabled=True,
+            source="manual",
+        ),
+        MonitoredLocation(
+            id="cabin",
+            name="Cabin",
+            latitude=47.0,
+            longitude=19.2,
+            radius_km=100,
+            enabled=True,
+            source="manual",
+        ),
+    )
+    matches = match_incident_to_locations(
+        "incident-1", 47.0, 19.19, locations
+    )
+    cluster = FireCluster(
+        latitude=47.0,
+        longitude=19.19,
+        distance_km=14.4,
+        confidence=0.91,
+        frp_mw=12.0,
+        acquired=datetime(2026, 8, 31, tzinfo=UTC),
+        pixel_count=1,
+        track_id="incident-1",
+        location_matches=matches,
+    )
+
+    center, distance, affected = _notification_location_context(cluster, "Home")
+    title, message = _notification_text(
+        "en", "Village", distance, cluster.confidence, center, affected
+    )
+
+    assert center == "Cabin"
+    assert distance == pytest.approx(matches[0].distance_km)
+    assert affected == ("Cabin", "Home")
+    assert title == "🔥 Fire detection alert"
+    assert "km from Cabin" in message
+    assert message.endswith("Also within the monitoring radius of: Home.")
+
+
+def test_notification_location_context_falls_back_without_matches() -> None:
+    cluster = FireCluster(
+        latitude=47.0,
+        longitude=19.0,
+        distance_km=12.34,
+        confidence=0.8,
+        frp_mw=5.0,
+        acquired=datetime(2026, 8, 31, tzinfo=UTC),
+        pixel_count=1,
+        track_id="incident-2",
+    )
+
+    assert _notification_location_context(cluster, "Home") == (
+        "Home",
+        12.34,
+        (),
     )

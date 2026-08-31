@@ -16,6 +16,7 @@ from .activity import ActivitySummary, summarize_activity, update_activity_histo
 from .clustering import cluster_detections, haversine_km
 from .correlation import CorrelatedDetection, correlate_detections
 from .const import (
+    ATTR_AFFECTED_LOCATIONS,
     ATTR_NOTIFICATION_MESSAGE,
     ATTR_NOTIFICATION_TITLE,
     ATTR_PRODUCT_TIME,
@@ -363,12 +364,19 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 ATTR_PRODUCT_TIME: snapshot.product_timestamp.isoformat(),
             }
             if not first_snapshot:
+                notification_center, notification_distance, affected_locations = (
+                    _notification_location_context(
+                        cluster, self.monitoring_center.name
+                    )
+                )
+                attrs[ATTR_AFFECTED_LOCATIONS] = list(affected_locations)
                 title, message = _notification_text(
                     self.hass.config.language,
                     cluster.nearest_settlement,
-                    cluster.distance_km,
+                    notification_distance,
                     cluster.confidence,
-                    self.monitoring_center.name,
+                    notification_center,
+                    affected_locations,
                 )
                 attrs[ATTR_NOTIFICATION_TITLE] = title
                 attrs[ATTR_NOTIFICATION_MESSAGE] = message
@@ -703,6 +711,7 @@ def _notification_text(
     distance_km: float,
     confidence: float,
     monitoring_center: str = "Home",
+    affected_locations: tuple[str, ...] = (),
 ) -> tuple[str, str]:
     """Build a concise localized mobile-notification title and message."""
     confidence_percent = round(confidence * 100)
@@ -755,7 +764,39 @@ def _notification_text(
             f"Attendibilità: {confidence_percent}%.",
         ),
     }
-    return messages.get(code, messages["en"])
+    title, message = messages.get(code, messages["en"])
+    additional_locations = tuple(
+        name
+        for name in dict.fromkeys(affected_locations)
+        if name != monitoring_center
+    )
+    if not additional_locations:
+        return title, message
+    location_list = ", ".join(additional_locations)
+    suffixes = {
+        "de": f" Auch im Überwachungsradius von: {location_list}.",
+        "en": f" Also within the monitoring radius of: {location_list}.",
+        "es": f" También dentro del radio de vigilancia de: {location_list}.",
+        "fr": f" Également dans le rayon de surveillance de : {location_list}.",
+        "hu": f" További érintett figyelt helyek: {location_list}.",
+        "it": f" Anche nel raggio di monitoraggio di: {location_list}.",
+    }
+    return title, message + suffixes.get(code, suffixes["en"])
+
+
+def _notification_location_context(
+    cluster: FireCluster, fallback_center: str
+) -> tuple[str, float, tuple[str, ...]]:
+    """Select the nearest affected location while retaining every match."""
+    affected = tuple(match for match in cluster.location_matches if match.inside_radius)
+    if not affected:
+        return fallback_center, cluster.distance_km, ()
+    nearest = affected[0]
+    return (
+        nearest.location_name,
+        nearest.distance_km,
+        tuple(match.location_name for match in affected),
+    )
 
 
 def _tracked_fire_clusters(
