@@ -3,23 +3,22 @@ from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
 
+import pytest
 from homeassistant import config_entries
 from homeassistant.data_entry_flow import FlowResultType, InvalidData
-import pytest
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
 from custom_components.terralyra.const import (
     ACTIVE_FIRE_PROVIDER_GOES,
-    ACTIVE_FIRE_PROVIDER_LSA_SAF,
     CONF_ACTIVE_FIRE_PROVIDER,
     CONF_DEDUP_HOURS,
     CONF_DEDUP_RADIUS_KM,
     CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
-    CONF_FIRMS_MAP_KEY,
-    CONF_FIRE_RISK_RADIUS_KM,
     CONF_FIRE_HISTORY_HOURS,
+    CONF_FIRE_RISK_RADIUS_KM,
+    CONF_FIRMS_MAP_KEY,
     CONF_LOCATION_ID,
     CONF_MANAGE_MONITORED_LOCATIONS,
     CONF_MIN_CONFIDENCE,
@@ -32,14 +31,14 @@ from custom_components.terralyra.const import (
     CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
     CONF_SCAN_INTERVAL_MINUTES,
-    CONF_USERNAME,
     CONF_USE_CUSTOM_MONITORING_CENTER,
+    CONF_USERNAME,
     DEFAULT_DEDUP_HOURS,
     DEFAULT_DEDUP_RADIUS_KM,
     DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
-    DEFAULT_FIRE_RISK_RADIUS_KM,
     DEFAULT_FIRE_HISTORY_HOURS,
+    DEFAULT_FIRE_RISK_RADIUS_KM,
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_FRP_MW,
     DEFAULT_MONITORING_CENTER_NAME,
@@ -106,10 +105,6 @@ async def _start_user_flow(hass):
 
 async def _start_lsa_saf_flow(hass):
     result = await _start_user_flow(hass)
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF},
-    )
     assert result["step_id"] == "monitoring_center"
     return await hass.config_entries.flow.async_configure(
         result["flow_id"], _default_monitoring_input(hass)
@@ -130,17 +125,20 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
     """Test successful first-time setup."""
     result = await _start_lsa_saf_flow(hass)
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "lsa_saf"
+    assert result["step_id"] == "sources"
 
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {CONF_USERNAME: f"  {USERNAME}  ", CONF_PASSWORD: PASSWORD},
+        {
+            CONF_USERNAME: f"  {USERNAME}  ",
+            CONF_PASSWORD: PASSWORD,
+            CONF_FIRMS_MAP_KEY: "",
+        },
     )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "TerraLyra"
     assert result["data"] == {
-        CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF,
         CONF_USERNAME: USERNAME,
         CONF_PASSWORD: PASSWORD,
     }
@@ -174,47 +172,42 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
 
 
 async def test_goes_user_flow_needs_no_credentials(hass) -> None:
-    """Test covered locations can select GOES without creating a secret."""
-    with patch(
-        "custom_components.terralyra.config_flow.select_goes_satellite",
-        return_value=object(),
-    ):
-        result = await _start_user_flow(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
-        )
-        assert result["step_id"] == "monitoring_center"
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], _default_monitoring_input(hass)
-        )
+    """Test a GOES-covered location needs no credentials or secret."""
+    result = await _start_user_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        _default_monitoring_input(
+            hass,
+            **{
+                CONF_USE_CUSTOM_MONITORING_CENTER: True,
+                CONF_MONITORING_CENTER_NAME: "California",
+                CONF_MONITORING_LATITUDE: 38.5618,
+                CONF_MONITORING_LONGITUDE: -121.6263,
+            },
+        ),
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: "", CONF_PASSWORD: "", CONF_FIRMS_MAP_KEY: ""},
+    )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
-    assert result["data"] == {
-        CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES
-    }
+    assert result["data"] == {}
     assert CONF_USERNAME not in result["data"]
     assert CONF_PASSWORD not in result["data"]
 
 
 async def test_goes_user_flow_rejects_unsafe_coverage(hass) -> None:
-    """Test GOES cannot be enabled outside its conservative coverage gate."""
-    with patch(
-        "custom_components.terralyra.config_flow.select_goes_satellite",
-        return_value=None,
-    ):
-        result = await _start_user_flow(hass)
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
-        )
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], _default_monitoring_input(hass)
-        )
+    """Test setup explains when no automatic source covers a location."""
+    result = await _start_lsa_saf_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: "", CONF_PASSWORD: "", CONF_FIRMS_MAP_KEY: ""},
+    )
 
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "monitoring_center"
-    assert result["errors"] == {"base": "goes_not_available"}
+    assert result["step_id"] == "sources"
+    assert result["errors"] == {"base": "no_source_available"}
 
 
 async def test_goes_user_flow_accepts_custom_covered_center(hass) -> None:
@@ -222,40 +215,31 @@ async def test_goes_user_flow_accepts_custom_covered_center(hass) -> None:
     result = await _start_user_flow(hass)
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
-        {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
+        _default_monitoring_input(
+            hass,
+            **{
+                CONF_USE_CUSTOM_MONITORING_CENTER: True,
+                CONF_MONITORING_CENTER_NAME: "New York",
+                CONF_MONITORING_LATITUDE: 40.7128,
+                CONF_MONITORING_LONGITUDE: -74.006,
+            },
+        ),
     )
-    with patch(
-        "custom_components.terralyra.config_flow.select_goes_satellite",
-        return_value=object(),
-    ) as select_satellite:
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"],
-            _default_monitoring_input(
-                hass,
-                **{
-                    CONF_USE_CUSTOM_MONITORING_CENTER: True,
-                    CONF_MONITORING_CENTER_NAME: "New York",
-                    CONF_MONITORING_LATITUDE: 40.7128,
-                    CONF_MONITORING_LONGITUDE: -74.006,
-                },
-            ),
-        )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {CONF_USERNAME: "", CONF_PASSWORD: "", CONF_FIRMS_MAP_KEY: ""},
+    )
 
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert result["title"] == "TerraLyra · New York"
     location = result["options"][CONF_MONITORED_LOCATIONS][0]
     assert location[LOCATION_LATITUDE] == 40.7128
     assert location[LOCATION_SOURCE] == LOCATION_SOURCE_MANUAL
-    select_satellite.assert_called_once_with(40.7128, -74.006)
 
 
 async def test_monitoring_center_rejects_invalid_coordinates(hass) -> None:
     """Test non-finite custom coordinates cannot enter the config entry."""
     result = await _start_user_flow(hass)
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"],
-        {CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF},
-    )
     result = await hass.config_entries.flow.async_configure(
         result["flow_id"],
         _default_monitoring_input(
@@ -296,7 +280,7 @@ async def test_user_flow_errors_recover(
         {CONF_USERNAME: USERNAME, CONF_PASSWORD: "bad"},
     )
     assert result["type"] is FlowResultType.FORM
-    assert result["step_id"] == "lsa_saf"
+    assert result["step_id"] == "sources"
     assert result["errors"] == {"base": expected_error}
 
     result = await hass.config_entries.flow.async_configure(
@@ -311,7 +295,7 @@ async def test_duplicate_account_aborts(hass, mock_test_auth: AsyncMock) -> None
     """Test the same LSA SAF account cannot be configured twice."""
     existing = MockConfigEntry(
         domain=DOMAIN,
-        unique_id=USERNAME,
+        unique_id=DOMAIN,
         data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
     )
     existing.add_to_hass(hass)
@@ -613,7 +597,7 @@ async def test_options_reject_invalid_custom_monitoring_center(hass) -> None:
 
 
 async def test_options_reject_uncovered_goes_center(hass) -> None:
-    """Test moving a GOES entry outside coverage is rejected safely."""
+    """Test locations outside GOES coverage remain editable for peer sources."""
     entry = MockConfigEntry(
         domain=DOMAIN,
         unique_id=ACTIVE_FIRE_PROVIDER_GOES,
@@ -628,16 +612,11 @@ async def test_options_reject_uncovered_goes_center(hass) -> None:
         CONF_MONITORING_CENTER_NAME: "Budapest",
     }
 
-    with patch(
-        "custom_components.terralyra.config_flow.select_goes_satellite",
-        return_value=None,
-    ):
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"], user_input
-        )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], user_input
+    )
 
-    assert result["type"] is FlowResultType.FORM
-    assert result["errors"] == {"base": "goes_not_available"}
+    assert result["type"] is FlowResultType.CREATE_ENTRY
 
 
 async def test_options_enable_firms_validates_and_stores_secret(hass) -> None:
@@ -930,8 +909,8 @@ async def test_options_toggle_and_delete_with_two_locations(hass) -> None:
     assert len(result["data"][CONF_MONITORED_LOCATIONS]) == 1
 
 
-async def test_options_add_location_reports_limit_and_provider_coverage(hass) -> None:
-    """Adding remains recoverable at the local limit and outside GOES coverage."""
+async def test_options_add_location_reports_limit_and_allows_peer_coverage(hass) -> None:
+    """Adding reports the local limit and permits automatic peer assignment."""
     locations = [
         {
             **_stored_location(f"location-{index}"),
@@ -971,14 +950,11 @@ async def test_options_add_location_reports_limit_and_provider_coverage(hass) ->
     result = await hass.config_entries.options.async_configure(
         result["flow_id"], {"next_step_id": "add_location"}
     )
-    with patch(
-        "custom_components.terralyra.config_flow.select_goes_satellite",
-        return_value=None,
-    ):
-        result = await hass.config_entries.options.async_configure(
-            result["flow_id"], location_input
-        )
-    assert result["errors"] == {"base": "invalid_monitored_location"}
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], location_input
+    )
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert len(result["data"][CONF_MONITORED_LOCATIONS]) == 2
 
 
 async def test_options_edit_cannot_disable_last_location(hass) -> None:
