@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.5.2
 
 - Disambiguate simultaneous same-place fire markers without changing their
   stable incident-backed Home Assistant identities.
