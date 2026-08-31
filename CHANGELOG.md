@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.5.1
+
+- Keep Home Assistant geolocation entity identities tied to stable TerraLyra
+  incident IDs so a later fire cannot inherit another incident's history.
+- Merge connected same-product detection chains during clustering, reducing
+  overlapping map markers caused by source-pixel ordering.
+- Remove the internal `firms-` prefix from fallback NASA FIRMS fire names.
+- Add regression coverage for stable incident identities, connected clustering
+  and user-facing FIRMS fallback names.
+
 ## 0.5.0
 
 - Rename the existing active-fire cluster sensor to make clear that it counts
