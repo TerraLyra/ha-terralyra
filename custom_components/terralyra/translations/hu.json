@@ -25,6 +25,11 @@
           "monitoring_longitude": "Tizedes fok -180 és 180 között."
         }
       },
+      "sources": {
+        "title": "Opcionális aktívtűz-források kapcsolása",
+        "description": "A TerraLyra minden figyelt helyhez automatikusan hozzárendeli az összes releváns forrást. A NOAA GOES nem igényel hozzáférési adatot. A lefedettséget LSA SAF hozzáféréssel és/vagy NASA FIRMS MAP_KEY-jel bővítheted; az üresen hagyott forrás kimarad.",
+        "data": {"username": "LSA SAF felhasználónév (opcionális)", "password": "LSA SAF jelszó (opcionális)", "firms_map_key": "NASA FIRMS MAP_KEY (opcionális)"}
+      },
       "lsa_saf": {
         "title": "Kapcsolódás az LSA SAF Data Service-hez",
         "description": "Add meg az ingyenes LSA SAF Data Service fiókod adatait. Az integráció MTG aktívtűz-észlelést és FRMv3 tűzkockázati előrejelzést biztosít.",
@@ -54,7 +59,10 @@
       "cannot_connect": "Nem sikerült kapcsolódni az LSA SAF Data Service-hez",
       "goes_not_available": "A kiválasztott figyelőközpont kívül esik a NOAA GOES biztonságos lefedettségi területén",
       "invalid_monitoring_center": "Adj meg érvényes figyelőközpont-nevet és koordinátákat",
-      "invalid_auth": "Hibás felhasználónév vagy jelszó"
+      "invalid_auth": "Hibás felhasználónév vagy jelszó",
+      "invalid_firms_key": "A NASA FIRMS elutasította a MAP_KEY-t",
+      "lsa_credentials_incomplete": "Add meg az LSA SAF felhasználónevet és jelszót is, vagy hagyd mindkettőt üresen",
+      "no_source_available": "Ezt a helyet nem fedi le automatikus forrás. Adj meg LSA SAF hozzáférést vagy NASA FIRMS MAP_KEY-t"
     },
     "abort": {
       "already_configured": "Ez az LSA SAF fiók már be van állítva",
@@ -90,7 +98,7 @@
           "fire_history_hours": "Megjelenített tűzelőzmény időablaka",
           "resolve_place_names": "Közeli helynevek megjelenítése a térképen",
           "enable_land_surface_temperature": "Felszínhőmérséklet engedélyezése",
-          "enable_firms": "NASA FIRMS megerősítés engedélyezése",
+          "enable_firms": "NASA FIRMS használata, ahol elérhető",
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
@@ -132,7 +140,7 @@
   "issues": {
     "provider_authentication": {"title": "Sikertelen hitelesítés az aktívtűz-adatforrásnál", "description": "A TerraLyra nem tud hitelesíteni a beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."},
     "provider_outage": {"title": "Az aktívtűz-adatforrás ismételten nem érhető el", "description": "A beállított adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a szolgáltatást és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."},
-    "provider_coverage": {"title": "Az aktívtűz-adatforrás nem fed le minden figyelt helyet", "description": "A kiválasztott elsődleges adatforrás nem fedi le megbízhatóan ezeket a helyeket: {locations}. A TerraLyra beállításaiban válassz megfelelő adatforrást, vagy módosítsd a figyelt helyeket."}
+    "provider_coverage": {"title": "Néhány figyelt helyet egyetlen beállított tűzforrás sem fed le", "description": "A TerraLyra jelenleg nem tud használható forrást rendelni ezekhez: {locations}. Adj meg LSA SAF hozzáférést vagy NASA FIRMS MAP_KEY-t, illetve módosítsd a helyeket. A többi hely frissítése folytatódik."}
   },
   "entity": {
     "sensor": {
@@ -140,10 +148,10 @@
         "name": "Legközelebbi aktív tűz"
       },
       "active_fire_count": {
-        "name": "Elsődleges forrás aktív tűzcsoportjai"
+        "name": "Aktív tűzcsoportok"
       },
       "supplemental_fire_count": {
-        "name": "NASA FIRMS kiegészítő tűzcsoportok"
+        "name": "NASA FIRMS által észlelt tűzcsoportok"
       },
       "combined_fire_count": {
         "name": "Összes aktív tűzcsoport"
@@ -169,15 +177,14 @@
         }
       },
       "active_fire_provider": {
-        "name": "Elsődleges aktívtűz-adatforrás",
+        "name": "Hozzárendelt aktívtűz-források",
         "state": {
-          "eumetsat_lsa_saf": "EUMETSAT LSA SAF",
-          "noaa_goes": "NOAA GOES-18/19",
-          "unknown": "Ismeretlen"
+          "automatic": "Automatikus",
+          "unavailable": "Nem érhető el"
         }
       },
       "provider_coverage": {
-        "name": "Az elsődleges szolgáltató földrajzi lefedettsége",
+        "name": "Figyelt helyek forráslefedettsége",
         "state": {
           "covered": "Lefedett",
           "partial": "Részben lefedett",

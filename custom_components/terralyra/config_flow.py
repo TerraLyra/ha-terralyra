@@ -21,21 +21,20 @@ from homeassistant.helpers.selector import (
 
 from .api import LsaSafAuthError, LsaSafError
 from .const import (
-    ACTIVE_FIRE_PROVIDER_GOES,
     ACTIVE_FIRE_PROVIDER_LSA_SAF,
     CONF_ACTIVE_FIRE_PROVIDER,
     CONF_DEDUP_HOURS,
     CONF_DEDUP_RADIUS_KM,
     CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
-    CONF_FIRMS_MAP_KEY,
-    CONF_FIRE_RISK_RADIUS_KM,
     CONF_FIRE_HISTORY_HOURS,
+    CONF_FIRE_RISK_RADIUS_KM,
+    CONF_FIRMS_MAP_KEY,
+    CONF_LOCATION_ID,
+    CONF_MANAGE_MONITORED_LOCATIONS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
     CONF_MONITORED_LOCATIONS,
-    CONF_MANAGE_MONITORED_LOCATIONS,
-    CONF_LOCATION_ID,
     CONF_MONITORING_CENTER_NAME,
     CONF_MONITORING_LATITUDE,
     CONF_MONITORING_LONGITUDE,
@@ -43,35 +42,32 @@ from .const import (
     CONF_RADIUS_KM,
     CONF_RESOLVE_PLACE_NAMES,
     CONF_SCAN_INTERVAL_MINUTES,
-    CONF_USERNAME,
     CONF_USE_CUSTOM_MONITORING_CENTER,
+    CONF_USERNAME,
     DEFAULT_DEDUP_HOURS,
     DEFAULT_DEDUP_RADIUS_KM,
     DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
-    DEFAULT_FIRE_RISK_RADIUS_KM,
     DEFAULT_FIRE_HISTORY_HOURS,
+    DEFAULT_FIRE_RISK_RADIUS_KM,
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_FRP_MW,
     DEFAULT_MONITORING_CENTER_NAME,
     DEFAULT_RADIUS_KM,
     DEFAULT_RESOLVE_PLACE_NAMES,
     DEFAULT_SCAN_INTERVAL_MINUTES,
-    DEFAULT_USE_CUSTOM_MONITORING_CENTER,
     DOMAIN,
     LOCATION_ENABLED,
-    LOCATION_ID,
     LOCATION_LATITUDE,
     LOCATION_LONGITUDE,
     LOCATION_NAME,
     LOCATION_RADIUS_KM,
-    LOCATION_SOURCE,
-    LOCATION_SOURCE_HOME_ASSISTANT,
-    MAX_RADIUS_KM,
-    MAX_MONITORED_LOCATIONS,
-    MIN_RADIUS_KM,
     LOCATION_SOURCE_MANUAL,
+    MAX_MONITORED_LOCATIONS,
+    MAX_RADIUS_KM,
+    MIN_RADIUS_KM,
 )
+from .coverage import plan_location_sources
 from .monitoring import (
     MonitoredLocation,
     MonitoringCenter,
@@ -83,7 +79,6 @@ from .monitoring import (
 )
 from .products.fire import ActiveFireClient
 from .products.firms import FirmsAuthenticationError, FirmsClient, FirmsError
-from .providers.goes import select_goes_satellite
 
 FIRMS_VALIDATION_SOURCE = "VIIRS_NOAA20_NRT"
 
@@ -91,41 +86,16 @@ FIRMS_VALIDATION_SOURCE = "VIIRS_NOAA20_NRT"
 class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a TerraLyra config flow."""
 
-    VERSION = 2
+    VERSION = 3
 
     def __init__(self) -> None:
         """Initialize temporary setup state."""
         super().__init__()
-        self._selected_provider = ACTIVE_FIRE_PROVIDER_LSA_SAF
         self._monitoring_options: dict[str, Any] = {}
 
     async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
-        """Choose the primary active-fire provider."""
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            self._selected_provider = str(user_input[CONF_ACTIVE_FIRE_PROVIDER])
-            return await self.async_step_monitoring_center()
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(
-                        CONF_ACTIVE_FIRE_PROVIDER,
-                        default=ACTIVE_FIRE_PROVIDER_LSA_SAF,
-                    ): SelectSelector(
-                        SelectSelectorConfig(
-                            options=[
-                                ACTIVE_FIRE_PROVIDER_LSA_SAF,
-                                ACTIVE_FIRE_PROVIDER_GOES,
-                            ],
-                            translation_key="active_fire_provider",
-                        )
-                    )
-                }
-            ),
-            errors=errors,
-        )
+        """Start location-first automatic source setup."""
+        return await self.async_step_monitoring_center(user_input)
 
     async def async_step_monitoring_center(
         self, user_input: dict[str, Any] | None = None
@@ -138,30 +108,13 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except (KeyError, TypeError, ValueError):
                 errors["base"] = "invalid_monitoring_center"
             else:
-                if (
-                    self._selected_provider == ACTIVE_FIRE_PROVIDER_GOES
-                    and select_goes_satellite(center.latitude, center.longitude) is None
-                ):
-                    errors["base"] = "goes_not_available"
-                else:
-                    self._monitoring_options = {
-                        CONF_USE_CUSTOM_MONITORING_CENTER: center.custom,
-                        CONF_MONITORING_CENTER_NAME: center.name,
-                        CONF_MONITORING_LATITUDE: center.latitude,
-                        CONF_MONITORING_LONGITUDE: center.longitude,
-                    }
-                    if self._selected_provider == ACTIVE_FIRE_PROVIDER_LSA_SAF:
-                        return await self.async_step_lsa_saf()
-                    await self.async_set_unique_id(ACTIVE_FIRE_PROVIDER_GOES)
-                    self._abort_if_unique_id_configured()
-                    return self.async_create_entry(
-                        title=_entry_title(center),
-                        data={CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_GOES},
-                        options=_default_options()
-                        | _serialized_monitoring_options(
-                            center, DEFAULT_RADIUS_KM
-                        ),
-                    )
+                self._monitoring_options = {
+                    CONF_USE_CUSTOM_MONITORING_CENTER: center.custom,
+                    CONF_MONITORING_CENTER_NAME: center.name,
+                    CONF_MONITORING_LATITUDE: center.latitude,
+                    CONF_MONITORING_LONGITUDE: center.longitude,
+                }
+                return await self.async_step_sources()
 
         defaults = _home_monitoring_options(self.hass)
         if user_input is not None:
@@ -170,6 +123,104 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             step_id="monitoring_center",
             data_schema=self.add_suggested_values_to_schema(
                 _monitoring_center_schema(), defaults
+            ),
+            errors=errors,
+        )
+
+    async def async_step_sources(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
+        """Optionally connect credentialed sources; GOES is automatic."""
+        errors: dict[str, str] = {}
+        if user_input is not None:
+            username = str(user_input.get(CONF_USERNAME, "")).strip()
+            password = str(user_input.get(CONF_PASSWORD, ""))
+            firms_key = str(user_input.get(CONF_FIRMS_MAP_KEY, "")).strip()
+            if bool(username) != bool(password):
+                errors["base"] = "lsa_credentials_incomplete"
+            elif username:
+                try:
+                    await ActiveFireClient(
+                        async_get_clientsession(self.hass), username, password
+                    ).async_test_auth()
+                except LsaSafAuthError:
+                    errors["base"] = "invalid_auth"
+                except Exception:  # noqa: BLE001
+                    errors["base"] = "cannot_connect"
+            if not errors and firms_key:
+                center = _monitoring_center_from_options(
+                    self.hass, self._monitoring_options
+                )
+                west, south, east, north = _firms_validation_bounds(
+                    center.latitude, center.longitude
+                )
+                try:
+                    await FirmsClient(
+                        async_get_clientsession(self.hass), firms_key
+                    ).async_area(
+                        source=FIRMS_VALIDATION_SOURCE,
+                        west=west,
+                        south=south,
+                        east=east,
+                        north=north,
+                    )
+                except FirmsAuthenticationError:
+                    errors[CONF_FIRMS_MAP_KEY] = "invalid_firms_key"
+                except FirmsError:
+                    errors[CONF_FIRMS_MAP_KEY] = "cannot_connect"
+            if not errors:
+                await self.async_set_unique_id(DOMAIN)
+                self._abort_if_unique_id_configured()
+                center = _monitoring_center_from_options(
+                    self.hass, self._monitoring_options
+                )
+                planned = plan_location_sources(
+                    monitored_location_from_center(center, DEFAULT_RADIUS_KM),
+                    lsa_saf_available=bool(username and password),
+                    firms_available=bool(firms_key),
+                )
+                if not planned.covered:
+                    errors["base"] = "no_source_available"
+                    return self.async_show_form(
+                        step_id="sources",
+                        data_schema=vol.Schema(
+                            {
+                                vol.Optional(CONF_USERNAME, default=username): str,
+                                vol.Optional(CONF_PASSWORD, default=password): TextSelector(
+                                    TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                                ),
+                                vol.Optional(CONF_FIRMS_MAP_KEY, default=firms_key): TextSelector(
+                                    TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                                ),
+                            }
+                        ),
+                        errors=errors,
+                    )
+                data: dict[str, Any] = {}
+                if username:
+                    data[CONF_USERNAME] = username
+                    data[CONF_PASSWORD] = password
+                if firms_key:
+                    data[CONF_FIRMS_MAP_KEY] = firms_key
+                options = _default_options() | _serialized_monitoring_options(
+                    center, DEFAULT_RADIUS_KM
+                )
+                options[CONF_ENABLE_FIRMS] = bool(firms_key)
+                return self.async_create_entry(
+                    title=_entry_title(center), data=data, options=options
+                )
+        return self.async_show_form(
+            step_id="sources",
+            data_schema=vol.Schema(
+                {
+                    vol.Optional(CONF_USERNAME, default=""): str,
+                    vol.Optional(CONF_PASSWORD, default=""): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                    vol.Optional(CONF_FIRMS_MAP_KEY, default=""): TextSelector(
+                        TextSelectorConfig(type=TextSelectorType.PASSWORD)
+                    ),
+                }
             ),
             errors=errors,
         )
@@ -308,16 +359,6 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                 )
             else:
                 options[CONF_MONITORING_CENTER_NAME] = center.name
-            if (
-                not errors
-                and self.config_entry.data.get(
-                    CONF_ACTIVE_FIRE_PROVIDER,
-                    ACTIVE_FIRE_PROVIDER_LSA_SAF,
-                )
-                == ACTIVE_FIRE_PROVIDER_GOES
-                and select_goes_satellite(center.latitude, center.longitude) is None
-            ):
-                errors["base"] = "goes_not_available"
             submitted_key = str(options.pop(CONF_FIRMS_MAP_KEY, "")).strip()
             if not errors and options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
                 map_key = submitted_key or str(
@@ -471,8 +512,7 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                 location = _manual_location_from_input(
                     user_input, new_manual_location_id()
                 )
-                _validate_provider_location(self.config_entry, location)
-                validate_monitored_locations(tuple([*locations, location]))
+                validate_monitored_locations((*locations, location))
             except OverflowError:
                 errors["base"] = "too_many_locations"
             except (KeyError, TypeError, ValueError):
@@ -509,7 +549,6 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
         if user_input is not None:
             try:
                 updated = _location_from_edit_input(user_input, location)
-                _validate_provider_location(self.config_entry, updated)
                 replacement = [updated if item.id == updated.id else item for item in locations]
                 validate_monitored_locations(tuple(replacement))
                 if not any(item.enabled for item in replacement):
@@ -708,20 +747,6 @@ def _find_location(
     if location is None:  # pragma: no cover
         raise ValueError("Unknown monitored location")
     return location
-
-
-def _validate_provider_location(
-    entry: config_entries.ConfigEntry, location: MonitoredLocation
-) -> None:
-    """Reject locations unavailable from the configured primary provider."""
-    if (
-        entry.data.get(
-            CONF_ACTIVE_FIRE_PROVIDER, ACTIVE_FIRE_PROVIDER_LSA_SAF
-        )
-        == ACTIVE_FIRE_PROVIDER_GOES
-        and select_goes_satellite(location.latitude, location.longitude) is None
-    ):
-        raise ValueError("Location is outside NOAA GOES coverage")
 
 
 def _serialized_monitoring_options(

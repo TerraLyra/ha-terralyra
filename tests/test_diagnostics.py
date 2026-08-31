@@ -90,6 +90,7 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
                         source="manual",
                     ),
                 ),
+                provider=SimpleNamespace(health=()),
             ),
             fire_risk_coordinator=SimpleNamespace(
                 data=risk_data, last_update_success=True
@@ -109,15 +110,16 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
         "inactive": 0,
     }
     assert result["active_fire"]["provider_status"] == "available"
+    assert result["active_fire"]["source_selection"] == "automatic_equal_peers"
     assert result["active_fire"]["geographic_coverage"] == {
         "status": "covered",
         "enabled_location_count": 1,
         "covered_location_count": 1,
         "uncovered_location_count": 0,
-        "recommendation_counts": {
-            "eumetsat_lsa_saf": 0,
+        "provider_assignment_counts": {
+            "eumetsat_lsa_saf": 1,
             "noaa_goes": 0,
-            "nasa_firms": 0,
+            "nasa_firms": 1,
         },
     }
     assert result["fire_risk"]["near_home_risk"] == "extreme"
@@ -154,6 +156,7 @@ async def test_diagnostics_handle_coordinators_without_data(hass) -> None:
                 product_timestamp=None,
                 received_timestamp=None,
                 monitored_locations=(),
+                provider=SimpleNamespace(health=()),
             ),
             fire_risk_coordinator=SimpleNamespace(
                 data=None, last_update_success=False

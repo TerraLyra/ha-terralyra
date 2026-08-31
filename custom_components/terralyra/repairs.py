@@ -6,7 +6,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN
-from .coverage import LocationCoverage
+from .coverage import LocationCoverage, LocationSourcePlan
 
 OUTAGE_REPAIR_THRESHOLD = 3
 
@@ -19,7 +19,7 @@ def _issue_id(entry: ConfigEntry, kind: str) -> str:
 def async_set_authentication_issue(
     hass: HomeAssistant, entry: ConfigEntry, *, active: bool
 ) -> None:
-    """Create or clear the primary-provider authentication issue."""
+    """Create or clear the active-fire source authentication issue."""
     issue_id = _issue_id(entry, "provider_authentication")
     if not active:
         ir.async_delete_issue(hass, DOMAIN, issue_id)
@@ -62,7 +62,7 @@ def async_set_provider_outage_issue(
 def async_sync_coverage_issue(
     hass: HomeAssistant,
     entry: ConfigEntry,
-    results: tuple[LocationCoverage, ...],
+    results: tuple[LocationCoverage | LocationSourcePlan, ...],
 ) -> None:
     """Synchronize the actionable geographic-coverage issue."""
     uncovered = [result.location_name for result in results if not result.covered]

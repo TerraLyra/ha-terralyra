@@ -75,6 +75,58 @@ def test_provider_snapshot_is_immutable() -> None:
         snapshot.status = ProviderStatus.OUTAGE  # type: ignore[misc]
 
 
+def test_independent_sources_with_small_location_offset_form_one_incident() -> None:
+    acquired = datetime(2026, 8, 27, 16, 20, tzinfo=UTC)
+    clusters = cluster_detections(
+        [
+            (
+                _detection(
+                    provider="EUMETSAT LSA SAF",
+                    satellite="MTG",
+                    timestamp=acquired,
+                    latitude=46.250,
+                    longitude=20.140,
+                    frp_mw=10.0,
+                ),
+                0.0,
+            ),
+            (
+                _detection(
+                    provider="NASA FIRMS",
+                    satellite="NOAA-20 VIIRS",
+                    timestamp=acquired,
+                    latitude=46.275,
+                    longitude=20.140,
+                    frp_mw=11.0,
+                ),
+                0.0,
+            ),
+        ],
+        46.25,
+        20.14,
+        cluster_radius_km=1.0,
+    )
+
+    assert len(clusters) == 1
+    assert clusters[0].confirmation_level.value == "multi_source"
+    assert clusters[0].providers == ("EUMETSAT LSA SAF", "NASA FIRMS")
+    assert clusters[0].frp_mw == 11.0
+
+
+def test_same_source_keeps_configured_clustering_radius() -> None:
+    clusters = cluster_detections(
+        [
+            (_detection(latitude=46.250, longitude=20.140), 0.0),
+            (_detection(latitude=46.275, longitude=20.140), 0.0),
+        ],
+        46.25,
+        20.14,
+        cluster_radius_km=1.0,
+    )
+
+    assert len(clusters) == 2
+
+
 @pytest.mark.asyncio
 async def test_mtg_adapter_preserves_product_values() -> None:
     """The MTG adapter maps every existing parser value without loss."""

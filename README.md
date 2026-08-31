@@ -1,10 +1,13 @@
 # TerraLyra for Home Assistant
 
 A HACS-compatible environmental monitoring and early-warning integration for
-Home Assistant. TerraLyra currently offers **EUMETSAT LSA SAF** and, in safely
-covered Western Hemisphere locations, **NOAA GOES-18/19** as primary
-active-fire sources. It can also use NASA FIRMS as optional independent
-corroboration and includes additional LSA SAF environmental products.
+Home Assistant. TerraLyra automatically assigns every geographically relevant
+active-fire source to each monitored location: **EUMETSAT LSA SAF MTG** in its
+safe coverage area, **NOAA GOES-18/19** in the Western Hemisphere, and optional
+**NASA FIRMS** global observations. Assigned sources are equal peers: none is
+labelled primary or secondary, and independent observations can corroborate
+the same incident. TerraLyra also includes additional LSA SAF environmental
+products.
 
 Repository: `https://github.com/TerraLyra/ha-terralyra`
 
@@ -39,9 +42,10 @@ not relabel third-party data as its own.
 | Solar radiation / fluxes | LSA SAF radiation family | product-dependent | Roadmap |
 | Vegetation metrics | NDVI/FVC/LAI/FAPAR/GPP | product-dependent | Roadmap |
 
-The integration enables one location-appropriate primary active-fire provider
-and the public **FRMv3 Fire Risk Map** forecast. The MTLST point sensor and NASA
-FIRMS corroboration are optional and disabled by default.
+The integration automatically enables all credential-free sources covering a
+location and any configured credentialed source. It also enables the public
+**FRMv3 Fire Risk Map** forecast. The MTLST point sensor and NASA FIRMS source
+are optional and disabled until explicitly configured.
 
 ## MTG Land Surface Temperature
 
@@ -66,27 +70,26 @@ ListProduct from:
 
 `MTG / MTFRPPixel / NATIVE`
 
-For covered Western Hemisphere installations, NOAA GOES uses the public
-ABI-L2-FDCF full-disk product without provider credentials. Both primary
-providers pass normalized detections to the same filtering, clustering,
-tracking and alert pipeline. On first setup TerraLyra seeds the current snapshot
+For covered Western Hemisphere locations, NOAA GOES uses the public
+ABI-L2-FDCF full-disk product without provider credentials. Every assigned
+provider passes normalized detections to the same filtering, cross-source
+deduplication, clustering, tracking and alert pipeline. On first setup
+TerraLyra seeds the current snapshot
 without emitting `new_fire` events, so already-existing fires do not cause an
 alert flood.
 
 ### Entities
 
 - `sensor.*_nearest_active_fire` – distance to the nearest active fire cluster
-- `sensor.*_primary_source_active_fire_clusters` – current clusters from the
-  configured primary provider only
-- `sensor.*_nasa_firms_supplemental_fire_clusters` – current FIRMS-only
-  clusters after removing matches already represented by the primary provider
-- `sensor.*_all_active_fire_clusters` – deduplicated current total across the
-  primary provider and supplemental NASA FIRMS observations
+- `sensor.*_all_active_fire_clusters` – current, cross-source-deduplicated
+  incident total from every assigned source
+- `sensor.*_nasa_firms_*` – the subset observed by NASA FIRMS; this is a source
+  breakdown, not a secondary-source count
 - `sensor.*_fire_pixels_in_radius` – raw provider detections after filters
 - `sensor.*_latest_fire_product_time` – time of the latest processed provider product
 - `sensor.*_fire_product_age` – age of the latest product in minutes
-- `sensor.*_active_fire_data_source` – selected primary provider, with its
-  current satellite and product as attributes
+- `sensor.*_active_fire_data_source` – automatic assignment state, with every
+  assigned provider, satellite and health state as attributes
 - `sensor.*_active_fire_data_status` – provider health and freshness, including
   delayed, no-product and outage states
 - `sensor.*_fire_detections_in_the_last_hour` – detections during the last hour,
@@ -97,15 +100,14 @@ alert flood.
   the rolling 24-hour window
 - `sensor.*_nearest_fire_evidence_strength` – explainable strength of the
   satellite evidence for the nearest incident; never an official confirmation
-- `sensor.*_independent_fire_source_confirmation` – availability and result of
-  optional independent NASA FIRMS corroboration
+- `sensor.*_independent_fire_source_confirmation` – whether an incident is
+  observed by one source or corroborated by multiple equal sources
 - `sensor.*_active_fire_situation` – explainable integration-calculated summary
   of current detected activity (`normal`, `elevated`, `high`, `critical`, or
   `unknown`)
 - `event.*_new_active_fire` – Home Assistant Event entity for a newly deduplicated fire
 - `event.*_fire_incident_trend_change` – meaningful, cooldown-protected trend changes
-- `geo_location.*` – one map marker per recently tracked primary or
-  supplemental fire incident
+- `geo_location.*` – one map marker per recently tracked, deduplicated incident
 - `number.*_active_fire_monitoring_radius` – dashboard-adjustable monitoring radius
 - `number.*_fire_history_window` – dashboard-adjustable 1–48 hour period for
   retaining inactive incident markers without extending alert deduplication

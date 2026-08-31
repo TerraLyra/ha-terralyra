@@ -13,6 +13,7 @@
         "data": {"use_custom_monitoring_center": "Benutzerdefiniertes Überwachungszentrum verwenden", "monitoring_center_name": "Name des Überwachungszentrums", "monitoring_latitude": "Breitengrad", "monitoring_longitude": "Längengrad"},
         "data_description": {"use_custom_monitoring_center": "Deaktiviert wird der Zuhause-Standort von Home Assistant verwendet.", "monitoring_center_name": "Ein kurzer, erkennbarer Name, zum Beispiel New York oder Ferienhaus.", "monitoring_latitude": "Dezimalgrad von -90 bis 90.", "monitoring_longitude": "Dezimalgrad von -180 bis 180."}
       },
+      "sources": {"title": "Optionale Aktivbrandquellen verbinden", "description": "TerraLyra weist jedem überwachten Ort automatisch alle passenden Quellen zu. NOAA GOES benötigt keine Zugangsdaten. LSA-SAF-Zugangsdaten und/oder NASA-FIRMS-MAP_KEY erweitern die Abdeckung; leere Felder überspringen die Quelle.", "data": {"username": "LSA-SAF-Benutzername (optional)", "password": "LSA-SAF-Passwort (optional)", "firms_map_key": "NASA FIRMS MAP_KEY (optional)"}},
       "lsa_saf": {
         "title": "Mit dem LSA SAF Data Service verbinden",
         "description": "Gib die Zugangsdaten deines kostenlosen LSA SAF Data Service-Kontos ein. Die Integration stellt MTG-Aktivbranderkennung und die FRMv3-Waldbrandgefahrenvorhersage bereit.",
@@ -26,7 +27,7 @@
         "data_description": {"username": "Benutzername des ursprünglich eingerichteten LSA SAF-Kontos", "password": "Aktuelles Passwort des LSA SAF Data Service"}
       }
     },
-    "error": {"cannot_connect": "Verbindung zum LSA SAF Data Service nicht möglich", "goes_not_available": "Das ausgewählte Überwachungszentrum liegt außerhalb des sicheren NOAA-GOES-Abdeckungsgebiets", "invalid_monitoring_center": "Gültigen Namen und gültige Koordinaten für das Überwachungszentrum eingeben", "invalid_auth": "Ungültiger Benutzername oder ungültiges Passwort"},
+    "error": {"cannot_connect": "Verbindung zum LSA SAF Data Service nicht möglich", "goes_not_available": "Das ausgewählte Überwachungszentrum liegt außerhalb des sicheren NOAA-GOES-Abdeckungsgebiets", "invalid_monitoring_center": "Gültigen Namen und gültige Koordinaten für das Überwachungszentrum eingeben", "invalid_auth": "Ungültiger Benutzername oder ungültiges Passwort", "invalid_firms_key": "Der NASA-FIRMS-MAP_KEY wurde abgelehnt", "lsa_credentials_incomplete": "Benutzername und Passwort für LSA SAF eingeben oder beide Felder leer lassen", "no_source_available": "Keine automatische Quelle deckt diesen Ort ab. LSA-SAF-Zugangsdaten oder NASA-FIRMS-MAP_KEY hinzufügen"},
     "abort": {"already_configured": "Dieses LSA SAF-Konto ist bereits eingerichtet", "reauth_successful": "Authentifizierungsdaten erfolgreich aktualisiert", "wrong_account": "Die neuen Zugangsdaten gehören zu einem anderen LSA SAF-Konto"}
   },
   "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (Konto erforderlich)", "noaa_goes": "NOAA GOES-18/19 (kein Konto erforderlich)"}}},
@@ -50,7 +51,7 @@
           "fire_history_hours": "Angezeigtes Brandverlaufsfenster",
           "resolve_place_names": "Nahe Ortsnamen auf der Karte anzeigen",
           "enable_land_surface_temperature": "Landoberflächentemperatur aktivieren",
-          "enable_firms": "NASA-FIRMS-Bestätigung aktivieren",
+          "enable_firms": "NASA FIRMS verwenden, wo verfügbar",
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
@@ -92,20 +93,20 @@
   "issues": {
     "provider_authentication": {"title": "Authentifizierung beim Aktivbrandanbieter fehlgeschlagen", "description": "TerraLyra kann sich beim konfigurierten Aktivbrandanbieter nicht authentifizieren. Prüfen Sie die Zugangsdaten in den Integrationseinstellungen und laden Sie die Integration neu."},
     "provider_outage": {"title": "Aktivbrandanbieter ist wiederholt nicht verfügbar", "description": "Der konfigurierte Anbieter ist bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. Prüfen Sie den Dienst und den Internetzugang von Home Assistant und laden Sie die Integration neu."},
-    "provider_coverage": {"title": "Aktivbrandanbieter deckt nicht alle überwachten Orte ab", "description": "Der ausgewählte Anbieter deckt folgende Orte nicht zuverlässig ab: {locations}. Wählen Sie in den TerraLyra-Einstellungen einen geeigneten Anbieter oder ändern Sie die überwachten Orte."}
+    "provider_coverage": {"title": "Keine konfigurierte Aktivbrandquelle deckt einige Orte ab", "description": "TerraLyra kann derzeit keine nutzbare Quelle zuweisen für: {locations}. Ergänzen Sie LSA-SAF-Zugangsdaten oder einen NASA-FIRMS-MAP_KEY, oder ändern Sie die Orte. Andere Orte werden weiter aktualisiert."}
   },
   "entity": {
     "sensor": {
       "nearest_fire": {"name": "Nächstes aktives Feuer"},
-      "active_fire_count": {"name": "Aktive Brandgruppen der Primärquelle"},
-      "supplemental_fire_count": {"name": "Zusätzliche NASA-FIRMS-Brandgruppen"},
+      "active_fire_count": {"name": "Aktive Brandgruppen"},
+      "supplemental_fire_count": {"name": "Von NASA FIRMS beobachtete Brandgruppen"},
       "combined_fire_count": {"name": "Alle aktiven Brandgruppen"},
       "raw_pixel_count": {"name": "Brandpixel im Radius"},
       "product_time": {"name": "Zeitpunkt des neuesten Brandprodukts"},
       "product_age": {"name": "Alter des Brandprodukts"},
       "provider_status": {"name": "Status der Aktivbranddaten", "state": {"initializing": "Wird initialisiert", "available": "Verfügbar", "delayed": "Verspätet", "no_product": "Kein aktuelles Produkt", "outage": "Anbieterausfall", "auth_error": "Authentifizierungsfehler"}},
-      "active_fire_provider": {"name": "Primäre Datenquelle für aktive Brände", "state": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF", "noaa_goes": "NOAA GOES-18/19", "unknown": "Unbekannt"}},
-      "provider_coverage": {"name": "Geografische Abdeckung des primären Anbieters", "state": {"covered": "Abgedeckt", "partial": "Teilweise abgedeckt", "not_covered": "Nicht abgedeckt", "unknown": "Unbekannt"}},
+      "active_fire_provider": {"name": "Zugewiesene Aktivbrandquellen", "state": {"automatic": "Automatisch", "unavailable": "Nicht verfügbar"}},
+      "provider_coverage": {"name": "Quellenabdeckung der überwachten Orte", "state": {"covered": "Abgedeckt", "partial": "Teilweise abgedeckt", "not_covered": "Nicht abgedeckt", "unknown": "Unbekannt"}},
       "fire_risk_today": {"name": "Waldbrandgefahr in der Nähe von Zuhause", "state": {"low": "Niedrig", "moderate": "Mäßig", "high": "Hoch", "very_high": "Sehr hoch", "extreme": "Extrem", "unknown": "Unbekannt"}},
       "fire_risk_area_maximum": {"name": "Höchste Waldbrandgefahr im Überwachungsgebiet", "state": {"low": "Niedrig", "moderate": "Mäßig", "high": "Hoch", "very_high": "Sehr hoch", "extreme": "Extrem", "unknown": "Unbekannt"}},
       "fire_risk_update": {"name": "Letzte Aktualisierung der Waldbrandgefahrenvorhersage"},

@@ -4,21 +4,24 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import (
+    SensorDeviceClass,
+    SensorEntity,
+    SensorStateClass,
+)
 from homeassistant.const import UnitOfLength, UnitOfPower, UnitOfTemperature
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TerraLyraConfigEntry
 from .const import (
-    ACTIVE_FIRE_PROVIDER_GOES,
-    ACTIVE_FIRE_PROVIDER_LSA_SAF,
-    CONF_ACTIVE_FIRE_PROVIDER,
+    CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
-    DEFAULT_ACTIVE_FIRE_PROVIDER,
+    CONF_FIRMS_MAP_KEY,
+    DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
 )
-from .coverage import assess_location_coverage, summarize_coverage
+from .coverage import plan_location_sources, summarize_coverage
 from .entity import (
     TerraLyraEntity,
     TerraLyraFireRiskEntity,
@@ -161,10 +164,7 @@ class ActiveFireCountSensor(TerraLyraEntity, SensorEntity):
             for cluster in data.tracked_fires
         )
         return {
-            "count_scope": "configured_primary_provider_only",
-            "configured_primary_provider": self.entry.data.get(
-                CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
-            ),
+            "count_scope": "all_assigned_sources_deduplicated",
             "tracked_incidents": len(data.tracked_fires),
             "inactive_incidents": inactive,
             "map_markers": len(data.tracked_fires),
@@ -173,7 +173,7 @@ class ActiveFireCountSensor(TerraLyraEntity, SensorEntity):
 
 
 class SupplementalFireCountSensor(TerraLyraEntity, SensorEntity):
-    """Count current NASA FIRMS-only clusters, excluding correlated duplicates."""
+    """Count current deduplicated clusters observed by NASA FIRMS."""
 
     _attr_translation_key = "supplemental_fire_count"
     _attr_state_class = SensorStateClass.MEASUREMENT
@@ -186,14 +186,18 @@ class SupplementalFireCountSensor(TerraLyraEntity, SensorEntity):
     @property
     def native_value(self) -> int:
         data = self.coordinator.data
-        return len(data.supplemental_clusters) if data else 0
+        return (
+            sum("nasa_firms" in cluster.providers for cluster in data.active_clusters)
+            if data
+            else 0
+        )
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {
             "provider": "nasa_firms",
-            "count_scope": "supplemental_unmatched_clusters_only",
-            "deduplicated_against_primary": True,
+            "count_scope": "deduplicated_clusters_observed_by_provider",
+            "provider_role": "equal_peer",
         }
 
 
@@ -213,16 +217,14 @@ class CombinedFireCountSensor(TerraLyraEntity, SensorEntity):
         data = self.coordinator.data
         if data is None:
             return 0
-        return len(data.active_clusters) + len(data.supplemental_clusters)
+        return len(data.active_clusters)
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data
-        primary = len(data.active_clusters) if data else 0
-        supplemental = len(data.supplemental_clusters) if data else 0
+        distinct = len(data.active_clusters) if data else 0
         return {
-            "primary_clusters": primary,
-            "nasa_firms_supplemental_clusters": supplemental,
+            "distinct_clusters": distinct,
             "count_scope": "deduplicated_current_clusters_all_sources",
         }
 
@@ -320,15 +322,11 @@ class ProviderStatusSensor(TerraLyraEntity, SensorEntity):
 
 
 class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
-    """Expose the configured primary provider independently of observations."""
+    """Expose the automatically assigned equal active-fire sources."""
 
     _attr_translation_key = "active_fire_provider"
     _attr_device_class = SensorDeviceClass.ENUM
-    _attr_options = [
-        ACTIVE_FIRE_PROVIDER_LSA_SAF,
-        ACTIVE_FIRE_PROVIDER_GOES,
-        "unknown",
-    ]
+    _attr_options = ["automatic", "unavailable"]
     _attr_icon = "mdi:satellite-variant"
 
     def __init__(self, entry: TerraLyraConfigEntry) -> None:
@@ -337,25 +335,17 @@ class ActiveFireProviderSensor(TerraLyraEntity, SensorEntity):
 
     @property
     def native_value(self) -> str:
-        provider = self.entry.data.get(
-            CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
-        )
-        return provider if provider in self._attr_options else "unknown"
+        return "automatic" if getattr(self.coordinator.provider, "bindings", ()) else "unavailable"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        center = self.coordinator.monitoring_center
+        bindings = getattr(self.coordinator.provider, "bindings", ())
+        health = getattr(self.coordinator.provider, "health", ())
         return {
-            "observed_provider": self.coordinator.provider_name,
-            "corroborating_provider": (
-                self.coordinator.corroboration_provider_name
-            ),
-            "satellite": self.coordinator.satellite,
-            "product": self.coordinator.provider_product,
-            "monitoring_center": center.name,
-            "monitoring_latitude": round(center.latitude, 6),
-            "monitoring_longitude": round(center.longitude, 6),
-            "custom_monitoring_center": center.custom,
+            "selection_mode": "automatic_by_location_coverage",
+            "providers": [binding.provider_id for binding in bindings],
+            "satellites": [binding.satellite for binding in bindings],
+            "provider_health": [item.attrs() for item in health],
         }
 
 
@@ -372,16 +362,21 @@ class ProviderCoverageSensor(TerraLyraEntity, SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_provider_coverage"
 
     def _coverage(self):
-        provider = str(
-            self.entry.data.get(
-                CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
+        results = tuple(
+            plan_location_sources(
+                location,
+                lsa_saf_available=bool(
+                    self.entry.data.get("username") and self.entry.data.get("password")
+                ),
+                firms_available=bool(
+                    self.entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS)
+                    and self.entry.data.get(CONF_FIRMS_MAP_KEY)
+                ),
             )
-        )
-        return provider, tuple(
-            assess_location_coverage(provider, location)
             for location in self.coordinator.monitored_locations
             if location.enabled
         )
+        return "automatic", results
 
     @property
     def native_value(self) -> str:
@@ -392,12 +387,12 @@ class ProviderCoverageSensor(TerraLyraEntity, SensorEntity):
     def extra_state_attributes(self) -> dict[str, Any]:
         provider, results = self._coverage()
         return {
-            "configured_primary_provider": provider,
+            "selection_mode": provider,
             "provider_status": self.coordinator.provider_status.value,
             "covered_locations": sum(result.covered for result in results),
             "uncovered_locations": sum(not result.covered for result in results),
             "locations": [result.attrs() for result in results],
-            "assessment": "conservative_pre_download_geographic_gate",
+            "assessment": "automatic_equal_peer_geographic_assignment",
         }
 
 
@@ -514,7 +509,7 @@ class ActiveFireSituationSensor(TerraLyraEntity, SensorEntity):
 
 
 class FireSourceConfirmationSensor(TerraLyraEntity, SensorEntity):
-    """Expose whether an independent satellite source corroborates active fire."""
+    """Expose whether equal independent sources corroborate active fire."""
 
     _attr_translation_key = "fire_source_confirmation"
     _attr_device_class = SensorDeviceClass.ENUM
@@ -539,19 +534,12 @@ class FireSourceConfirmationSensor(TerraLyraEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data
+        health = tuple(getattr(self.coordinator.provider, "health", ()))
         return {
-            "primary_provider": self.coordinator.provider_name,
-            "secondary_provider": self.coordinator.corroboration_provider_name,
-            "secondary_status": (
-                self.coordinator.corroboration_status.value
-                if self.coordinator.corroboration_status is not None
-                else "disabled"
-            ),
-            "secondary_satellite": self.coordinator.corroboration_satellite,
-            "secondary_product_timestamp": (
-                self.coordinator.corroboration_product_timestamp.isoformat()
-                if self.coordinator.corroboration_product_timestamp
-                else None
+            "selection_mode": "automatic_equal_peers",
+            "assigned_sources": [item.attrs() for item in health],
+            "available_source_count": sum(
+                item.status is ProviderStatus.AVAILABLE for item in health
             ),
             "corroborating_detections": (
                 data.corroborating_detections if data else 0
@@ -577,11 +565,12 @@ class NearestFireEvidenceSensor(TerraLyraEntity, SensorEntity):
     def _assessment(self) -> FireEvidenceAssessment:
         data = self.coordinator.data
         nearest = data.active_clusters[0] if data and data.active_clusters else None
+        health = tuple(getattr(self.coordinator.provider, "health", ()))
         return assess_fire_evidence(
             nearest,
             product_time=data.product_time if data else None,
             secondary_available=(
-                self.coordinator.corroboration_status is ProviderStatus.AVAILABLE
+                sum(item.status is ProviderStatus.AVAILABLE for item in health) > 1
             ),
         )
 

@@ -8,7 +8,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
 from .const import (
-    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
     CONF_FIRMS_MAP_KEY,
@@ -21,7 +20,6 @@ from .const import (
     CONF_RESOLVE_PLACE_NAMES,
     CONF_USE_CUSTOM_MONITORING_CENTER,
     CONF_USERNAME,
-    DEFAULT_ACTIVE_FIRE_PROVIDER,
     DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
     DEFAULT_RADIUS_KM,
@@ -31,7 +29,6 @@ from .const import (
     PLATFORMS,
 )
 from .coordinator import TerraLyraCoordinator
-from .coverage import assess_location_coverage
 from .fire_risk_coordinator import FireRiskCoordinator
 from .geocoding import PlaceNameResolver
 from .lst_coordinator import LandSurfaceTemperatureCoordinator
@@ -41,10 +38,8 @@ from .monitoring import (
     resolve_monitoring_center,
 )
 from .products.fire_risk import FireRiskClient
-from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
-from .providers.factory import build_primary_provider
-from .providers.firms import FirmsMultiAreaProvider, monitoring_bounds
+from .providers.factory import build_provider_pool
 from .repairs import async_sync_coverage_issue
 
 
@@ -66,9 +61,15 @@ async def async_migrate_entry(
     hass: HomeAssistant, entry: TerraLyraConfigEntry
 ) -> bool:
     """Migrate the single-center v1 config into the local location list."""
-    if entry.version > 2:
+    if entry.version > 3:
         return False
+    if entry.version == 3:
+        return True
+
     if entry.version == 2:
+        data = dict(getattr(entry, "data", {}))
+        data.pop("active_fire_provider", None)
+        hass.config_entries.async_update_entry(entry, data=data, version=3)
         return True
 
     options = dict(entry.options)
@@ -90,7 +91,9 @@ async def async_migrate_entry(
     ):
         options.pop(legacy_key, None)
 
-    hass.config_entries.async_update_entry(entry, options=options, version=2)
+    data = dict(getattr(entry, "data", {}))
+    data.pop("active_fire_provider", None)
+    hass.config_entries.async_update_entry(entry, data=data, options=options, version=3)
     return True
 
 
@@ -99,55 +102,31 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
     session = async_get_clientsession(hass)
     monitored_locations = resolve_monitored_locations(hass, entry)
     monitoring_center = resolve_monitoring_center(hass, entry)
-    primary_provider = build_primary_provider(
+    provider_pool, coverage_plans = build_provider_pool(
         session,
         hass.async_add_executor_job,
-        provider_name=str(
-            entry.data.get(CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER)
-        ),
-        latitude=monitoring_center.latitude,
-        longitude=monitoring_center.longitude,
+        locations=monitored_locations,
         username=entry.data.get(CONF_USERNAME),
         password=entry.data.get(CONF_PASSWORD),
-    )
-    provider_name = str(
-        entry.data.get(CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER)
+        firms_enabled=entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS),
+        firms_map_key=entry.data.get(CONF_FIRMS_MAP_KEY),
     )
     async_sync_coverage_issue(
         hass,
         entry,
-        tuple(
-            assess_location_coverage(provider_name, location)
-            for location in monitored_locations
-        ),
+        coverage_plans,
     )
     resolver = None
     if entry.options.get(CONF_RESOLVE_PLACE_NAMES, DEFAULT_RESOLVE_PLACE_NAMES):
         resolver = PlaceNameResolver(hass)
         await resolver.async_setup()
-    corroboration_provider = None
-    if entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
-        bounds = tuple(
-            monitoring_bounds(
-                location.latitude,
-                location.longitude,
-                location.radius_km,
-            )
-            for location in monitored_locations
-            if location.enabled
-        )
-        corroboration_provider = FirmsMultiAreaProvider(
-            FirmsClient(session, str(entry.data.get(CONF_FIRMS_MAP_KEY, ""))),
-            bounds,
-        )
     coordinator = TerraLyraCoordinator(
         hass,
         entry,
-        primary_provider,
+        provider_pool,
         resolver,
         monitoring_center=monitoring_center,
         monitored_locations=monitored_locations,
-        corroboration_provider=corroboration_provider,
     )
     await coordinator.async_config_entry_first_refresh()
     fire_risk_client = FireRiskClient(session)

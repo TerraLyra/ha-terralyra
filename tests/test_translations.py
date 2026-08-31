@@ -13,14 +13,11 @@ EXPECTED_ENGLISH_IDENTICAL_PATHS = {
     "hu": {
         "title",
         "options.step.init.data.firms_map_key",
-        "entity.sensor.active_fire_provider.state.eumetsat_lsa_saf",
-        "entity.sensor.active_fire_provider.state.noaa_goes",
     },
     "de": {
         "title",
+        "config.step.sources.data.firms_map_key",
         "options.step.init.data.firms_map_key",
-        "entity.sensor.active_fire_provider.state.eumetsat_lsa_saf",
-        "entity.sensor.active_fire_provider.state.noaa_goes",
         "entity.sensor.active_fire_situation.state.normal",
     },
     "fr": {
@@ -28,14 +25,10 @@ EXPECTED_ENGLISH_IDENTICAL_PATHS = {
         "config.step.monitoring_center.data.monitoring_latitude",
         "config.step.monitoring_center.data.monitoring_longitude",
         "options.step.init.data.firms_map_key",
-        "entity.sensor.active_fire_provider.state.eumetsat_lsa_saf",
-        "entity.sensor.active_fire_provider.state.noaa_goes",
     },
     "es": {
         "title",
         "options.step.init.data.firms_map_key",
-        "entity.sensor.active_fire_provider.state.eumetsat_lsa_saf",
-        "entity.sensor.active_fire_provider.state.noaa_goes",
         "entity.sensor.active_fire_situation.state.normal",
     },
     "it": {
@@ -43,8 +36,6 @@ EXPECTED_ENGLISH_IDENTICAL_PATHS = {
         "config.step.lsa_saf.data.password",
         "config.step.reauth_confirm.data.password",
         "options.step.init.data.firms_map_key",
-        "entity.sensor.active_fire_provider.state.eumetsat_lsa_saf",
-        "entity.sensor.active_fire_provider.state.noaa_goes",
     },
 }
 

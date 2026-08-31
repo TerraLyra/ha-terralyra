@@ -1,8 +1,8 @@
 """Conservative geographic coverage assessment for active-fire providers."""
 from __future__ import annotations
 
-from dataclasses import dataclass
 import math
+from dataclasses import dataclass
 
 from .const import (
     ACTIVE_FIRE_PROVIDER_GOES,
@@ -35,6 +35,76 @@ class LocationCoverage:
             "satellite": self.satellite,
             "recommended_provider": self.recommended_provider,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class LocationSourcePlan:
+    """Equal active-fire sources available to one monitored location."""
+
+    location_id: str
+    location_name: str
+    providers: tuple[str, ...]
+    satellites: tuple[str, ...]
+
+    @property
+    def covered(self) -> bool:
+        return bool(self.providers)
+
+    def attrs(self) -> dict[str, object]:
+        return {
+            "location_id": self.location_id,
+            "location_name": self.location_name,
+            "covered": self.covered,
+            "providers": list(self.providers),
+            "satellites": list(self.satellites),
+        }
+
+
+def plan_location_sources(
+    location: MonitoredLocation,
+    *,
+    lsa_saf_available: bool,
+    firms_available: bool,
+) -> LocationSourcePlan:
+    """Assign every configured source that safely covers a location."""
+    providers: list[str] = []
+    satellites: list[str] = []
+    if (
+        lsa_saf_available
+        and _central_angle(
+            location.latitude,
+            location.longitude,
+            MTG_SUB_SATELLITE_LONGITUDE,
+        )
+        <= MAX_SAFE_MTG_CENTRAL_ANGLE_DEGREES
+    ):
+        providers.append(ACTIVE_FIRE_PROVIDER_LSA_SAF)
+        satellites.append("MTG")
+    goes = select_goes_satellite(location.latitude, location.longitude)
+    if goes is not None:
+        providers.append(ACTIVE_FIRE_PROVIDER_GOES)
+        satellites.append(goes.satellite)
+    if firms_available:
+        providers.append(NASA_FIRMS_PROVIDER)
+        satellites.append("NOAA-20/NOAA-21 VIIRS")
+    return LocationSourcePlan(
+        location.id,
+        location.name,
+        tuple(providers),
+        tuple(satellites),
+    )
+
+
+def summarize_source_plans(results: tuple[LocationSourcePlan, ...]) -> str:
+    """Summarize automatic source availability across enabled locations."""
+    if not results:
+        return "unknown"
+    covered = sum(result.covered for result in results)
+    if covered == len(results):
+        return "covered"
+    if covered:
+        return "partial"
+    return "not_covered"
 
 
 def assess_location_coverage(
@@ -85,7 +155,7 @@ def summarize_coverage(results: tuple[LocationCoverage, ...]) -> str:
 
 
 def _recommended_provider(latitude: float, longitude: float) -> str:
-    """Recommend an available primary source or global FIRMS fallback."""
+    """Return one legacy recommendation for compatibility diagnostics."""
     if select_goes_satellite(latitude, longitude) is not None:
         return ACTIVE_FIRE_PROVIDER_GOES
     if (

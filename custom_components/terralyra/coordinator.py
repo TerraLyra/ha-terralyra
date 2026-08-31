@@ -1,9 +1,9 @@
 """Provider-neutral coordinator for active-fire detections."""
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
-import logging
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
@@ -14,7 +14,6 @@ from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, Upda
 
 from .activity import ActivitySummary, summarize_activity, update_activity_history
 from .clustering import cluster_detections, haversine_km
-from .correlation import CorrelatedDetection, correlate_detections
 from .const import (
     ATTR_AFFECTED_LOCATIONS,
     ATTR_NOTIFICATION_MESSAGE,
@@ -24,21 +23,22 @@ from .const import (
     BUS_EVENT_FIRE_TREND,
     BUS_EVENT_NEW_FIRE,
     CONF_DEDUP_HOURS,
-    CONF_FIRE_HISTORY_HOURS,
     CONF_DEDUP_RADIUS_KM,
+    CONF_FIRE_HISTORY_HOURS,
     CONF_MIN_CONFIDENCE,
     CONF_MIN_FRP_MW,
     CONF_RADIUS_KM,
     CONF_SCAN_INTERVAL_MINUTES,
     DEFAULT_DEDUP_HOURS,
-    DEFAULT_FIRE_HISTORY_HOURS,
     DEFAULT_DEDUP_RADIUS_KM,
+    DEFAULT_FIRE_HISTORY_HOURS,
     DEFAULT_MIN_CONFIDENCE,
     DEFAULT_MIN_FRP_MW,
     DEFAULT_RADIUS_KM,
     DEFAULT_SCAN_INTERVAL_MINUTES,
     DOMAIN,
 )
+from .correlation import CorrelatedDetection, correlate_detections
 from .geocoding import (
     GEONAMES_ATTRIBUTION,
     PlaceInfo,
@@ -243,7 +243,6 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                     corroboration_snapshot.product_timestamp
                 )
 
-        radius_km = float(self.entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM))
         min_conf = float(self.entry.options.get(CONF_MIN_CONFIDENCE, DEFAULT_MIN_CONFIDENCE))
         min_frp = float(self.entry.options.get(CONF_MIN_FRP_MW, DEFAULT_MIN_FRP_MW))
         dedup_radius = float(self.entry.options.get(CONF_DEDUP_RADIUS_KM, DEFAULT_DEDUP_RADIUS_KM))
@@ -580,7 +579,15 @@ def _annotate_corroboration(
 ) -> tuple[ConfirmationLevel, int]:
     """Attach bounded, explainable independent-source matches to clusters."""
     if not provider_enabled:
-        return ConfirmationLevel.DISABLED, 0
+        if not clusters:
+            return ConfirmationLevel.NO_ACTIVE_FIRE, 0
+        corroborating = sum(cluster.corroborating_detections for cluster in clusters)
+        level = (
+            ConfirmationLevel.MULTI_SOURCE
+            if any(len(cluster.providers) > 1 for cluster in clusters)
+            else ConfirmationLevel.SINGLE_SOURCE
+        )
+        return level, corroborating
     if not clusters:
         return (
             ConfirmationLevel.NO_ACTIVE_FIRE

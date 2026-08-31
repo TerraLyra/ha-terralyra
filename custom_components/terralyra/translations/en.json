@@ -25,6 +25,11 @@
           "monitoring_longitude": "Decimal degrees from -180 to 180."
         }
       },
+      "sources": {
+        "title": "Connect optional active-fire sources",
+        "description": "TerraLyra automatically assigns every relevant source to each monitored location. NOAA GOES needs no credentials. Add LSA SAF credentials and/or a NASA FIRMS MAP_KEY to extend coverage; leave fields blank to skip that source.",
+        "data": {"username": "LSA SAF username (optional)", "password": "LSA SAF password (optional)", "firms_map_key": "NASA FIRMS MAP_KEY (optional)"}
+      },
       "lsa_saf": {
         "title": "Connect to LSA SAF Data Service",
         "description": "Enter the credentials from your free LSA SAF Data Service account. The integration provides MTG Active Fire Detection and the FRMv3 fire-risk forecast.",
@@ -54,7 +59,10 @@
       "cannot_connect": "Could not connect to the LSA SAF Data Service",
       "goes_not_available": "The selected monitoring center is outside the safe NOAA GOES coverage area",
       "invalid_monitoring_center": "Enter a valid monitoring-center name and coordinates",
-      "invalid_auth": "Invalid username or password"
+      "invalid_auth": "Invalid username or password",
+      "invalid_firms_key": "The NASA FIRMS MAP_KEY was rejected",
+      "lsa_credentials_incomplete": "Enter both the LSA SAF username and password, or leave both blank",
+      "no_source_available": "No automatic source covers this location. Add LSA SAF credentials or a NASA FIRMS MAP_KEY"
     },
     "abort": {
       "already_configured": "This LSA SAF account is already configured",
@@ -90,7 +98,7 @@
           "fire_history_hours": "Displayed fire-history window",
           "resolve_place_names": "Show nearby place names on the map",
           "enable_land_surface_temperature": "Enable land-surface temperature",
-          "enable_firms": "Enable NASA FIRMS corroboration",
+          "enable_firms": "Use NASA FIRMS where available",
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
@@ -103,13 +111,13 @@
           "fire_risk_radius_km": "Area shown on the FRMv3 map and checked for the highest regional fire risk. This does not change active-fire alerts.",
           "min_confidence": "0 includes all detections; 1 is the strictest possible filter.",
           "min_frp_mw": "Ignore detections weaker than this FRP in MW.",
-          "scan_interval_minutes": "How often Home Assistant checks the selected provider for a newer active-fire product.",
+          "scan_interval_minutes": "How often Home Assistant checks the automatically assigned active-fire sources for newer products.",
           "dedup_radius_km": "A detection near a recently seen fire is treated as the same fire and will not generate another new-fire event.",
           "dedup_hours": "How long a recently seen fire suppresses repeat new-fire events in the same area.",
           "fire_history_hours": "How long inactive fire markers remain visible on the map. This does not extend repeat-alert suppression.",
           "resolve_place_names": "Find the nearest settlement locally using the bundled GeoNames cities500 database. No coordinates are sent to an external service.",
           "enable_land_surface_temperature": "Optional and off by default. When enabled, Home Assistant sends the Home latitude and longitude about every 15 minutes to the official LSA SAF WMS service at adaguc.lsasvcs.ipma.pt to retrieve the latest satellite-observed land-surface temperature.",
-          "enable_firms": "Optional and off by default. When enabled, Home Assistant sends a small bounding box around the active-fire monitoring center to the official NASA FIRMS API to look for independent VIIRS detections. A free personal MAP_KEY is required.",
+          "enable_firms": "When enabled, NASA FIRMS is assigned as an equal source to every monitored location. Home Assistant sends a small bounding box around each enabled location to the official FIRMS API. A free personal MAP_KEY is required.",
           "firms_map_key": "Stored as a secret in the Home Assistant config entry and redacted from diagnostics. Leave blank to keep an already saved key."
         }
       },
@@ -146,15 +154,15 @@
   "issues": {
     "provider_authentication": {"title": "Active-fire provider authentication failed", "description": "TerraLyra cannot authenticate with the configured active-fire provider. Open the integration settings, verify the credentials, and reload the integration."},
     "provider_outage": {"title": "Active-fire provider is repeatedly unavailable", "description": "The configured active-fire provider failed {failures} consecutive updates. Check the provider service and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."},
-    "provider_coverage": {"title": "Active-fire provider does not cover every monitored location", "description": "The selected primary provider does not reliably cover: {locations}. Open TerraLyra settings and select an appropriate provider or change the monitored locations."}
+    "provider_coverage": {"title": "No configured active-fire source covers some monitored locations", "description": "TerraLyra cannot currently assign a usable source to: {locations}. Add the required LSA SAF credentials or NASA FIRMS MAP_KEY, or change the monitored locations. Other covered locations continue updating."}
   },
   "entity": {
     "sensor": {
       "nearest_fire": {
         "name": "Nearest active fire"
       },
-      "active_fire_count": {"name": "Primary-source active-fire clusters"},
-      "supplemental_fire_count": {"name": "NASA FIRMS supplemental fire clusters"},
+      "active_fire_count": {"name": "Active-fire clusters"},
+      "supplemental_fire_count": {"name": "Active-fire clusters observed by NASA FIRMS"},
       "combined_fire_count": {"name": "All active-fire clusters"},
       "raw_pixel_count": {
         "name": "Fire pixels in radius"
@@ -177,15 +185,14 @@
         }
       },
       "active_fire_provider": {
-        "name": "Primary active-fire data source",
+        "name": "Assigned active-fire sources",
         "state": {
-          "eumetsat_lsa_saf": "EUMETSAT LSA SAF",
-          "noaa_goes": "NOAA GOES-18/19",
-          "unknown": "Unknown"
+          "automatic": "Automatic",
+          "unavailable": "Unavailable"
         }
       },
       "provider_coverage": {
-        "name": "Primary provider geographic coverage",
+        "name": "Monitored-location source coverage",
         "state": {
           "covered": "Covered",
           "partial": "Partially covered",

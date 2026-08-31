@@ -191,7 +191,7 @@ class FireCluster:
     trend_samples: int | None = None
     trend_window_minutes: float | None = None
     confirmation_level: ConfirmationLevel = ConfirmationLevel.SINGLE_SOURCE
-    providers: tuple[str, ...] = ("eumetsat_lsa_saf",)
+    providers: tuple[str, ...] = ()
     corroborating_detections: int = 0
     source_url: str | None = None
     location_matches: tuple[IncidentLocationMatch, ...] = ()

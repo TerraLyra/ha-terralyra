@@ -13,6 +13,7 @@
         "data": {"use_custom_monitoring_center": "Usa un centro di monitoraggio personalizzato", "monitoring_center_name": "Nome del centro", "monitoring_latitude": "Latitudine", "monitoring_longitude": "Longitudine"},
         "data_description": {"use_custom_monitoring_center": "Disattivato usa la posizione Casa di Home Assistant.", "monitoring_center_name": "Un nome breve e riconoscibile, come New York o Casa vacanze.", "monitoring_latitude": "Gradi decimali da -90 a 90.", "monitoring_longitude": "Gradi decimali da -180 a 180."}
       },
+      "sources": {"title": "Collega fonti opzionali di incendi attivi", "description": "TerraLyra assegna automaticamente a ogni località tutte le fonti pertinenti. NOAA GOES non richiede credenziali. Aggiungi le credenziali LSA SAF e/o una MAP_KEY NASA FIRMS per estendere la copertura; lascia i campi vuoti per saltare la fonte.", "data": {"username": "Nome utente LSA SAF (opzionale)", "password": "Password LSA SAF (opzionale)", "firms_map_key": "MAP_KEY NASA FIRMS (opzionale)"}},
       "lsa_saf": {
         "title": "Connetti al servizio dati LSA SAF",
         "description": "Inserisci le credenziali del tuo account gratuito LSA SAF Data Service. L’integrazione fornisce il rilevamento degli incendi attivi MTG e la previsione FRMv3 del rischio di incendio.",
@@ -26,7 +27,7 @@
         "data_description": {"username": "Nome utente dell’account LSA SAF configurato originariamente", "password": "Password attuale di LSA SAF Data Service"}
       }
     },
-    "error": {"cannot_connect": "Impossibile connettersi a LSA SAF Data Service", "goes_not_available": "Il centro di monitoraggio selezionato è fuori dall’area di copertura sicura di NOAA GOES", "invalid_monitoring_center": "Inserisci un nome e coordinate validi per il centro di monitoraggio", "invalid_auth": "Nome utente o password non validi"},
+    "error": {"cannot_connect": "Impossibile connettersi a LSA SAF Data Service", "goes_not_available": "Il centro di monitoraggio selezionato è fuori dall’area di copertura sicura di NOAA GOES", "invalid_monitoring_center": "Inserisci un nome e coordinate validi per il centro di monitoraggio", "invalid_auth": "Nome utente o password non validi", "invalid_firms_key": "La MAP_KEY NASA FIRMS è stata rifiutata", "lsa_credentials_incomplete": "Inserisci sia il nome utente sia la password LSA SAF, oppure lascia entrambi i campi vuoti", "no_source_available": "Nessuna fonte automatica copre questa località. Aggiungi credenziali LSA SAF o una MAP_KEY NASA FIRMS"},
     "abort": {"already_configured": "Questo account LSA SAF è già configurato", "reauth_successful": "Credenziali aggiornate correttamente", "wrong_account": "Le nuove credenziali appartengono a un altro account LSA SAF"}
   },
   "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (account richiesto)", "noaa_goes": "NOAA GOES-18/19 (nessun account richiesto)"}}},
@@ -50,7 +51,7 @@
           "fire_history_hours": "Finestra visibile dello storico incendi",
           "resolve_place_names": "Mostra i luoghi vicini sulla mappa",
           "enable_land_surface_temperature": "Abilita la temperatura della superficie terrestre",
-          "enable_firms": "Abilita la conferma NASA FIRMS",
+          "enable_firms": "Usa NASA FIRMS dove disponibile",
           "firms_map_key": "NASA FIRMS MAP_KEY"
         },
         "data_description": {
@@ -92,20 +93,20 @@
   "issues": {
     "provider_authentication": {"title": "Autenticazione del fornitore di incendi attivi non riuscita", "description": "TerraLyra non riesce ad autenticarsi con il fornitore configurato. Verifica le credenziali nelle impostazioni dell’integrazione e ricaricala."},
     "provider_outage": {"title": "Il fornitore di incendi attivi è ripetutamente non disponibile", "description": "Il fornitore configurato non è riuscito in {failures} aggiornamenti consecutivi. Verifica il servizio e l’accesso Internet di Home Assistant, quindi ricarica l’integrazione."},
-    "provider_coverage": {"title": "Il fornitore non copre tutte le località monitorate", "description": "Il fornitore principale selezionato non copre in modo affidabile: {locations}. Scegli un fornitore adatto nelle impostazioni TerraLyra o modifica le località monitorate."}
+    "provider_coverage": {"title": "Nessuna fonte configurata copre alcune località", "description": "TerraLyra non può assegnare una fonte utilizzabile a: {locations}. Aggiungi le credenziali LSA SAF o una MAP_KEY NASA FIRMS, oppure modifica le località. Le altre località continuano ad aggiornarsi."}
   },
   "entity": {
     "sensor": {
       "nearest_fire": {"name": "Incendio attivo più vicino"},
-      "active_fire_count": {"name": "Gruppi di incendi attivi della fonte primaria"},
-      "supplemental_fire_count": {"name": "Gruppi di incendi supplementari NASA FIRMS"},
+      "active_fire_count": {"name": "Gruppi di incendi attivi"},
+      "supplemental_fire_count": {"name": "Gruppi osservati da NASA FIRMS"},
       "combined_fire_count": {"name": "Tutti i gruppi di incendi attivi"},
       "raw_pixel_count": {"name": "Pixel di incendio nel raggio"},
       "product_time": {"name": "Ora dell’ultimo prodotto incendi"},
       "product_age": {"name": "Età del prodotto incendi"},
       "provider_status": {"name": "Stato dei dati sugli incendi attivi", "state": {"initializing": "Inizializzazione", "available": "Disponibile", "delayed": "In ritardo", "no_product": "Nessun prodotto attuale", "outage": "Interruzione del fornitore", "auth_error": "Errore di autenticazione"}},
-      "active_fire_provider": {"name": "Fonte primaria dei dati sugli incendi attivi", "state": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF", "noaa_goes": "NOAA GOES-18/19", "unknown": "Sconosciuta"}},
-      "provider_coverage": {"name": "Copertura geografica del fornitore principale", "state": {"covered": "Coperta", "partial": "Parzialmente coperta", "not_covered": "Non coperta", "unknown": "Sconosciuta"}},
+      "active_fire_provider": {"name": "Fonti di incendi attivi assegnate", "state": {"automatic": "Automatica", "unavailable": "Non disponibile"}},
+      "provider_coverage": {"name": "Copertura fonti delle località", "state": {"covered": "Coperta", "partial": "Parzialmente coperta", "not_covered": "Non coperta", "unknown": "Sconosciuta"}},
       "fire_risk_today": {"name": "Rischio di incendio vicino a Casa", "state": {"low": "Basso", "moderate": "Moderato", "high": "Alto", "very_high": "Molto alto", "extreme": "Estremo", "unknown": "Sconosciuto"}},
       "fire_risk_area_maximum": {"name": "Rischio di incendio massimo nell’area monitorata", "state": {"low": "Basso", "moderate": "Moderato", "high": "Alto", "very_high": "Molto alto", "extreme": "Estremo", "unknown": "Sconosciuto"}},
       "fire_risk_update": {"name": "Ultimo aggiornamento della previsione del rischio di incendio"},

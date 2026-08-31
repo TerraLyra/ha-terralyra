@@ -12,12 +12,9 @@ from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TerraLyraConfigEntry
 from .const import (
-    ATTR_CONFIGURED_PRIMARY_PROVIDER,
     ATTR_PRODUCT_TIME,
     ATTR_PROVIDER_ATTRIBUTION,
     ATTR_SOURCE_URL,
-    CONF_ACTIVE_FIRE_PROVIDER,
-    DEFAULT_ACTIVE_FIRE_PROVIDER,
     DOMAIN,
 )
 from .coordinator import FireCluster
@@ -161,9 +158,7 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
     def extra_state_attributes(self) -> dict[str, Any]:
         data = self.coordinator.data
         attrs = self._cluster.attrs()
-        attrs[ATTR_CONFIGURED_PRIMARY_PROVIDER] = self.entry.data.get(
-            CONF_ACTIVE_FIRE_PROVIDER, DEFAULT_ACTIVE_FIRE_PROVIDER
-        )
+        attrs["source_selection"] = "automatic_equal_peers"
         attrs[ATTR_PROVIDER_ATTRIBUTION] = _provider_attribution(
             self._cluster.providers
         )

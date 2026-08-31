@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.6.0
+
+- Replace the configured primary/supplemental active-fire hierarchy with
+  automatic source assignment for every enabled monitored location.
+- Use all geographically relevant, configured sources as equal peers: MTG in
+  its safe coverage area, GOES-18/19 in the Western Hemisphere, and NASA FIRMS
+  globally when its key is configured.
+- Continue updating from healthy peers during a partial provider outage and
+  expose bounded per-source health and assignment details.
+- Merge nearby observations from independent satellites into one incident,
+  preserving multi-source confirmation without double-counting observed FRP.
+- Migrate existing entries without requiring users to reselect a provider and
+  add translated, provider-neutral setup, entity and Repair wording.
+- Clarify active-fire entity scopes and document Home Assistant map-card
+  limitations, attribution and recommended TerraLyra dashboard naming.
+
 ## 0.5.2
 
 - Disambiguate simultaneous same-place fire markers without changing their

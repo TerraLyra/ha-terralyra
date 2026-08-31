@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import math
 
-from .models import FireCluster, FireDetection
+from .models import ConfirmationLevel, FireCluster, FireDetection
 
 EARTH_RADIUS_KM = 6371.0088
 
@@ -27,7 +27,7 @@ def cluster_detections(
     home_longitude: float,
     cluster_radius_km: float,
 ) -> list[FireCluster]:
-    """Group connected nearby detections from the same provider product.
+    """Group connected nearby detections into provider-neutral incidents.
 
     A connected-component pass avoids splitting one continuous group merely
     because its outermost pixels are farther apart than the configured radius.
@@ -51,7 +51,11 @@ def cluster_detections(
                     member.latitude,
                     member.longitude,
                 )
-                <= cluster_radius_km
+                <= _connection_radius_km(
+                    detection,
+                    member,
+                    cluster_radius_km,
+                )
                 for member in group
             )
         ]
@@ -69,17 +73,35 @@ def cluster_detections(
 
     clusters: list[FireCluster] = []
     for group in groups:
-        total_frp = sum(item.frp_mw or 0.0 for item in group)
+        provider_frp: dict[str, float] = {}
+        for item in group:
+            provider_frp[item.provider] = provider_frp.get(item.provider, 0.0) + (
+                item.frp_mw or 0.0
+            )
+        # Independent satellites can observe the same energy. Use the largest
+        # source total instead of adding equal observations twice.
+        total_frp = max(provider_frp.values(), default=0.0)
         if total_frp > 0:
-            latitude = sum(
-                item.latitude * (item.frp_mw or 0.0) for item in group
-            ) / total_frp
-            longitude = sum(
-                item.longitude * (item.frp_mw or 0.0) for item in group
-            ) / total_frp
+            weights = [max(item.frp_mw or 0.0, 0.000001) for item in group]
+            weight_total = sum(weights)
+            latitude = (
+                sum(
+                    item.latitude * weight
+                    for item, weight in zip(group, weights, strict=True)
+                )
+                / weight_total
+            )
+            longitude = (
+                sum(
+                    item.longitude * weight
+                    for item, weight in zip(group, weights, strict=True)
+                )
+                / weight_total
+            )
         else:
             latitude = sum(item.latitude for item in group) / len(group)
             longitude = sum(item.longitude for item in group) / len(group)
+        providers = tuple(sorted({item.provider for item in group}))
         clusters.append(
             FireCluster(
                 latitude=latitude,
@@ -91,6 +113,28 @@ def cluster_detections(
                 frp_mw=total_frp,
                 acquired=max(item.timestamp for item in group),
                 pixel_count=len(group),
+                providers=providers,
+                confirmation_level=(
+                    ConfirmationLevel.MULTI_SOURCE
+                    if len(providers) > 1
+                    else ConfirmationLevel.SINGLE_SOURCE
+                ),
+                corroborating_detections=(
+                    sum(item.provider != providers[0] for item in group)
+                    if providers
+                    else 0
+                ),
             )
         )
     return sorted(clusters, key=lambda cluster: cluster.distance_km)
+
+
+def _connection_radius_km(
+    left: FireDetection,
+    right: FireDetection,
+    configured_radius_km: float,
+) -> float:
+    """Allow realistic geolocation offsets only between independent sources."""
+    if left.provider != right.provider or left.satellite != right.satellite:
+        return max(configured_radius_km, 5.0)
+    return configured_radius_km

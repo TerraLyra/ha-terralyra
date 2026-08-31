@@ -11,7 +11,9 @@ from custom_components.terralyra.const import (
 from custom_components.terralyra.coverage import (
     _central_angle,
     assess_location_coverage,
+    plan_location_sources,
     summarize_coverage,
+    summarize_source_plans,
 )
 from custom_components.terralyra.monitoring import MonitoredLocation
 
@@ -60,6 +62,37 @@ def test_goes_covers_california_but_not_europe() -> None:
     assert california.satellite == "G18"
     assert budapest.covered is False
     assert budapest.recommended_provider == ACTIVE_FIRE_PROVIDER_LSA_SAF
+
+
+def test_sources_are_automatically_assigned_as_equal_peers() -> None:
+    europe = plan_location_sources(
+        _location("europe", "Europe", 47.0, 19.0),
+        lsa_saf_available=True,
+        firms_available=True,
+    )
+    california = plan_location_sources(
+        _location("california", "California", 38.0, -121.0),
+        lsa_saf_available=True,
+        firms_available=True,
+    )
+
+    assert europe.providers == ("eumetsat_lsa_saf", "nasa_firms")
+    assert europe.satellites == ("MTG", "NOAA-20/NOAA-21 VIIRS")
+    assert california.providers == ("noaa_goes", "nasa_firms")
+    assert california.satellites == ("G18", "NOAA-20/NOAA-21 VIIRS")
+    assert summarize_source_plans((europe, california)) == "covered"
+
+
+def test_unconfigured_global_source_leaves_unsupported_location_uncovered() -> None:
+    arctic = plan_location_sources(
+        _location("arctic", "Arctic", 89.0, 0.0),
+        lsa_saf_available=False,
+        firms_available=False,
+    )
+
+    assert arctic.covered is False
+    assert arctic.providers == ()
+    assert summarize_source_plans((arctic,)) == "not_covered"
 
 
 def test_unknown_provider_recommends_global_fallback_when_needed() -> None:
