@@ -171,6 +171,29 @@ def test_firms_fallback_name_omits_internal_track_prefix() -> None:
     assert _display_name(cluster) == "NASA FIRMS · Fire detection 812165"
 
 
+def test_same_place_incidents_can_receive_stable_distinct_names() -> None:
+    first = _cluster(
+        track_id="firms-812165abcdef",
+        providers=("nasa_firms",),
+        location_description="Fire detected near Borger",
+    )
+    second = _cluster(
+        track_id="firms-bb9b8fabcdef",
+        providers=("nasa_firms",),
+        location_description="Fire detected near Borger",
+    )
+
+    assert _display_name(first) == "NASA FIRMS · Fire detected near Borger"
+    assert (
+        _display_name(first, disambiguate=True)
+        == "NASA FIRMS · Fire detected near Borger · #812165"
+    )
+    assert (
+        _display_name(second, disambiguate=True)
+        == "NASA FIRMS · Fire detected near Borger · #bb9b8f"
+    )
+
+
 def test_map_entity_object_id_is_bound_to_incident_not_place_name() -> None:
     assert (
         _suggested_object_id("firms-812165abcdef")

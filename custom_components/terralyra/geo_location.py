@@ -1,6 +1,7 @@
 """Provider-attributed TerraLyra map entities for active fire clusters."""
 from __future__ import annotations
 
+from collections import Counter
 from typing import Any, override
 
 from homeassistant.components.geo_location import GeolocationEvent
@@ -77,6 +78,9 @@ async def async_setup_entry(
     @callback
     def async_sync_entities() -> None:
         active = active_clusters()
+        display_name_counts = Counter(
+            _base_display_name(cluster) for cluster in active.values()
+        )
 
         for track_id in entities.keys() - active.keys():
             entity = entities.pop(track_id)
@@ -84,10 +88,13 @@ async def async_setup_entry(
 
         new_entities: list[TerraLyraFireLocation] = []
         for track_id, cluster in active.items():
+            disambiguate = display_name_counts[_base_display_name(cluster)] > 1
             if track_id in entities:
-                entities[track_id].set_cluster(cluster)
+                entities[track_id].set_cluster(cluster, disambiguate=disambiguate)
                 continue
-            entity = TerraLyraFireLocation(entry, cluster)
+            entity = TerraLyraFireLocation(
+                entry, cluster, disambiguate=disambiguate
+            )
             entities[track_id] = entity
             new_entities.append(entity)
 
@@ -106,7 +113,13 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
     _attr_unit_of_measurement = UnitOfLength.KILOMETERS
     _attr_icon = "mdi:fire-alert"
 
-    def __init__(self, entry: TerraLyraConfigEntry, cluster: FireCluster) -> None:
+    def __init__(
+        self,
+        entry: TerraLyraConfigEntry,
+        cluster: FireCluster,
+        *,
+        disambiguate: bool = False,
+    ) -> None:
         super().__init__(entry)
         self._attr_device_info = None
         if cluster.track_id is None:
@@ -118,13 +131,15 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
         # settlement to reuse an expired entity's history. The incident ID is
         # stable and unique for the lifetime of one tracked fire.
         self._attr_suggested_object_id = _suggested_object_id(cluster.track_id)
-        self._attr_name = _display_name(cluster)
+        self._attr_name = _display_name(cluster, disambiguate=disambiguate)
 
     @callback
-    def set_cluster(self, cluster: FireCluster) -> None:
+    def set_cluster(
+        self, cluster: FireCluster, *, disambiguate: bool = False
+    ) -> None:
         """Replace this entity's current cluster data."""
         self._cluster = cluster
-        self._attr_name = _display_name(cluster)
+        self._attr_name = _display_name(cluster, disambiguate=disambiguate)
 
     @property
     @override
@@ -158,11 +173,19 @@ class TerraLyraFireLocation(TerraLyraEntity, GeolocationEvent):
         return attrs
 
 
-def _display_name(cluster: FireCluster) -> str:
+def _base_display_name(cluster: FireCluster) -> str:
     """Return a map label that makes the actual observation source explicit."""
     track_id = cluster.track_id or "unknown"
     name = cluster.location_description or f"Fire detection {_short_id(track_id)}"
     return f"{_provider_attribution(cluster.providers)} · {name}"
+
+
+def _display_name(cluster: FireCluster, *, disambiguate: bool = False) -> str:
+    """Return a distinct label when nearby incidents share the same place name."""
+    name = _base_display_name(cluster)
+    if not disambiguate:
+        return name
+    return f"{name} · #{_short_id(cluster.track_id or 'unknown')}"
 
 
 def _short_id(track_id: str) -> str:
