@@ -44,7 +44,7 @@ from .products.fire_risk import FireRiskClient
 from .products.firms import FirmsClient
 from .products.lst import LandSurfaceTemperatureClient
 from .providers.factory import build_primary_provider
-from .providers.firms import FirmsMultiSatelliteProvider, monitoring_bounds
+from .providers.firms import FirmsMultiAreaProvider, monitoring_bounds
 from .repairs import async_sync_coverage_issue
 
 
@@ -127,17 +127,18 @@ async def async_setup_entry(hass: HomeAssistant, entry: TerraLyraConfigEntry) ->
         await resolver.async_setup()
     corroboration_provider = None
     if entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS):
-        bounds = monitoring_bounds(
-            monitoring_center.latitude,
-            monitoring_center.longitude,
-            float(entry.options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
+        bounds = tuple(
+            monitoring_bounds(
+                location.latitude,
+                location.longitude,
+                location.radius_km,
+            )
+            for location in monitored_locations
+            if location.enabled
         )
-        corroboration_provider = FirmsMultiSatelliteProvider(
+        corroboration_provider = FirmsMultiAreaProvider(
             FirmsClient(session, str(entry.data.get(CONF_FIRMS_MAP_KEY, ""))),
-            west=bounds[0],
-            south=bounds[1],
-            east=bounds[2],
-            north=bounds[3],
+            bounds,
         )
     coordinator = TerraLyraCoordinator(
         hass,

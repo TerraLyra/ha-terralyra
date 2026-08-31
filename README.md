@@ -190,8 +190,21 @@ Event data includes:
 - `location_description`
 - `notification_title`
 - `notification_message`
+- `location_id`
+- `location_name`
+- `location_radius_km`
+- `direction`
+- `inside_radius`
+- `location_matches`
+- `affected_locations`
 - `product_time`
 - `source_url`
+
+For incidents relevant to multiple configured places, scalar distance and
+location fields refer to the nearest place whose monitoring radius contains
+the incident. `location_matches` retains the bounded per-location detail, and
+`affected_locations` lists the places named in the single new-fire event and
+notification. TerraLyra does not emit one duplicate event per place.
 
 Meaningful incident trend transitions also fire:
 
@@ -319,10 +332,13 @@ MAP_KEY, open **Settings → Devices & services → TerraLyra → Configure**, e
 NASA FIRMS corroboration and enter the key. TerraLyra validates the key before
 saving the option.
 
-When enabled, TerraLyra requests only the bounded monitoring area from the
-NOAA-20 and NOAA-21 VIIRS near-real-time feeds. Requests are cached for at least
-15 minutes, use a maximum one-day query window, and are isolated from the
-primary provider: a FIRMS outage cannot stop primary active-fire updates.
+When enabled, TerraLyra requests only the bounded areas around all enabled
+monitored locations from the NOAA-20 and NOAA-21 VIIRS near-real-time feeds.
+Overlapping safe boxes are merged; geographically distant boxes remain
+separate, with at most ten planned areas. Results are deduplicated across
+areas. Requests are cached for at least 15 minutes, use a maximum one-day query
+window, and are isolated from the primary provider: a FIRMS outage cannot stop
+primary active-fire updates.
 
 Detections within 5 km and 6 hours are treated as independent corroboration.
 FIRMS-only detections can appear as supplemental **NASA FIRMS · …** map markers,
@@ -334,9 +350,10 @@ supplemental or combined count is non-zero. The separate sensors make that
 distinction explicit instead of presenting the map and primary health summary
 as if they described the same source scope.
 
-Enabling the option sends the configured monitoring-area bounding coordinates
-and the user's MAP_KEY to the official NASA FIRMS service. The key is stored in
-the Home Assistant config entry, redacted from diagnostics and never logged.
+Enabling the option sends each required monitoring-area bounding box and the
+user's MAP_KEY to the official NASA FIRMS service. Exact place names are not
+sent. The key is stored in the Home Assistant config entry, redacted from
+diagnostics and never logged.
 
 ## Example iPhone notification automation
 

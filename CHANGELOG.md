@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+- Disambiguate simultaneous same-place fire markers without changing their
+  stable incident-backed Home Assistant identities.
+- Use the nearest actually affected monitored location for map distance,
+  scalar location attributes and localized new-fire notifications.
+- Include all other affected monitored-location names in one physical
+  incident event instead of creating duplicate alerts.
+- Query every enabled monitored location when optional NASA FIRMS
+  corroboration is active, merging overlapping safe request boxes, keeping
+  distant boxes separate and deduplicating repeated observations.
+
 ## 0.5.1
 
 - Keep Home Assistant geolocation entity identities tied to stable TerraLyra

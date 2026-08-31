@@ -6,9 +6,11 @@ from datetime import UTC, datetime
 import pytest
 
 from custom_components.terralyra.products.firms import FirmsError, parse_firms_csv
-from custom_components.terralyra.providers.firms import FirmsActiveFireProvider
 from custom_components.terralyra.providers.firms import (
+    FirmsActiveFireProvider,
+    FirmsMultiAreaProvider,
     FirmsMultiSatelliteProvider,
+    merge_monitoring_bounds,
     monitoring_bounds,
 )
 
@@ -129,6 +131,61 @@ def test_monitoring_bounds_are_bounded_and_contain_home() -> None:
     assert south < 47.5 < north
     assert east - west <= 20
     assert north - south <= 20
+
+
+def test_overlapping_monitoring_bounds_are_merged() -> None:
+    first = monitoring_bounds(47.5, 19.0, 50)
+    second = monitoring_bounds(47.6, 19.1, 50)
+
+    planned = merge_monitoring_bounds((first, second))
+
+    assert len(planned) == 1
+    assert planned[0] == (
+        min(first[0], second[0]),
+        min(first[1], second[1]),
+        max(first[2], second[2]),
+        max(first[3], second[3]),
+    )
+
+
+def test_distant_monitoring_bounds_remain_separate() -> None:
+    europe = monitoring_bounds(47.5, 19.0, 50)
+    america = monitoring_bounds(38.5, -121.6, 50)
+
+    assert merge_monitoring_bounds((europe, america)) == (america, europe)
+
+
+def test_monitoring_bound_plan_rejects_unbounded_input() -> None:
+    with pytest.raises(ValueError):
+        merge_monitoring_bounds(tuple((index, 0, index + 0.5, 1) for index in range(11)))
+    with pytest.raises(ValueError):
+        merge_monitoring_bounds(((0, 0, 21, 1),))
+
+
+@pytest.mark.asyncio
+async def test_multi_area_provider_deduplicates_overlapping_results() -> None:
+    class DuplicateClient:
+        async def async_area(self, **kwargs):
+            return parse_firms_csv(
+                _csv(
+                    "46.12345,19.54321,330.44,0.40,0.37,2026-08-28,1234,"
+                    "N20,VIIRS,h,2.0NRT,295.66,8.5,D"
+                ),
+                source=kwargs["source"],
+            )
+
+    provider = FirmsMultiAreaProvider(
+        DuplicateClient(),
+        (
+            monitoring_bounds(47.5, 19.0, 10),
+            monitoring_bounds(40.0, -74.0, 10),
+        ),
+    )
+
+    snapshot = await provider.async_fetch_latest()
+
+    assert len(snapshot.detections) == 2
+    assert snapshot.filename == "firms-viirs-2-areas.csv"
 
 
 @pytest.mark.parametrize("radius", [0, -1, 501, float("nan")])

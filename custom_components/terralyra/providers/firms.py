@@ -2,8 +2,8 @@
 from __future__ import annotations
 
 import asyncio
-from datetime import UTC, datetime, timedelta
 import math
+from datetime import UTC, datetime, timedelta
 
 from ..models import FireDetection, ProviderSnapshot, ProviderStatus
 from ..products.firms import (
@@ -20,6 +20,7 @@ DELAY_THRESHOLD = timedelta(hours=6)
 PUBLIC_SOURCE_URL = "https://firms.modaps.eosdis.nasa.gov/"
 SOURCES = ("VIIRS_NOAA20_NRT", "VIIRS_NOAA21_NRT")
 MIN_REFRESH_INTERVAL = timedelta(minutes=15)
+MAX_MONITORING_AREAS = 10
 
 
 class FirmsActiveFireProvider:
@@ -178,6 +179,80 @@ class FirmsMultiSatelliteProvider:
         return snapshot
 
 
+class FirmsMultiAreaProvider:
+    """Fetch bounded FIRMS observations for multiple monitored areas."""
+
+    def __init__(
+        self,
+        client: FirmsClient,
+        bounds: tuple[tuple[float, float, float, float], ...],
+    ) -> None:
+        planned = merge_monitoring_bounds(bounds)
+        if not planned or len(planned) > MAX_MONITORING_AREAS:
+            raise ValueError("FIRMS monitoring-area count is out of range")
+        self._providers = tuple(
+            FirmsMultiSatelliteProvider(
+                client,
+                west=west,
+                south=south,
+                east=east,
+                north=north,
+            )
+            for west, south, east, north in planned
+        )
+        self._cached_snapshot: ProviderSnapshot | None = None
+        self._cached_at: datetime | None = None
+
+    async def async_fetch_latest(self) -> ProviderSnapshot:
+        """Return one deduplicated snapshot spanning every planned area."""
+        now = datetime.now(UTC)
+        if (
+            self._cached_snapshot is not None
+            and self._cached_at is not None
+            and now - self._cached_at < MIN_REFRESH_INTERVAL
+        ):
+            return self._cached_snapshot
+        snapshots = await asyncio.gather(
+            *(provider.async_fetch_latest() for provider in self._providers)
+        )
+        detections_by_id: dict[str, FireDetection] = {}
+        for snapshot in snapshots:
+            for detection in snapshot.detections:
+                detection_id = detection.source_detection_id or (
+                    f"{detection.provider}:{detection.satellite}:"
+                    f"{detection.timestamp.isoformat()}:{detection.latitude:.5f}:"
+                    f"{detection.longitude:.5f}"
+                )
+                detections_by_id[detection_id] = detection
+        snapshot = ProviderSnapshot(
+            provider=PROVIDER,
+            satellite="NOAA-20/NOAA-21 VIIRS",
+            product="VIIRS active fire NRT",
+            product_timestamp=max(item.product_timestamp for item in snapshots),
+            received_timestamp=max(item.received_timestamp for item in snapshots),
+            status=(
+                ProviderStatus.AVAILABLE
+                if any(item.status is ProviderStatus.AVAILABLE for item in snapshots)
+                else ProviderStatus.DELAYED
+            ),
+            source_url=PUBLIC_SOURCE_URL,
+            filename=f"firms-viirs-{len(self._providers)}-areas.csv",
+            detections=tuple(
+                sorted(
+                    detections_by_id.values(),
+                    key=lambda detection: (
+                        detection.timestamp,
+                        detection.satellite,
+                        detection.source_detection_id or "",
+                    ),
+                )
+            ),
+        )
+        self._cached_snapshot = snapshot
+        self._cached_at = now
+        return snapshot
+
+
 def monitoring_bounds(
     latitude: float, longitude: float, radius_km: float
 ) -> tuple[float, float, float, float]:
@@ -198,3 +273,52 @@ def monitoring_bounds(
     if west >= east or south >= north:
         raise ValueError("FIRMS monitoring bounds cannot cross the antimeridian")
     return west, south, east, north
+
+
+def merge_monitoring_bounds(
+    bounds: tuple[tuple[float, float, float, float], ...],
+) -> tuple[tuple[float, float, float, float], ...]:
+    """Merge overlapping safe boxes while keeping distant requests separate."""
+    if len(bounds) > MAX_MONITORING_AREAS:
+        raise ValueError("Too many FIRMS monitoring areas")
+    planned: list[tuple[float, float, float, float]] = []
+    for candidate in sorted(bounds):
+        west, south, east, north = candidate
+        if (
+            not all(math.isfinite(value) for value in candidate)
+            or not -180 <= west < east <= 180
+            or not -90 <= south < north <= 90
+            or east - west > 20
+            or north - south > 20
+        ):
+            raise ValueError("FIRMS monitoring bounds are invalid")
+        merged = False
+        for index, existing in enumerate(planned):
+            if not _bounds_overlap(existing, candidate):
+                continue
+            union = (
+                min(existing[0], west),
+                min(existing[1], south),
+                max(existing[2], east),
+                max(existing[3], north),
+            )
+            if union[2] - union[0] <= 20 and union[3] - union[1] <= 20:
+                planned[index] = union
+                merged = True
+                break
+        if not merged:
+            planned.append(candidate)
+    return tuple(planned)
+
+
+def _bounds_overlap(
+    first: tuple[float, float, float, float],
+    second: tuple[float, float, float, float],
+) -> bool:
+    """Return whether two non-wrapping boxes overlap or touch."""
+    return not (
+        first[2] < second[0]
+        or second[2] < first[0]
+        or first[3] < second[1]
+        or second[3] < first[1]
+    )
