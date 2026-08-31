@@ -12,30 +12,30 @@ from .const import (
     ATTR_CONFIDENCE,
     ATTR_CONFIRMATION_LEVEL,
     ATTR_CORROBORATING_DETECTIONS,
+    ATTR_DETECTIONS_TOTAL,
+    ATTR_DIRECTION,
     ATTR_DISTANCE_KM,
     ATTR_DISTANCE_TREND,
-    ATTR_DIRECTION,
     ATTR_DURATION_MINUTES,
     ATTR_FIRST_SEEN,
     ATTR_FRP_MW,
     ATTR_FRP_TREND,
-    ATTR_LATITUDE,
+    ATTR_INCIDENT_ID,
     ATTR_INSIDE_RADIUS,
+    ATTR_LAST_SEEN,
+    ATTR_LATITUDE,
+    ATTR_LIFECYCLE,
+    ATTR_LOCATION_DESCRIPTION,
     ATTR_LOCATION_ID,
     ATTR_LOCATION_MATCHES,
     ATTR_LOCATION_NAME,
     ATTR_LOCATION_RADIUS_KM,
-    ATTR_LOCATION_DESCRIPTION,
     ATTR_LONGITUDE,
-    ATTR_NEAREST_SETTLEMENT,
-    ATTR_DETECTIONS_TOTAL,
-    ATTR_INCIDENT_ID,
-    ATTR_LAST_SEEN,
-    ATTR_LIFECYCLE,
     ATTR_MAXIMUM_CONFIDENCE,
     ATTR_MAXIMUM_FRP_MW,
     ATTR_MAXIMUM_PIXEL_COUNT,
     ATTR_MINIMUM_DISTANCE_KM,
+    ATTR_NEAREST_SETTLEMENT,
     ATTR_PEAK_FRP_MW,
     ATTR_PIXEL_COUNT,
     ATTR_PLACE_ATTRIBUTION,
@@ -259,4 +259,10 @@ class FireCluster:
             attrs[ATTR_LOCATION_MATCHES] = [
                 match.attrs() for match in self.location_matches
             ]
+            nearest = next(
+                (match for match in self.location_matches if match.inside_radius),
+                None,
+            )
+            if nearest is not None:
+                attrs.update(nearest.attrs())
         return attrs

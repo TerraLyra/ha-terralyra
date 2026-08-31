@@ -3,12 +3,13 @@ from datetime import UTC, datetime
 
 import pytest
 
-from custom_components.terralyra.location_matching import (
-    match_incident_to_locations,
-)
 from custom_components.terralyra.coordinator import (
+    _apply_location_matches,
     _attach_location_matches,
     _inside_any_location,
+)
+from custom_components.terralyra.location_matching import (
+    match_incident_to_locations,
 )
 from custom_components.terralyra.models import (
     DistanceTrend,
@@ -105,6 +106,12 @@ def test_matches_are_exposed_as_bounded_cluster_attributes() -> None:
         location_matches=(match,),
     )
     attrs = cluster.attrs()
+    assert attrs["location_id"] == "home"
+    assert attrs["location_name"] == "Home"
+    assert attrs["distance_km"] == 0.0
+    assert attrs["location_radius_km"] == 10
+    assert attrs["direction"] == "HERE"
+    assert attrs["inside_radius"] is True
     assert attrs["location_matches"] == [
         {
             "incident_id": "incident-4",
@@ -117,6 +124,37 @@ def test_matches_are_exposed_as_bounded_cluster_attributes() -> None:
             "distance_trend": "unknown",
         }
     ]
+
+
+def test_nearest_in_radius_location_drives_scalar_map_distance() -> None:
+    locations = (
+        _location("near-small", "Near but outside", 47.0, 19.0, 1),
+        _location("far-wide", "Far but affected", 47.0, 18.8, 30),
+    )
+    cluster = FireCluster(
+        latitude=47.0,
+        longitude=19.02,
+        distance_km=999,
+        confidence=0.8,
+        frp_mw=5,
+        acquired=datetime(2026, 8, 30, tzinfo=UTC),
+        pixel_count=1,
+        track_id="incident-nearest-relevant",
+    )
+    matches = match_incident_to_locations(
+        cluster.track_id, cluster.latitude, cluster.longitude, locations
+    )
+
+    _apply_location_matches(cluster, matches)
+
+    assert matches[0].location_id == "near-small"
+    assert matches[0].inside_radius is False
+    assert cluster.distance_km == pytest.approx(matches[1].distance_km)
+    attrs = cluster.attrs()
+    assert attrs["location_id"] == "far-wide"
+    assert attrs["location_name"] == "Far but affected"
+    assert attrs["distance_km"] == round(matches[1].distance_km, 2)
+    assert attrs["inside_radius"] is True
 
 
 @pytest.mark.parametrize("latitude,longitude", [(91, 0), (0, 181), (float("nan"), 0)])

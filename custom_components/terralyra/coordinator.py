@@ -894,8 +894,9 @@ def _tracked_fire_clusters(
                 source_url=_optional_text(track.get("source_url")),
             )
         if monitored_locations:
-            cluster.location_matches = _matches_from_track(
-                track, cluster, monitored_locations
+            _apply_location_matches(
+                cluster,
+                _matches_from_track(track, cluster, monitored_locations),
             )
         result.append(cluster)
     return sorted(result, key=lambda cluster: cluster.distance_km)
@@ -932,9 +933,20 @@ def _attach_location_matches(
         track = tracks_by_id.get(cluster.track_id)
         if track is None:
             continue
-        cluster.location_matches = _matches_from_track(
-            track, cluster, locations, update_state=True
+        _apply_location_matches(
+            cluster,
+            _matches_from_track(track, cluster, locations, update_state=True),
         )
+
+
+def _apply_location_matches(
+    cluster: FireCluster, matches: tuple[IncidentLocationMatch, ...]
+) -> None:
+    """Attach matches and use the nearest relevant location for map distance."""
+    cluster.location_matches = matches
+    nearest = next((match for match in matches if match.inside_radius), None)
+    if nearest is not None:
+        cluster.distance_km = nearest.distance_km
 
 
 def _matches_from_track(
