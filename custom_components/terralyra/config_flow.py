@@ -21,8 +21,6 @@ from homeassistant.helpers.selector import (
 
 from .api import LsaSafAuthError, LsaSafError
 from .const import (
-    ACTIVE_FIRE_PROVIDER_LSA_SAF,
-    CONF_ACTIVE_FIRE_PROVIDER,
     CONF_DEDUP_HOURS,
     CONF_DEDUP_RADIUS_KM,
     CONF_ENABLE_FIRMS,
@@ -220,54 +218,6 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     vol.Optional(CONF_FIRMS_MAP_KEY, default=""): TextSelector(
                         TextSelectorConfig(type=TextSelectorType.PASSWORD)
                     ),
-                }
-            ),
-            errors=errors,
-        )
-
-    async def async_step_lsa_saf(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Connect an LSA SAF account."""
-        errors: dict[str, str] = {}
-        if user_input is not None:
-            client = ActiveFireClient(
-                async_get_clientsession(self.hass),
-                user_input[CONF_USERNAME],
-                user_input[CONF_PASSWORD],
-            )
-            try:
-                await client.async_test_auth()
-            except LsaSafAuthError:
-                errors["base"] = "invalid_auth"
-            except LsaSafError:
-                errors["base"] = "cannot_connect"
-            except Exception:  # noqa: BLE001
-                errors["base"] = "cannot_connect"
-            else:
-                await self.async_set_unique_id(user_input[CONF_USERNAME].strip().lower())
-                self._abort_if_unique_id_configured()
-                center = _monitoring_center_from_options(
-                    self.hass,
-                    self._monitoring_options or _home_monitoring_options(self.hass),
-                )
-                return self.async_create_entry(
-                    title=_entry_title(center),
-                    data={
-                        CONF_ACTIVE_FIRE_PROVIDER: ACTIVE_FIRE_PROVIDER_LSA_SAF,
-                        CONF_USERNAME: user_input[CONF_USERNAME].strip(),
-                        CONF_PASSWORD: user_input[CONF_PASSWORD],
-                    },
-                    options=_default_options()
-                    | _serialized_monitoring_options(center, DEFAULT_RADIUS_KM),
-                )
-
-        return self.async_show_form(
-            step_id="lsa_saf",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_USERNAME): str,
-                    vol.Required(CONF_PASSWORD): str,
                 }
             ),
             errors=errors,

@@ -56,7 +56,10 @@ from custom_components.terralyra.const import (
     LOCATION_SOURCE_MANUAL,
     MAX_MONITORED_LOCATIONS,
 )
-from custom_components.terralyra.products.firms import FirmsError
+from custom_components.terralyra.products.firms import (
+    FirmsAuthenticationError,
+    FirmsError,
+)
 
 USERNAME = "testuser"
 PASSWORD = "testpass"
@@ -247,6 +250,75 @@ async def test_goes_user_flow_accepts_custom_covered_center(hass) -> None:
     location = result["options"][CONF_MONITORED_LOCATIONS][0]
     assert location[LOCATION_LATITUDE] == 40.7128
     assert location[LOCATION_SOURCE] == LOCATION_SOURCE_MANUAL
+
+
+async def test_sources_require_complete_lsa_credentials(hass) -> None:
+    """An LSA SAF account is only accepted as a complete credential pair."""
+    result = await _start_lsa_saf_flow(hass)
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        {
+            CONF_USERNAME: USERNAME,
+            CONF_PASSWORD: "",
+            CONF_FIRMS_MAP_KEY: "",
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "lsa_credentials_incomplete"}
+
+
+@pytest.mark.parametrize(
+    ("side_effect", "expected_error"),
+    [
+        (FirmsAuthenticationError("rejected"), "invalid_firms_key"),
+        (FirmsError("offline"), "cannot_connect"),
+    ],
+)
+async def test_sources_report_firms_validation_errors(
+    hass, side_effect: Exception, expected_error: str
+) -> None:
+    """FIRMS setup keeps authentication and connectivity failures distinct."""
+    result = await _start_lsa_saf_flow(hass)
+    with patch(
+        "custom_components.terralyra.config_flow.FirmsClient.async_area",
+        new_callable=AsyncMock,
+        side_effect=side_effect,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_USERNAME: "",
+                CONF_PASSWORD: "",
+                CONF_FIRMS_MAP_KEY: "A" * 32,
+            },
+        )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {CONF_FIRMS_MAP_KEY: expected_error}
+
+
+async def test_sources_validate_and_store_firms_key(hass) -> None:
+    """A valid FIRMS key is tested and stored in config-entry data."""
+    result = await _start_lsa_saf_flow(hass)
+    with patch(
+        "custom_components.terralyra.config_flow.FirmsClient.async_area",
+        new_callable=AsyncMock,
+        return_value=(),
+    ) as validate:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            {
+                CONF_USERNAME: "",
+                CONF_PASSWORD: "",
+                CONF_FIRMS_MAP_KEY: "B" * 32,
+            },
+        )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    assert result["data"] == {CONF_FIRMS_MAP_KEY: "B" * 32}
+    assert result["options"][CONF_ENABLE_FIRMS] is True
+    validate.assert_awaited_once()
 
 
 async def test_monitoring_center_rejects_invalid_coordinates(hass) -> None:
@@ -967,6 +1039,33 @@ async def test_options_add_location_reports_limit_and_allows_peer_coverage(hass)
     )
     assert result["type"] is FlowResultType.CREATE_ENTRY
     assert len(result["data"][CONF_MONITORED_LOCATIONS]) == 2
+
+
+async def test_options_add_location_rejects_invalid_coordinates(hass) -> None:
+    """Invalid manual coordinates keep the add-location form open."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        data={},
+        options={CONF_MONITORED_LOCATIONS: [_stored_location()]},
+    )
+    entry.add_to_hass(hass)
+    result = await _start_location_management(hass, entry)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], {"next_step_id": "add_location"}
+    )
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"],
+        {
+            LOCATION_NAME: "Invalid",
+            LOCATION_LATITUDE: float("nan"),
+            LOCATION_LONGITUDE: 19.0,
+            LOCATION_RADIUS_KM: 25.0,
+            LOCATION_ENABLED: True,
+        },
+    )
+
+    assert result["type"] is FlowResultType.FORM
+    assert result["errors"] == {"base": "invalid_monitored_location"}
 
 
 async def test_options_edit_cannot_disable_last_location(hass) -> None:
