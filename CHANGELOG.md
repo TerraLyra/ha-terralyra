@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.0
+
+- Add one user-facing source-assignment sensor for every enabled monitored
+  location, showing the number, readable names and satellites of all
+  automatically selected equal-peer active-fire sources.
+- Enrich bounded coverage attributes with readable assignment details while
+  keeping monitored coordinates out of entity state attributes.
+- Add explicit Europe/United States automatic-assignment regression coverage
+  and refresh documentation to remove remaining primary/secondary wording.
+
 ## 0.6.0
 
 - Replace the configured primary/supplemental active-fire hierarchy with

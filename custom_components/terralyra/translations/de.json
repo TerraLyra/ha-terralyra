@@ -106,6 +106,7 @@
       "product_age": {"name": "Alter des Brandprodukts"},
       "provider_status": {"name": "Status der Aktivbranddaten", "state": {"initializing": "Wird initialisiert", "available": "Verfügbar", "delayed": "Verspätet", "no_product": "Kein aktuelles Produkt", "outage": "Anbieterausfall", "auth_error": "Authentifizierungsfehler"}},
       "active_fire_provider": {"name": "Zugewiesene Aktivbrandquellen", "state": {"automatic": "Automatisch", "unavailable": "Nicht verfügbar"}},
+      "monitored_location_sources": {"name": "Aktivbrandquellen für {location_name}"},
       "provider_coverage": {"name": "Quellenabdeckung der überwachten Orte", "state": {"covered": "Abgedeckt", "partial": "Teilweise abgedeckt", "not_covered": "Nicht abgedeckt", "unknown": "Unbekannt"}},
       "fire_risk_today": {"name": "Waldbrandgefahr in der Nähe von Zuhause", "state": {"low": "Niedrig", "moderate": "Mäßig", "high": "Hoch", "very_high": "Sehr hoch", "extreme": "Extrem", "unknown": "Unbekannt"}},
       "fire_risk_area_maximum": {"name": "Höchste Waldbrandgefahr im Überwachungsgebiet", "state": {"low": "Niedrig", "moderate": "Mäßig", "high": "Hoch", "very_high": "Sehr hoch", "extreme": "Extrem", "unknown": "Unbekannt"}},

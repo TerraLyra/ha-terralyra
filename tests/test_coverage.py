@@ -81,6 +81,9 @@ def test_sources_are_automatically_assigned_as_equal_peers() -> None:
     assert california.providers == ("noaa_goes", "nasa_firms")
     assert california.satellites == ("G18", "NOAA-20/NOAA-21 VIIRS")
     assert summarize_source_plans((europe, california)) == "covered"
+    assert europe.attrs()["source_names"] == ["EUMETSAT LSA SAF", "NASA FIRMS"]
+    assert california.attrs()["source_names"] == ["NOAA GOES", "NASA FIRMS"]
+    assert california.attrs()["relationship"] == "equal_peers"
 
 
 def test_unconfigured_global_source_leaves_unsupported_location_uncovered() -> None:

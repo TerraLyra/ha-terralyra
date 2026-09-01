@@ -15,6 +15,12 @@ MTG_SUB_SATELLITE_LONGITUDE = 0.0
 MAX_SAFE_MTG_CENTRAL_ANGLE_DEGREES = 78.0
 NASA_FIRMS_PROVIDER = "nasa_firms"
 
+SOURCE_DISPLAY_NAMES = {
+    ACTIVE_FIRE_PROVIDER_LSA_SAF: "EUMETSAT LSA SAF",
+    ACTIVE_FIRE_PROVIDER_GOES: "NOAA GOES",
+    NASA_FIRMS_PROVIDER: "NASA FIRMS",
+}
+
 
 @dataclass(frozen=True, slots=True)
 class LocationCoverage:
@@ -51,12 +57,26 @@ class LocationSourcePlan:
         return bool(self.providers)
 
     def attrs(self) -> dict[str, object]:
+        assignments = [
+            {
+                "provider": provider,
+                "name": SOURCE_DISPLAY_NAMES.get(provider, provider),
+                "satellite": satellite,
+            }
+            for provider, satellite in zip(
+                self.providers, self.satellites, strict=True
+            )
+        ]
         return {
             "location_id": self.location_id,
             "location_name": self.location_name,
             "covered": self.covered,
             "providers": list(self.providers),
+            "source_names": [item["name"] for item in assignments],
             "satellites": list(self.satellites),
+            "assignments": assignments,
+            "source_count": len(assignments),
+            "relationship": "equal_peers",
         }
 
 

@@ -183,6 +183,9 @@
           "unavailable": "Nem érhető el"
         }
       },
+      "monitored_location_sources": {
+        "name": "{location_name} aktívtűz-forrásai"
+      },
       "provider_coverage": {
         "name": "Figyelt helyek forráslefedettsége",
         "state": {

@@ -90,6 +90,9 @@ alert flood.
 - `sensor.*_fire_product_age` – age of the latest product in minutes
 - `sensor.*_active_fire_data_source` – automatic assignment state, with every
   assigned provider, satellite and health state as attributes
+- `sensor.*_active_fire_sources` – one entity per enabled monitored location;
+  its numeric state is the number of automatically assigned equal sources and
+  its attributes list their readable provider names and satellites
 - `sensor.*_active_fire_data_status` – provider health and freshness, including
   delayed, no-product and outage states
 - `sensor.*_fire_detections_in_the_last_hour` – detections during the last hour,
@@ -260,9 +263,9 @@ successfully processed and contained no matching detections. It is deliberately
 different from a provider failure. The **Active-fire data status** sensor reports:
 
 - `available` for a current valid product;
-- `delayed` when the newest valid primary-provider product exceeds its freshness threshold;
-- `no_product` when no recent primary-provider product can be found;
-- `outage` when the provider cannot return a safe, valid response;
+- `delayed` when the newest valid assigned-source product exceeds its freshness threshold;
+- `no_product` when no assigned source has a recent product;
+- `outage` when all assigned sources fail to return a safe, valid response;
 - `auth_error` when saved credentials require reauthentication.
 
 The status attributes include the provider, satellite, product timestamp and
@@ -271,19 +274,17 @@ successful data and persistent fire tracks; they are never converted into a
 false zero-fire observation.
 
 Provider health and geographic coverage are intentionally separate. The
-**Primary provider geographic coverage** sensor evaluates every enabled
-monitored location using conservative pre-download satellite geometry and
-reports `covered`, `partially covered`, or `not covered`. Its attributes list
-each location without repeating coordinates and recommend NOAA GOES, LSA SAF,
-or NASA FIRMS when the configured primary provider cannot cover it. An
-available provider endpoint therefore never implies that an unsupported
-location has no active fire.
+**Monitored-location source coverage** evaluates every enabled location using
+conservative pre-download satellite geometry and reports `covered`, `partially
+covered`, or `not covered`. TerraLyra also creates one **active-fire sources**
+sensor per location. Its state is the assigned source count and its attributes
+show the readable provider names, satellites and the equal-peer relationship
+without exposing the location coordinates.
 
-The **Primary active-fire data source** sensor identifies the configured
-provider. Every TerraLyra map marker separately names the provider that
-actually supplied the incident evidence: LSA SAF, NOAA GOES, NASA FIRMS, or
-multiple sources. Home Assistant map cards may also combine geo-location
-entities from other integrations.
+Every TerraLyra map marker separately names the provider or providers that
+supplied the incident evidence: LSA SAF, NOAA GOES, NASA FIRMS, or multiple
+sources. Home Assistant map cards may also combine geolocation entities from
+other integrations.
 
 ## Installation through HACS
 
@@ -292,26 +293,24 @@ entities from other integrations.
 2. Install **TerraLyra**.
 3. Restart Home Assistant.
 4. Go to **Settings → Devices & services → Add integration → TerraLyra**.
-5. Select the active-fire provider appropriate for the location to monitor.
-6. Keep **Home** as the active-fire monitoring center, or enable the custom
-   center and enter its recognizable name, latitude and longitude.
-7. For **EUMETSAT LSA SAF**, enter the LSA SAF Data Service username and
-   password. Safely covered **NOAA GOES-18/19** installations need no provider
-   account.
+5. Keep **Home** as the initial monitored location or manage additional named
+   locations in the integration options.
+6. Optionally enter LSA SAF Data Service credentials to add MTG observations
+   where its safe footprint covers a location.
+7. TerraLyra automatically adds GOES-18/19 where geographically relevant and
+   optional NASA FIRMS observations when a personal MAP_KEY is configured.
 
 A free LSA SAF Data Service account is required only for the MTFRPPixel
 provider. GOES downloads the newest validated public NOAA full-disk product and
 therefore adds network, storage, decoder and memory cost. TerraLyra rejects
-GOES before setup when the selected monitoring center is outside its
-conservative coverage gate.
+GOES is assigned only to locations inside its conservative coverage gate.
 
 ## Active fire options
 
 - **Monitoring radius**: 1–500 km. Also exposed as a Number entity so it can be changed from a dashboard.
-- **Custom active-fire monitoring center**: optional name, latitude and
-  longitude used by the active-fire provider, NASA FIRMS, distance sensors,
-  alerts and fire markers. When disabled, these follow Home. FRMv3 fire risk
-  and MTLST continue to use Home regardless of this setting.
+- **Managed monitored locations**: locally stored names, coordinates and
+  radii used for automatic source assignment, distance sensors, alerts and
+  fire markers. FRMv3 fire risk and MTLST remain tied to Home.
 - **Minimum fire confidence**: 0.0–1.0.
 - **Minimum FRP**: filters weak detections by Fire Radiative Power in MW.
 - **Check interval**: how often Home Assistant looks for a newer product. The source product itself is nominally 10-minute data.
@@ -327,11 +326,11 @@ conservative coverage gate.
 - **NASA FIRMS corroboration**: enables independent VIIRS comparison and
   requires the user's own FIRMS MAP_KEY.
 
-## Optional NASA FIRMS corroboration
+## Optional NASA FIRMS source
 
 NASA FIRMS is disabled by default. To enable it, create a personal FIRMS
 MAP_KEY, open **Settings → Devices & services → TerraLyra → Configure**, enable
-NASA FIRMS corroboration and enter the key. TerraLyra validates the key before
+NASA FIRMS observations and enter the key. TerraLyra validates the key before
 saving the option.
 
 When enabled, TerraLyra requests only the bounded areas around all enabled
@@ -339,18 +338,15 @@ monitored locations from the NOAA-20 and NOAA-21 VIIRS near-real-time feeds.
 Overlapping safe boxes are merged; geographically distant boxes remain
 separate, with at most ten planned areas. Results are deduplicated across
 areas. Requests are cached for at least 15 minutes, use a maximum one-day query
-window, and are isolated from the primary provider: a FIRMS outage cannot stop
-primary active-fire updates.
+window, and are isolated from their equal peers: a FIRMS outage cannot stop
+healthy MTG or GOES updates.
 
 Detections within 5 km and 6 hours are treated as independent corroboration.
-FIRMS-only detections can appear as supplemental **NASA FIRMS · …** map markers,
-but they do not independently trigger TerraLyra new-fire alerts or change the
-Active Fire Situation score. Cross-refresh reconciliation prevents a matching
-primary and supplemental incident from remaining as duplicate map entities.
-For the same reason, the primary count can correctly be zero while the
-supplemental or combined count is non-zero. The separate sensors make that
-distinction explicit instead of presenting the map and primary health summary
-as if they described the same source scope.
+FIRMS-only detections can appear as **NASA FIRMS · …** map markers. Nearby
+observations from independent providers are correlated into one incident, with
+the contributing providers preserved as evidence. The source-specific and
+all-source count sensors remain available so users can understand the scope of
+each value without implying a provider hierarchy.
 
 Enabling the option sends each required monitoring-area bounding box and the
 user's MAP_KEY to the official NASA FIRMS service. Exact place names are not
@@ -513,9 +509,9 @@ The domain is intentionally the generic `terralyra`, not `terralyra_mtg_fire`, s
 Dashboard geolocation-source selections belong to the user's dashboard and
 cannot be rewritten by an integration update. If a map card was created for the
 older development integration, edit that card, remove the legacy `lsa_saf`
-value from **Geolocation sources**, and select `terralyra`. FIRMS-only markers
-are prefixed with **NASA FIRMS**; unprefixed markers use the selected primary
-provider. Home Assistant only lists sources that currently have a loaded
+value from **Geolocation sources**, and select `terralyra`. Single-source
+markers name their observing provider and corroborated incidents retain all
+contributors. Home Assistant only lists sources that currently have a loaded
 `geo_location` entity. If no recent fire marker exists, leave the source filter
 empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
@@ -533,13 +529,13 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Multi-source detection and incident verification
 
-- NASA FIRMS can be enabled as an optional secondary active-fire provider with
-  the user's personal MAP_KEY; it remains disabled by default
+- NASA FIRMS can be enabled as an optional equal active-fire source with the
+  user's personal MAP_KEY; it remains disabled by default
 - bounded NOAA-20 and NOAA-21 VIIRS Area API requests are cached for at least
-  15 minutes and failures never stop primary-provider monitoring
-- nearby primary-provider and FIRMS detections are correlated within explicit
+  15 minutes and failures never stop healthy peer-source monitoring
+- nearby independent-provider detections are correlated within explicit
   5 km and 6 hour gates, with source attribution retained on each incident
-- FIRMS-only detections appear as supplemental map markers with locally resolved
+- FIRMS-only detections appear as source-labelled map markers with locally resolved
   nearest-settlement names; current and persisted cross-provider matches are
   reconciled instead of being displayed as duplicates
 - the independent fire-source confirmation sensor distinguishes disabled,
@@ -583,11 +579,11 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 ## Home Assistant Repairs
 
 TerraLyra creates an actionable Home Assistant repair notice when provider
-credentials are rejected, when the primary active-fire provider fails at least
-three consecutive updates, or when that provider does not geographically cover
+credentials are rejected, when all assigned active-fire sources fail at least
+three consecutive updates, or when no configured source geographically covers
 one or more enabled monitored locations. A successful update or corrected
-configuration removes the corresponding notice automatically. Isolated
-network failures do not create a repair notice.
+configuration removes the corresponding notice automatically. An isolated
+peer-source or transient network failure does not create a repair notice.
 
 ## Important limitations
 

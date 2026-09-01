@@ -21,7 +21,11 @@ from .const import (
     DEFAULT_ENABLE_FIRMS,
     DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
 )
-from .coverage import plan_location_sources, summarize_source_plans
+from .coverage import (
+    LocationSourcePlan,
+    plan_location_sources,
+    summarize_source_plans,
+)
 from .entity import (
     TerraLyraEntity,
     TerraLyraFireRiskEntity,
@@ -57,6 +61,12 @@ async def async_setup_entry(
         FireRiskAreaMaximumSensor(entry),
         FireRiskUpdateSensor(entry),
     ]
+    entities.extend(
+        MonitoredLocationSourcesSensor(entry, plan)
+        for plan in _location_source_plans(
+            entry, entry.runtime_data.coordinator.monitored_locations
+        )
+    )
     if entry.options.get(
         CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
         DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
@@ -362,21 +372,9 @@ class ProviderCoverageSensor(TerraLyraEntity, SensorEntity):
         self._attr_unique_id = f"{entry.entry_id}_provider_coverage"
 
     def _coverage(self):
-        results = tuple(
-            plan_location_sources(
-                location,
-                lsa_saf_available=bool(
-                    self.entry.data.get("username") and self.entry.data.get("password")
-                ),
-                firms_available=bool(
-                    self.entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS)
-                    and self.entry.data.get(CONF_FIRMS_MAP_KEY)
-                ),
-            )
-            for location in self.coordinator.monitored_locations
-            if location.enabled
+        return "automatic", _location_source_plans(
+            self.entry, self.coordinator.monitored_locations
         )
-        return "automatic", results
 
     @property
     def native_value(self) -> str:
@@ -394,6 +392,55 @@ class ProviderCoverageSensor(TerraLyraEntity, SensorEntity):
             "locations": [result.attrs() for result in results],
             "assessment": "automatic_equal_peer_geographic_assignment",
         }
+
+
+class MonitoredLocationSourcesSensor(TerraLyraEntity, SensorEntity):
+    """Expose the equal active-fire sources assigned to one location."""
+
+    _attr_translation_key = "monitored_location_sources"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+    _attr_icon = "mdi:satellite-uplink"
+
+    def __init__(
+        self,
+        entry: TerraLyraConfigEntry,
+        plan: LocationSourcePlan,
+    ) -> None:
+        super().__init__(entry)
+        self._plan = plan
+        self._attr_unique_id = f"{entry.entry_id}_location_sources_{plan.location_id}"
+        self._attr_translation_placeholders = {"location_name": plan.location_name}
+
+    @property
+    def native_value(self) -> int:
+        return len(self._plan.providers)
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        return self._plan.attrs() | {
+            "selection_mode": "automatic_by_location_coverage",
+            "assignment_note": "all_sources_are_equal_peers",
+        }
+
+
+def _location_source_plans(
+    entry: TerraLyraConfigEntry, locations: tuple[Any, ...]
+) -> tuple[LocationSourcePlan, ...]:
+    """Return bounded automatic source plans for every enabled location."""
+    return tuple(
+        plan_location_sources(
+            location,
+            lsa_saf_available=bool(
+                entry.data.get("username") and entry.data.get("password")
+            ),
+            firms_available=bool(
+                entry.options.get(CONF_ENABLE_FIRMS, DEFAULT_ENABLE_FIRMS)
+                and entry.data.get(CONF_FIRMS_MAP_KEY)
+            ),
+        )
+        for location in locations
+        if location.enabled
+    )
 
 
 class RecentDetectionsSensor(TerraLyraEntity, SensorEntity):

@@ -9,6 +9,7 @@ import pytest
 
 from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
 from custom_components.terralyra.clustering import cluster_detections
+from custom_components.terralyra.coverage import plan_location_sources
 from custom_components.terralyra.models import (
     FireDetection,
     ProviderSnapshot,
@@ -35,6 +36,7 @@ from custom_components.terralyra.sensor import (
     ActiveFireCountSensor,
     ActiveFireProviderSensor,
     CombinedFireCountSensor,
+    MonitoredLocationSourcesSensor,
     ProviderCoverageSensor,
     ProviderStatusSensor,
     SupplementalFireCountSensor,
@@ -350,6 +352,39 @@ def test_provider_coverage_sensor_separates_health_and_geography() -> None:
     assert attrs["covered_locations"] == 2
     assert attrs["uncovered_locations"] == 0
     assert attrs["locations"][1]["providers"] == ["noaa_goes"]
+
+
+def test_monitored_location_sources_sensor_is_readable_and_equal_peer() -> None:
+    entry = SimpleNamespace(
+        entry_id="entry-1",
+        runtime_data=SimpleNamespace(coordinator=SimpleNamespace()),
+    )
+    plan = plan_location_sources(
+        MonitoredLocation(
+            id="california",
+            name="California test",
+            latitude=38.5618,
+            longitude=-121.6263,
+            radius_km=100,
+            enabled=True,
+            source="manual",
+        ),
+        lsa_saf_available=True,
+        firms_available=True,
+    )
+    entity = MonitoredLocationSourcesSensor(entry, plan)
+
+    assert entity.native_value == 2
+    assert entity.translation_placeholders == {"location_name": "California test"}
+    assert entity.extra_state_attributes["source_names"] == [
+        "NOAA GOES",
+        "NASA FIRMS",
+    ]
+    assert entity.extra_state_attributes["satellites"] == [
+        "G18",
+        "NOAA-20/NOAA-21 VIIRS",
+    ]
+    assert entity.extra_state_attributes["relationship"] == "equal_peers"
 
 
 @pytest.mark.parametrize("data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])])
