@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.4
+
+- Align the German, Spanish, French, Hungarian and Italian option and repair
+  text with automatic, location-based assignment of equal active-fire sources.
+- Explain that NASA FIRMS is queried separately around every enabled monitored
+  location rather than around a single selected monitoring center.
+- Update authentication and outage wording for multi-source operation, and
+  remove obsolete primary/supplemental terminology from user documentation.
+
 ## 0.7.3
 
 - Remove orphaned per-location source sensors from Home Assistant's entity

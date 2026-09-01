@@ -144,8 +144,8 @@ hours_to_show: 24
 
 `label_mode: icon` displays the integration's fire icon instead of a shortened
 text label. Clicking a marker shows its exact latitude and longitude together
-with the fire attributes. Supplemental FIRMS-only entity names begin with
-**NASA FIRMS ·** so the source is also visible in the entity dialog.
+with the fire attributes. FIRMS-only entity names begin with **NASA FIRMS ·**
+so the source is also visible in the entity dialog.
 
 The integration resolves the nearest settlement locally from its bundled
 GeoNames `cities500` database. It sends no fire or Home coordinates to an
@@ -599,7 +599,7 @@ satellite evidence but does not prove that an emergency is occurring.
 
 LSA SAF products are provided by the **EUMETSAT Satellite Application Facility on Land Surface Analysis (LSA SAF)**. Follow the LSA SAF/EUMETSAT acknowledgement and licensing requirements when redistributing derived data or screenshots.
 
-Supplemental active-fire observations are provided by
+NASA FIRMS active-fire observations are provided by
 [NASA FIRMS](https://firms.modaps.eosdis.nasa.gov/). Users are responsible for
 complying with the provider's current terms and attribution requirements when
 redistributing data or derived material.

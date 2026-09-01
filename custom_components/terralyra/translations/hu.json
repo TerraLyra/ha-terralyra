@@ -111,13 +111,13 @@
           "fire_risk_radius_km": "Az FRMv3 térképen megjelenő és a legmagasabb regionális tűzkockázathoz vizsgált terület. Az aktívtűz-riasztások sugarát nem módosítja.",
           "min_confidence": "A 0 minden észlelést enged; az 1 a legszigorúbb szűrés.",
           "min_frp_mw": "Az ennél gyengébb FRP-jű észlelések figyelmen kívül maradnak.",
-          "scan_interval_minutes": "Milyen gyakran ellenőrizze a Home Assistant az újabb aktívtűz-adatokat a kiválasztott szolgáltatónál.",
+          "scan_interval_minutes": "Milyen gyakran ellenőrizze a Home Assistant az automatikusan hozzárendelt aktívtűz-források újabb termékeit.",
           "dedup_radius_km": "A közelmúltban látott tűzhöz közeli észlelés ugyanannak a tűznek számít, így nem keletkezik új esemény.",
           "dedup_hours": "Ennyi ideig nyomja el az azonos helyen jelentkező ismételt új-tűz eseményt.",
           "fire_history_hours": "Ennyi ideig maradnak láthatók az inaktív tűzjelölések a térképen. Az ismételt riasztások elnyomását nem hosszabbítja meg.",
           "resolve_place_names": "A legközelebbi települést helyben keresi meg a csomagolt GeoNames cities500 adatbázisból. Koordinátát nem küld külső szolgáltatásnak.",
           "enable_land_surface_temperature": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant körülbelül 15 percenként elküldi az Otthon szélességi és hosszúsági koordinátáját az LSA SAF hivatalos adaguc.lsasvcs.ipma.pt WMS-szolgáltatásának a legfrissebb műholdas felszínhőmérséklet lekéréséhez.",
-          "enable_firms": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant az aktívtűz-figyelőközpont körüli kis határolóterületet elküldi a NASA hivatalos FIRMS API-jának, hogy független VIIRS-észleléseket keressen. Saját ingyenes MAP_KEY szükséges.",
+          "enable_firms": "Bekapcsolva a NASA FIRMS minden figyelt helyhez egyenrangú forrásként lesz hozzárendelve. A Home Assistant minden engedélyezett hely körüli kis határolóterületet elküldi a hivatalos FIRMS API-nak. Saját ingyenes MAP_KEY szükséges.",
           "firms_map_key": "Titkos adatként kerül a Home Assistant konfigurációs bejegyzésébe, és a diagnosztikából ki van takarva. Hagyd üresen a már mentett kulcs megtartásához."
         }
       },
@@ -138,8 +138,8 @@
     }
   },
   "issues": {
-    "provider_authentication": {"title": "Sikertelen hitelesítés az aktívtűz-adatforrásnál", "description": "A TerraLyra nem tud hitelesíteni a beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."},
-    "provider_outage": {"title": "Az aktívtűz-adatforrás ismételten nem érhető el", "description": "A beállított adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a szolgáltatást és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."},
+    "provider_authentication": {"title": "Sikertelen hitelesítés egy aktívtűz-adatforrásnál", "description": "A TerraLyra nem tud hitelesíteni az egyik beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."},
+    "provider_outage": {"title": "Az aktívtűz-adatforrások ismételten nem érhetők el", "description": "Minden hozzárendelt aktívtűz-adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a forrásszolgáltatásokat és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."},
     "fire_risk_outage": {"title": "A tűzkockázati előrejelzés szolgáltatása ismételten nem érhető el", "description": "Az FRMv3 előrejelzési szolgáltatás {failures} egymást követő frissítésnél hibázott. A TerraLyra korlátozott késleltetéssel automatikusan újrapróbálkozik; az aktívtűz-figyelés és a többi működő termék közben folytatódik. Az értesítés helyreállás után eltűnik."},
     "provider_coverage": {"title": "Néhány figyelt helyet egyetlen beállított tűzforrás sem fed le", "description": "A TerraLyra jelenleg nem tud használható forrást rendelni ezekhez: {locations}. Adj meg LSA SAF hozzáférést vagy NASA FIRMS MAP_KEY-t, illetve módosítsd a helyeket. A többi hely frissítése folytatódik."}
   },

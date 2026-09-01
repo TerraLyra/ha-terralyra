@@ -64,13 +64,13 @@
           "fire_risk_radius_km": "Auf der FRMv3-Karte angezeigtes und für die höchste regionale Waldbrandgefahr geprüftes Gebiet. Dies ändert die Aktivbrandwarnungen nicht.",
           "min_confidence": "0 berücksichtigt alle Erkennungen; 1 ist der strengste mögliche Filter.",
           "min_frp_mw": "Erkennungen mit einer geringeren FRP in MW werden ignoriert.",
-          "scan_interval_minutes": "Wie oft Home Assistant die ausgewählte Quelle auf neuere Aktivbranddaten prüft.",
+          "scan_interval_minutes": "Wie oft Home Assistant die automatisch zugewiesenen Aktivbrandquellen auf neuere Produkte prüft.",
           "dedup_radius_km": "Eine Erkennung in der Nähe eines kürzlich gesehenen Feuers gilt als dasselbe Feuer und erzeugt kein weiteres Ereignis.",
           "dedup_hours": "So lange werden wiederholte Ereignisse für dasselbe Feuer im selben Gebiet unterdrückt.",
           "fire_history_hours": "So lange bleiben inaktive Brandmarkierungen auf der Karte sichtbar. Die Unterdrückung wiederholter Warnungen wird dadurch nicht verlängert.",
           "resolve_place_names": "Ermittelt den nächsten Ort lokal anhand der enthaltenen GeoNames-cities500-Datenbank. Es werden keine Koordinaten an externe Dienste gesendet.",
           "enable_land_surface_temperature": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant etwa alle 15 Minuten die Koordinaten des Zuhauses an den offiziellen LSA-SAF-WMS-Dienst adaguc.lsasvcs.ipma.pt.",
-          "enable_firms": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant einen kleinen Begrenzungsbereich um das Aktivbrand-Überwachungszentrum an die offizielle NASA-FIRMS-API. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
+          "enable_firms": "Bei Aktivierung wird NASA FIRMS jedem überwachten Ort als gleichrangige Quelle zugewiesen. Home Assistant sendet einen kleinen Begrenzungsbereich um jeden aktivierten Ort an die offizielle FIRMS-API. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
           "firms_map_key": "Wird geheim im Home-Assistant-Konfigurationseintrag gespeichert und in Diagnosen ausgeblendet. Leer lassen, um einen bereits gespeicherten Schlüssel beizubehalten."
         }
       },
@@ -91,8 +91,8 @@
     }
   },
   "issues": {
-    "provider_authentication": {"title": "Authentifizierung beim Aktivbrandanbieter fehlgeschlagen", "description": "TerraLyra kann sich beim konfigurierten Aktivbrandanbieter nicht authentifizieren. Prüfen Sie die Zugangsdaten in den Integrationseinstellungen und laden Sie die Integration neu."},
-    "provider_outage": {"title": "Aktivbrandanbieter ist wiederholt nicht verfügbar", "description": "Der konfigurierte Anbieter ist bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. Prüfen Sie den Dienst und den Internetzugang von Home Assistant und laden Sie die Integration neu."},
+    "provider_authentication": {"title": "Authentifizierung einer Aktivbrandquelle fehlgeschlagen", "description": "TerraLyra kann sich bei einer konfigurierten Aktivbrandquelle nicht authentifizieren. Prüfen Sie die Zugangsdaten in den Integrationseinstellungen und laden Sie die Integration neu."},
+    "provider_outage": {"title": "Aktivbrandquellen sind wiederholt nicht verfügbar", "description": "Alle zugewiesenen Aktivbrandquellen sind bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. Prüfen Sie die Quelldienste und den Internetzugang dieser Home-Assistant-Instanz und laden Sie die Integration neu. Andere TerraLyra-Produkte können weiterhin aktualisiert werden."},
     "fire_risk_outage": {"title": "Der Waldbrandgefahren-Vorhersagedienst ist wiederholt nicht verfügbar", "description": "Der FRMv3-Vorhersagedienst ist bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. TerraLyra versucht es automatisch mit einer begrenzten Verzögerung erneut; die Aktivbrandüberwachung und andere funktionierende Produkte laufen weiter. Der Hinweis verschwindet nach der Wiederherstellung."},
     "provider_coverage": {"title": "Keine konfigurierte Aktivbrandquelle deckt einige Orte ab", "description": "TerraLyra kann derzeit keine nutzbare Quelle zuweisen für: {locations}. Ergänzen Sie LSA-SAF-Zugangsdaten oder einen NASA-FIRMS-MAP_KEY, oder ändern Sie die Orte. Andere Orte werden weiter aktualisiert."}
   },

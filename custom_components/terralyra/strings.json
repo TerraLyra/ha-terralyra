@@ -3,8 +3,8 @@
   "config": {
     "step": {
       "user": {
-        "title": "Choose an active-fire data source",
-        "description": "LSA SAF is recommended for Europe and nearby regions and requires a free account. NOAA GOES is intended for safely covered Western Hemisphere locations, needs no account, and downloads additional satellite data.",
+        "title": "Configure active-fire data sources",
+        "description": "TerraLyra automatically assigns every relevant source to each monitored location. LSA SAF requires a free account, while NOAA GOES needs no account.",
         "data": {
           "active_fire_provider": "Active-fire data source"
         }
@@ -157,12 +157,12 @@
   },
   "issues": {
     "provider_authentication": {
-      "title": "Active-fire provider authentication failed",
-      "description": "TerraLyra cannot authenticate with the configured active-fire provider. Open the integration settings, verify the credentials, and reload the integration."
+      "title": "Active-fire source authentication failed",
+      "description": "TerraLyra cannot authenticate with a configured active-fire source. Open the integration settings, verify the credentials, and reload the integration."
     },
     "provider_outage": {
-      "title": "Active-fire provider is repeatedly unavailable",
-      "description": "The configured active-fire provider failed {failures} consecutive updates. Check the provider service and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."
+      "title": "Active-fire sources are repeatedly unavailable",
+      "description": "All assigned active-fire sources failed {failures} consecutive updates. Check the source services and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."
     },
     "fire_risk_outage": {
       "title": "Fire-risk forecast service is repeatedly unavailable",

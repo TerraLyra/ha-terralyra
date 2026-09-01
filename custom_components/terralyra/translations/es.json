@@ -64,13 +64,13 @@
           "fire_risk_radius_km": "Zona mostrada en el mapa FRMv3 y analizada para determinar el mayor riesgo regional. No modifica las alertas de incendios activos.",
           "min_confidence": "0 incluye todas las detecciones; 1 es el filtro más estricto.",
           "min_frp_mw": "Ignora las detecciones cuya FRP en MW sea inferior a este valor.",
-          "scan_interval_minutes": "Frecuencia con la que Home Assistant consulta la fuente seleccionada para obtener datos más recientes.",
+          "scan_interval_minutes": "Frecuencia con la que Home Assistant consulta las fuentes de incendios asignadas automáticamente para obtener productos más recientes.",
           "dedup_radius_km": "Una detección cercana a un incendio visto recientemente se considera el mismo incendio y no genera otro evento.",
           "dedup_hours": "Tiempo durante el que se suprimen los eventos repetidos del mismo incendio en la misma zona.",
           "fire_history_hours": "Tiempo durante el que los marcadores de incendios inactivos permanecen visibles en el mapa. No prolonga la supresión de alertas repetidas.",
           "resolve_place_names": "Busca localmente el asentamiento más cercano mediante la base de datos GeoNames cities500 incluida. No se envían coordenadas a servicios externos.",
           "enable_land_surface_temperature": "Opcional y desactivado por defecto. Al activarlo, Home Assistant envía aproximadamente cada 15 minutos las coordenadas de Casa al servicio WMS oficial de LSA SAF adaguc.lsasvcs.ipma.pt.",
-          "enable_firms": "Opcional y desactivado por defecto. Al activarlo, Home Assistant envía una pequeña zona alrededor del centro de vigilancia a la API oficial NASA FIRMS. Se requiere un MAP_KEY personal gratuito.",
+          "enable_firms": "Al activarlo, NASA FIRMS se asigna como fuente equivalente a cada ubicación vigilada. Home Assistant envía una pequeña zona alrededor de cada ubicación habilitada a la API oficial de FIRMS. Se requiere un MAP_KEY personal gratuito.",
           "firms_map_key": "Se guarda como secreto en la entrada de configuración de Home Assistant y se oculta en los diagnósticos. Déjalo vacío para conservar una clave ya guardada."
         }
       },
@@ -91,8 +91,8 @@
     }
   },
   "issues": {
-    "provider_authentication": {"title": "Falló la autenticación del proveedor de incendios activos", "description": "TerraLyra no puede autenticarse con el proveedor configurado. Comprueba las credenciales en los ajustes de la integración y vuelve a cargarla."},
-    "provider_outage": {"title": "El proveedor de incendios activos no está disponible repetidamente", "description": "El proveedor configurado falló en {failures} actualizaciones consecutivas. Comprueba el servicio y el acceso a Internet de Home Assistant y vuelve a cargar la integración."},
+    "provider_authentication": {"title": "Falló la autenticación de una fuente de incendios activos", "description": "TerraLyra no puede autenticarse con una fuente configurada. Comprueba las credenciales en los ajustes de la integración y vuelve a cargarla."},
+    "provider_outage": {"title": "Las fuentes de incendios activos no están disponibles repetidamente", "description": "Todas las fuentes asignadas fallaron en {failures} actualizaciones consecutivas. Comprueba los servicios y el acceso a Internet de esta instancia de Home Assistant y vuelve a cargar la integración. Otros productos de TerraLyra pueden seguir actualizándose."},
     "fire_risk_outage": {"title": "El servicio de previsión del riesgo de incendio no está disponible repetidamente", "description": "El servicio de previsión FRMv3 falló en {failures} actualizaciones consecutivas. TerraLyra vuelve a intentarlo automáticamente con una demora limitada; la vigilancia de incendios activos y los demás productos disponibles continúan con normalidad. El aviso desaparece al recuperarse."},
     "provider_coverage": {"title": "Ninguna fuente configurada cubre algunas ubicaciones", "description": "TerraLyra no puede asignar una fuente utilizable a: {locations}. Añade credenciales de LSA SAF o una MAP_KEY de NASA FIRMS, o modifica las ubicaciones. Las demás siguen actualizándose."}
   },
