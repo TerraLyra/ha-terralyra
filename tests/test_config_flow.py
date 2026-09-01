@@ -10,6 +10,7 @@ from homeassistant.data_entry_flow import FlowResultType, InvalidData
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
 from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
+from custom_components.terralyra.config_flow import _replace_location_options
 from custom_components.terralyra.const import (
     ACTIVE_FIRE_PROVIDER_GOES,
     CONF_ACTIVE_FIRE_PROVIDER,
@@ -61,6 +62,7 @@ from custom_components.terralyra.products.firms import (
     FirmsAuthenticationError,
     FirmsError,
 )
+from custom_components.terralyra.monitoring import MonitoringCenter
 
 USERNAME = "testuser"
 PASSWORD = "testpass"
@@ -741,6 +743,25 @@ async def test_options_flow_empty_location_list_falls_back_to_home(hass) -> None
 
     assert suggested[CONF_USE_CUSTOM_MONITORING_CENTER] is False
     assert suggested[CONF_MONITORING_LATITUDE] == float(hass.config.latitude)
+
+
+def test_transition_options_recover_without_stored_locations() -> None:
+    """Transition options create a valid location when no stored record exists."""
+    options = {
+        CONF_RADIUS_KM: 40.0,
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: "Recovered",
+        CONF_MONITORING_LATITUDE: 1.0,
+        CONF_MONITORING_LONGITUDE: 2.0,
+    }
+
+    _replace_location_options(
+        options,
+        MonitoringCenter("Recovered", 1.0, 2.0, True),
+    )
+
+    assert len(options[CONF_MONITORED_LOCATIONS]) == 1
+    assert options[CONF_MONITORED_LOCATIONS][0][LOCATION_NAME] == "Recovered"
 
 
 async def test_options_reject_invalid_custom_monitoring_center(hass) -> None:
