@@ -11,6 +11,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import UnitOfLength, UnitOfPower, UnitOfTemperature
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
 from . import TerraLyraConfigEntry
@@ -41,6 +42,10 @@ from .situation import MAX_PRODUCT_AGE
 async def async_setup_entry(
     hass: HomeAssistant, entry: TerraLyraConfigEntry, async_add_entities: AddConfigEntryEntitiesCallback
 ) -> None:
+    location_plans = _location_source_plans(
+        entry, entry.runtime_data.coordinator.monitored_locations
+    )
+    _remove_orphaned_location_source_entities(hass, entry, location_plans)
     entities = [
         NearestFireSensor(entry),
         ActiveFireCountSensor(entry),
@@ -62,18 +67,31 @@ async def async_setup_entry(
         FireRiskAreaMaximumSensor(entry),
         FireRiskUpdateSensor(entry),
     ]
-    entities.extend(
-        MonitoredLocationSourcesSensor(entry, plan)
-        for plan in _location_source_plans(
-            entry, entry.runtime_data.coordinator.monitored_locations
-        )
-    )
+    entities.extend(MonitoredLocationSourcesSensor(entry, plan) for plan in location_plans)
     if entry.options.get(
         CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
         DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
     ):
         entities.append(LandSurfaceTemperatureSensor(entry))
     async_add_entities(entities)
+
+
+def _remove_orphaned_location_source_entities(
+    hass: HomeAssistant,
+    entry: TerraLyraConfigEntry,
+    plans: tuple[LocationSourcePlan, ...],
+) -> None:
+    """Remove source sensors whose monitored location no longer exists."""
+    registry = er.async_get(hass)
+    unique_id_prefix = f"{entry.entry_id}_location_sources_"
+    expected_unique_ids = {f"{unique_id_prefix}{plan.location_id}" for plan in plans}
+    for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
+        if (
+            registry_entry.entity_id.startswith("sensor.")
+            and registry_entry.unique_id.startswith(unique_id_prefix)
+            and registry_entry.unique_id not in expected_unique_ids
+        ):
+            registry.async_remove(registry_entry.entity_id)
 
 
 class LandSurfaceTemperatureSensor(

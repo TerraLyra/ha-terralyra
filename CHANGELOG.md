@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.3
+
+- Remove orphaned per-location source sensors from Home Assistant's entity
+  registry when a monitored location is deleted, disabled or recreated.
+- Preserve all current per-location sensors, including user-customized entity
+  names, while cleaning only obsolete TerraLyra source assignments.
+- Add regression coverage for selective and complete location-source cleanup.
+
 ## 0.7.2
 
 - Preserve every managed monitoring location when the general active-fire
