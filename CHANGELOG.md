@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.7.2
+
+- Preserve every managed monitoring location when the general active-fire
+  options form updates the transition monitoring center or radius.
+- Keep secondary location source assignments active across general options
+  reloads instead of turning their existing entities unavailable.
+- Add regression coverage for a three-location Home, California and Uganda
+  configuration.
+
 ## 0.7.1
 
 - Retry failed FRMv3 fire-risk refreshes after 15, 30 and at most 60 minutes

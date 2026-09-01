@@ -1,4 +1,5 @@
 """Config flow for TerraLyra."""
+
 from __future__ import annotations
 
 from typing import Any
@@ -91,7 +92,9 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         super().__init__()
         self._monitoring_options: dict[str, Any] = {}
 
-    async def async_step_user(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Start location-first automatic source setup."""
         return await self.async_step_monitoring_center(user_input)
 
@@ -184,10 +187,14 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                         data_schema=vol.Schema(
                             {
                                 vol.Optional(CONF_USERNAME, default=username): str,
-                                vol.Optional(CONF_PASSWORD, default=password): TextSelector(
+                                vol.Optional(
+                                    CONF_PASSWORD, default=password
+                                ): TextSelector(
                                     TextSelectorConfig(type=TextSelectorType.PASSWORD)
                                 ),
-                                vol.Optional(CONF_FIRMS_MAP_KEY, default=firms_key): TextSelector(
+                                vol.Optional(
+                                    CONF_FIRMS_MAP_KEY, default=firms_key
+                                ): TextSelector(
                                     TextSelectorConfig(type=TextSelectorType.PASSWORD)
                                 ),
                             }
@@ -223,9 +230,7 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(
-        self, entry_data: dict[str, Any]
-    ) -> ConfigFlowResult:
+    async def async_step_reauth(self, entry_data: dict[str, Any]) -> ConfigFlowResult:
         """Start reauthentication after a runtime authentication failure."""
         return await self.async_step_reauth_confirm()
 
@@ -280,7 +285,9 @@ class TerraLyraConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
     @staticmethod
     @callback
-    def async_get_options_flow(config_entry: config_entries.ConfigEntry) -> config_entries.OptionsFlow:
+    def async_get_options_flow(
+        config_entry: config_entries.ConfigEntry,
+    ) -> config_entries.OptionsFlow:
         return TerraLyraOptionsFlow()
 
 
@@ -291,7 +298,9 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
         """Initialize location-management state."""
         self._selected_location_id: str | None = None
 
-    async def async_step_init(self, user_input: dict[str, Any] | None = None) -> ConfigFlowResult:
+    async def async_step_init(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         errors: dict[str, str] = {}
         if user_input is not None:
             options = dict(user_input)
@@ -341,7 +350,10 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                         _replace_location_options(
                             options,
                             center,
-                            manual_id=_existing_manual_location_id(
+                            existing_locations=resolve_monitored_locations(
+                                self.hass, self.config_entry
+                            ),
+                            location_id=_transition_location_id(
                                 self.hass, self.config_entry
                             ),
                         )
@@ -358,9 +370,10 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                 _replace_location_options(
                     options,
                     center,
-                    manual_id=_existing_manual_location_id(
+                    existing_locations=resolve_monitored_locations(
                         self.hass, self.config_entry
                     ),
+                    location_id=_transition_location_id(self.hass, self.config_entry),
                 )
                 return self.async_create_entry(data=options)
 
@@ -375,11 +388,15 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
         schema = vol.Schema(
             {
                 vol.Required(CONF_RADIUS_KM): NumberSelector(
-                    NumberSelectorConfig(min=MIN_RADIUS_KM, max=MAX_RADIUS_KM, step=1, unit_of_measurement="km", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=MIN_RADIUS_KM,
+                        max=MAX_RADIUS_KM,
+                        step=1,
+                        unit_of_measurement="km",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
-                vol.Optional(
-                    CONF_MANAGE_MONITORED_LOCATIONS, default=False
-                ): bool,
+                vol.Optional(CONF_MANAGE_MONITORED_LOCATIONS, default=False): bool,
                 vol.Required(CONF_USE_CUSTOM_MONITORING_CENTER): bool,
                 vol.Required(CONF_MONITORING_CENTER_NAME): TextSelector(
                     TextSelectorConfig()
@@ -401,25 +418,63 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                     )
                 ),
                 vol.Required(CONF_FIRE_RISK_RADIUS_KM): NumberSelector(
-                    NumberSelectorConfig(min=MIN_RADIUS_KM, max=MAX_RADIUS_KM, step=1, unit_of_measurement="km", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=MIN_RADIUS_KM,
+                        max=MAX_RADIUS_KM,
+                        step=1,
+                        unit_of_measurement="km",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_MIN_CONFIDENCE): NumberSelector(
-                    NumberSelectorConfig(min=0, max=1, step=0.05, mode=NumberSelectorMode.SLIDER)
+                    NumberSelectorConfig(
+                        min=0, max=1, step=0.05, mode=NumberSelectorMode.SLIDER
+                    )
                 ),
                 vol.Required(CONF_MIN_FRP_MW): NumberSelector(
-                    NumberSelectorConfig(min=0, max=1000, step=1, unit_of_measurement="MW", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=0,
+                        max=1000,
+                        step=1,
+                        unit_of_measurement="MW",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_SCAN_INTERVAL_MINUTES): NumberSelector(
-                    NumberSelectorConfig(min=2, max=30, step=1, unit_of_measurement="min", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=2,
+                        max=30,
+                        step=1,
+                        unit_of_measurement="min",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_DEDUP_RADIUS_KM): NumberSelector(
-                    NumberSelectorConfig(min=0.5, max=20, step=0.5, unit_of_measurement="km", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=0.5,
+                        max=20,
+                        step=0.5,
+                        unit_of_measurement="km",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_DEDUP_HOURS): NumberSelector(
-                    NumberSelectorConfig(min=1, max=48, step=1, unit_of_measurement="h", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=1,
+                        max=48,
+                        step=1,
+                        unit_of_measurement="h",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_FIRE_HISTORY_HOURS): NumberSelector(
-                    NumberSelectorConfig(min=1, max=48, step=1, unit_of_measurement="h", mode=NumberSelectorMode.BOX)
+                    NumberSelectorConfig(
+                        min=1,
+                        max=48,
+                        step=1,
+                        unit_of_measurement="h",
+                        mode=NumberSelectorMode.BOX,
+                    )
                 ),
                 vol.Required(CONF_RESOLVE_PLACE_NAMES): bool,
                 vol.Required(CONF_ENABLE_LAND_SURFACE_TEMPERATURE): bool,
@@ -499,7 +554,9 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
         if user_input is not None:
             try:
                 updated = _location_from_edit_input(user_input, location)
-                replacement = [updated if item.id == updated.id else item for item in locations]
+                replacement = [
+                    updated if item.id == updated.id else item for item in locations
+                ]
                 validate_monitored_locations(tuple(replacement))
                 if not any(item.enabled for item in replacement):
                     raise ValueError
@@ -548,9 +605,7 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                 errors["base"] = "one_location_required"
             else:
                 return self._save_locations(replacement)
-        return self._location_selector_form(
-            "toggle_location", locations, errors=errors
-        )
+        return self._location_selector_form("toggle_location", locations, errors=errors)
 
     async def async_step_delete_location(
         self, user_input: dict[str, Any] | None = None
@@ -568,9 +623,7 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
                 errors["base"] = "one_location_required"
             else:
                 return self._save_locations(replacement)
-        return self._location_selector_form(
-            "delete_location", locations, errors=errors
-        )
+        return self._location_selector_form("delete_location", locations, errors=errors)
 
     def _location_selector_form(
         self,
@@ -596,9 +649,7 @@ class TerraLyraOptionsFlow(OptionsFlowWithReload):
             errors=errors or {},
         )
 
-    def _save_locations(
-        self, locations: list[MonitoredLocation]
-    ) -> ConfigFlowResult:
+    def _save_locations(self, locations: list[MonitoredLocation]) -> ConfigFlowResult:
         options = dict(self.config_entry.options)
         options[CONF_MONITORED_LOCATIONS] = [
             location.as_dict() for location in locations
@@ -619,9 +670,7 @@ def _default_options() -> dict[str, Any]:
         CONF_DEDUP_HOURS: DEFAULT_DEDUP_HOURS,
         CONF_FIRE_HISTORY_HOURS: DEFAULT_FIRE_HISTORY_HOURS,
         CONF_RESOLVE_PLACE_NAMES: DEFAULT_RESOLVE_PLACE_NAMES,
-        CONF_ENABLE_LAND_SURFACE_TEMPERATURE: (
-            DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE
-        ),
+        CONF_ENABLE_LAND_SURFACE_TEMPERATURE: (DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE),
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
 
@@ -714,19 +763,30 @@ def _replace_location_options(
     options: dict[str, Any],
     center: MonitoringCenter,
     *,
-    manual_id: str | None = None,
+    existing_locations: tuple[MonitoredLocation, ...] = (),
+    location_id: str | None = None,
 ) -> None:
-    """Replace temporary form fields with the local location list."""
+    """Replace transition fields while preserving other monitored locations."""
+    updated = monitored_location_from_center(
+        center,
+        float(options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
+        manual_id=location_id,
+    )
+    locations: list[MonitoredLocation] = []
+    replaced = False
+    for item in existing_locations:
+        if item.id == location_id:
+            locations.append(updated)
+            replaced = True
+        elif item.id != updated.id:
+            # Switching the transition location back to Home must not create a
+            # second record with Home's reserved stable identity.
+            locations.append(item)
+    if not replaced:
+        locations.append(updated)
+    validate_monitored_locations(tuple(locations))
     options.update(
-        {
-            CONF_MONITORED_LOCATIONS: [
-                monitored_location_from_center(
-                    center,
-                    float(options.get(CONF_RADIUS_KM, DEFAULT_RADIUS_KM)),
-                    manual_id=manual_id,
-                ).as_dict()
-            ]
-        }
+        {CONF_MONITORED_LOCATIONS: [location.as_dict() for location in locations]}
     )
     for key in (
         CONF_USE_CUSTOM_MONITORING_CENTER,
@@ -749,9 +809,7 @@ def _monitoring_form_values(
     if location is None:
         return _home_monitoring_options(hass)
     return {
-        CONF_USE_CUSTOM_MONITORING_CENTER: (
-            location.source == LOCATION_SOURCE_MANUAL
-        ),
+        CONF_USE_CUSTOM_MONITORING_CENTER: (location.source == LOCATION_SOURCE_MANUAL),
         CONF_MONITORING_CENTER_NAME: location.name,
         CONF_MONITORING_LATITUDE: location.latitude,
         CONF_MONITORING_LONGITUDE: location.longitude,
@@ -759,18 +817,16 @@ def _monitoring_form_values(
     }
 
 
-def _existing_manual_location_id(
+def _transition_location_id(
     hass: HomeAssistant, entry: config_entries.ConfigEntry
 ) -> str | None:
-    """Preserve a manual location ID while transition options are edited."""
-    return next(
-        (
-            location.id
-            for location in resolve_monitored_locations(hass, entry)
-            if location.source == LOCATION_SOURCE_MANUAL
-        ),
-        None,
+    """Return the location represented by the backwards-compatible main form."""
+    locations = resolve_monitored_locations(hass, entry)
+    location = next(
+        (candidate for candidate in locations if candidate.enabled),
+        locations[0] if locations else None,
     )
+    return location.id if location is not None else None
 
 
 def _monitoring_center_schema() -> vol.Schema:

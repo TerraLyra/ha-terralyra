@@ -1,4 +1,5 @@
 """Tests for the TerraLyra config, reauth, and options flows."""
+
 from __future__ import annotations
 
 from unittest.mock import AsyncMock, patch
@@ -82,9 +83,7 @@ def _default_options_input() -> dict:
         CONF_DEDUP_HOURS: DEFAULT_DEDUP_HOURS,
         CONF_FIRE_HISTORY_HOURS: DEFAULT_FIRE_HISTORY_HOURS,
         CONF_RESOLVE_PLACE_NAMES: DEFAULT_RESOLVE_PLACE_NAMES,
-        CONF_ENABLE_LAND_SURFACE_TEMPERATURE: (
-            DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE
-        ),
+        CONF_ENABLE_LAND_SURFACE_TEMPERATURE: (DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE),
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
 
@@ -166,9 +165,7 @@ async def test_user_flow_success(hass, mock_test_auth: AsyncMock) -> None:
         CONF_DEDUP_HOURS: DEFAULT_DEDUP_HOURS,
         CONF_FIRE_HISTORY_HOURS: DEFAULT_FIRE_HISTORY_HOURS,
         CONF_RESOLVE_PLACE_NAMES: DEFAULT_RESOLVE_PLACE_NAMES,
-        CONF_ENABLE_LAND_SURFACE_TEMPERATURE: (
-            DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE
-        ),
+        CONF_ENABLE_LAND_SURFACE_TEMPERATURE: (DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE),
         CONF_ENABLE_FIRMS: DEFAULT_ENABLE_FIRMS,
     }
     mock_test_auth.assert_awaited_once()
@@ -638,6 +635,93 @@ async def test_options_flow_preserves_stored_manual_location_id(hass) -> None:
     assert location["name"] == "Renamed farm"
 
 
+async def test_options_flow_preserves_other_monitored_locations(hass) -> None:
+    """Saving general options must not discard secondary monitored locations."""
+    locations = [
+        {
+            **_stored_location("home-2"),
+            LOCATION_NAME: "Home 2",
+            LOCATION_SOURCE: LOCATION_SOURCE_MANUAL,
+        },
+        {
+            **_stored_location("california"),
+            LOCATION_NAME: "California",
+            LOCATION_LATITUDE: 38.5618,
+            LOCATION_LONGITUDE: -121.6263,
+        },
+        {
+            **_stored_location("uganda"),
+            LOCATION_NAME: "Uganda",
+            LOCATION_LATITUDE: 1.3733,
+            LOCATION_LONGITUDE: 32.2903,
+        },
+    ]
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=USERNAME,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: locations},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    submission = {
+        **_default_options_input(),
+        CONF_USE_CUSTOM_MONITORING_CENTER: True,
+        CONF_MONITORING_CENTER_NAME: "Renamed Home 2",
+        CONF_MONITORING_LATITUDE: 46.2169,
+        CONF_MONITORING_LONGITUDE: 20.1333,
+    }
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], submission
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    saved = result["data"][CONF_MONITORED_LOCATIONS]
+    assert [location[LOCATION_ID] for location in saved] == [
+        "home-2",
+        "california",
+        "uganda",
+    ]
+    assert saved[0][LOCATION_NAME] == "Renamed Home 2"
+    assert saved[1:] == locations[1:]
+
+
+async def test_options_flow_switches_primary_location_back_to_home(hass) -> None:
+    """Switching to Home replaces only the transition location without duplicates."""
+    locations = [
+        {
+            **_stored_location("farm"),
+            LOCATION_NAME: "Farm",
+            LOCATION_SOURCE: LOCATION_SOURCE_MANUAL,
+        },
+        _stored_location(),
+        {
+            **_stored_location("uganda"),
+            LOCATION_NAME: "Uganda",
+            LOCATION_LATITUDE: 1.3733,
+            LOCATION_LONGITUDE: 32.2903,
+        },
+    ]
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=USERNAME,
+        data={CONF_USERNAME: USERNAME, CONF_PASSWORD: PASSWORD},
+        options={CONF_MONITORED_LOCATIONS: locations},
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.options.async_init(entry.entry_id)
+    result = await hass.config_entries.options.async_configure(
+        result["flow_id"], _default_options_input()
+    )
+
+    assert result["type"] is FlowResultType.CREATE_ENTRY
+    saved = result["data"][CONF_MONITORED_LOCATIONS]
+    assert [location[LOCATION_ID] for location in saved] == ["home", "uganda"]
+    assert saved[1] == locations[2]
+
+
 async def test_options_flow_empty_location_list_falls_back_to_home(hass) -> None:
     """A damaged empty development list remains recoverable in the UI."""
     entry = MockConfigEntry(
@@ -996,7 +1080,9 @@ async def test_options_toggle_and_delete_with_two_locations(hass) -> None:
     assert len(result["data"][CONF_MONITORED_LOCATIONS]) == 1
 
 
-async def test_options_add_location_reports_limit_and_allows_peer_coverage(hass) -> None:
+async def test_options_add_location_reports_limit_and_allows_peer_coverage(
+    hass,
+) -> None:
     """Adding reports the local limit and permits automatic peer assignment."""
     locations = [
         {
