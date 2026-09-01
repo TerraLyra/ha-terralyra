@@ -8,6 +8,7 @@ from homeassistant.helpers import issue_registry as ir
 from custom_components.terralyra.coverage import LocationCoverage
 from custom_components.terralyra.repairs import (
     OUTAGE_REPAIR_THRESHOLD,
+    async_set_fire_risk_outage_issue,
     async_set_authentication_issue,
     async_set_provider_outage_issue,
     async_sync_coverage_issue,
@@ -59,6 +60,26 @@ def test_outage_issue_waits_for_repeated_failures_and_clears_on_success(
 
     async_set_provider_outage_issue(hass, entry, consecutive_failures=0)
     delete_issue.assert_called_once_with(hass, "terralyra", "entry-1_provider_outage")
+
+
+@patch("custom_components.terralyra.repairs.ir.async_delete_issue")
+@patch("custom_components.terralyra.repairs.ir.async_create_issue")
+def test_fire_risk_issue_is_warning_and_clears_after_recovery(
+    create_issue: Mock, delete_issue: Mock
+) -> None:
+    hass = Mock()
+    entry = _entry()
+
+    async_set_fire_risk_outage_issue(
+        hass, entry, consecutive_failures=OUTAGE_REPAIR_THRESHOLD
+    )
+    assert create_issue.call_args.kwargs["severity"] is ir.IssueSeverity.WARNING
+    assert create_issue.call_args.kwargs["translation_key"] == "fire_risk_outage"
+
+    async_set_fire_risk_outage_issue(hass, entry, consecutive_failures=0)
+    delete_issue.assert_called_once_with(
+        hass, "terralyra", "entry-1_fire_risk_outage"
+    )
 
 
 @patch("custom_components.terralyra.repairs.ir.async_delete_issue")

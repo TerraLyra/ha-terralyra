@@ -164,6 +164,10 @@
       "title": "Active-fire provider is repeatedly unavailable",
       "description": "The configured active-fire provider failed {failures} consecutive updates. Check the provider service and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."
     },
+    "fire_risk_outage": {
+      "title": "Fire-risk forecast service is repeatedly unavailable",
+      "description": "The FRMv3 forecast service failed {failures} consecutive refreshes. TerraLyra is retrying automatically with a bounded delay; active-fire monitoring and other healthy products continue normally. This notice clears after recovery."
+    },
     "provider_coverage": {
       "title": "No configured active-fire source covers some monitored locations",
       "description": "TerraLyra cannot currently assign a usable source to: {locations}. Add the required LSA SAF credentials or NASA FIRMS MAP_KEY, or change the monitored locations. Other covered locations continue updating."

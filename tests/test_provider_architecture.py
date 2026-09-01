@@ -299,6 +299,22 @@ def test_provider_status_sensor_remains_available_during_outage() -> None:
     }
 
 
+def test_provider_status_sensor_marks_old_available_data_as_delayed() -> None:
+    entity = object.__new__(ProviderStatusSensor)
+    product_time = datetime.now(UTC) - timedelta(minutes=61)
+    entity.coordinator = SimpleNamespace(
+        data=SimpleNamespace(product_time=product_time),
+        provider_status=ProviderStatus.AVAILABLE,
+        provider_name=PROVIDER,
+        satellite=SATELLITE,
+        provider_product=PRODUCT,
+        product_timestamp=product_time,
+        received_timestamp=product_time,
+    )
+
+    assert entity.native_value == "delayed"
+
+
 def test_active_fire_provider_sensor_exposes_equal_automatic_sources() -> None:
     entity = object.__new__(ActiveFireProviderSensor)
     binding = SimpleNamespace(provider_id="noaa_goes", satellite="G19")

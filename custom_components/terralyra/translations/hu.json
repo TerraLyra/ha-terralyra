@@ -140,6 +140,7 @@
   "issues": {
     "provider_authentication": {"title": "Sikertelen hitelesítés az aktívtűz-adatforrásnál", "description": "A TerraLyra nem tud hitelesíteni a beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."},
     "provider_outage": {"title": "Az aktívtűz-adatforrás ismételten nem érhető el", "description": "A beállított adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a szolgáltatást és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."},
+    "fire_risk_outage": {"title": "A tűzkockázati előrejelzés szolgáltatása ismételten nem érhető el", "description": "Az FRMv3 előrejelzési szolgáltatás {failures} egymást követő frissítésnél hibázott. A TerraLyra korlátozott késleltetéssel automatikusan újrapróbálkozik; az aktívtűz-figyelés és a többi működő termék közben folytatódik. Az értesítés helyreállás után eltűnik."},
     "provider_coverage": {"title": "Néhány figyelt helyet egyetlen beállított tűzforrás sem fed le", "description": "A TerraLyra jelenleg nem tud használható forrást rendelni ezekhez: {locations}. Adj meg LSA SAF hozzáférést vagy NASA FIRMS MAP_KEY-t, illetve módosítsd a helyeket. A többi hely frissítése folytatódik."}
   },
   "entity": {

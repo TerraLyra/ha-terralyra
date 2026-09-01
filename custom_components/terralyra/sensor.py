@@ -35,6 +35,7 @@ from .evidence import FireEvidenceAssessment, assess_fire_evidence
 from .models import ProviderStatus
 from .products.fire_risk import WMS_URL
 from .products.lst import WMS_URL as LST_WMS_URL
+from .situation import MAX_PRODUCT_AGE
 
 
 async def async_setup_entry(
@@ -310,6 +311,13 @@ class ProviderStatusSensor(TerraLyraEntity, SensorEntity):
 
     @property
     def native_value(self) -> str:
+        data = getattr(self.coordinator, "data", None)
+        if (
+            self.coordinator.provider_status is ProviderStatus.AVAILABLE
+            and data is not None
+            and datetime.now(UTC) - data.product_time > MAX_PRODUCT_AGE
+        ):
+            return ProviderStatus.DELAYED.value
         return self.coordinator.provider_status.value
 
     @property

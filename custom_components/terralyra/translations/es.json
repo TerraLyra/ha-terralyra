@@ -93,6 +93,7 @@
   "issues": {
     "provider_authentication": {"title": "Falló la autenticación del proveedor de incendios activos", "description": "TerraLyra no puede autenticarse con el proveedor configurado. Comprueba las credenciales en los ajustes de la integración y vuelve a cargarla."},
     "provider_outage": {"title": "El proveedor de incendios activos no está disponible repetidamente", "description": "El proveedor configurado falló en {failures} actualizaciones consecutivas. Comprueba el servicio y el acceso a Internet de Home Assistant y vuelve a cargar la integración."},
+    "fire_risk_outage": {"title": "El servicio de previsión del riesgo de incendio no está disponible repetidamente", "description": "El servicio de previsión FRMv3 falló en {failures} actualizaciones consecutivas. TerraLyra vuelve a intentarlo automáticamente con una demora limitada; la vigilancia de incendios activos y los demás productos disponibles continúan con normalidad. El aviso desaparece al recuperarse."},
     "provider_coverage": {"title": "Ninguna fuente configurada cubre algunas ubicaciones", "description": "TerraLyra no puede asignar una fuente utilizable a: {locations}. Añade credenciales de LSA SAF o una MAP_KEY de NASA FIRMS, o modifica las ubicaciones. Las demás siguen actualizándose."}
   },
   "entity": {

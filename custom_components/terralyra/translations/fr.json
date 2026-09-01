@@ -93,6 +93,7 @@
   "issues": {
     "provider_authentication": {"title": "Échec d’authentification du fournisseur de feux actifs", "description": "TerraLyra ne peut pas s’authentifier auprès du fournisseur configuré. Vérifiez les identifiants dans les paramètres de l’intégration, puis rechargez-la."},
     "provider_outage": {"title": "Le fournisseur de feux actifs est indisponible de façon répétée", "description": "Le fournisseur configuré a échoué lors de {failures} mises à jour consécutives. Vérifiez le service et l’accès Internet de Home Assistant, puis rechargez l’intégration."},
+    "fire_risk_outage": {"title": "Le service de prévision du risque d’incendie est indisponible de façon répétée", "description": "Le service de prévision FRMv3 a échoué lors de {failures} actualisations consécutives. TerraLyra réessaie automatiquement avec un délai limité ; la surveillance des feux actifs et les autres produits disponibles continuent normalement. Cet avis disparaît après le rétablissement."},
     "provider_coverage": {"title": "Aucune source configurée ne couvre certains lieux", "description": "TerraLyra ne peut actuellement attribuer de source utilisable à : {locations}. Ajoutez les identifiants LSA SAF ou une MAP_KEY NASA FIRMS, ou modifiez les lieux. Les autres lieux continuent à être actualisés."}
   },
   "entity": {

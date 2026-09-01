@@ -93,6 +93,7 @@
   "issues": {
     "provider_authentication": {"title": "Authentifizierung beim Aktivbrandanbieter fehlgeschlagen", "description": "TerraLyra kann sich beim konfigurierten Aktivbrandanbieter nicht authentifizieren. Prüfen Sie die Zugangsdaten in den Integrationseinstellungen und laden Sie die Integration neu."},
     "provider_outage": {"title": "Aktivbrandanbieter ist wiederholt nicht verfügbar", "description": "Der konfigurierte Anbieter ist bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. Prüfen Sie den Dienst und den Internetzugang von Home Assistant und laden Sie die Integration neu."},
+    "fire_risk_outage": {"title": "Der Waldbrandgefahren-Vorhersagedienst ist wiederholt nicht verfügbar", "description": "Der FRMv3-Vorhersagedienst ist bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. TerraLyra versucht es automatisch mit einer begrenzten Verzögerung erneut; die Aktivbrandüberwachung und andere funktionierende Produkte laufen weiter. Der Hinweis verschwindet nach der Wiederherstellung."},
     "provider_coverage": {"title": "Keine konfigurierte Aktivbrandquelle deckt einige Orte ab", "description": "TerraLyra kann derzeit keine nutzbare Quelle zuweisen für: {locations}. Ergänzen Sie LSA-SAF-Zugangsdaten oder einen NASA-FIRMS-MAP_KEY, oder ändern Sie die Orte. Andere Orte werden weiter aktualisiert."}
   },
   "entity": {

@@ -59,6 +59,30 @@ def async_set_provider_outage_issue(
     )
 
 
+def async_set_fire_risk_outage_issue(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    *,
+    consecutive_failures: int,
+) -> None:
+    """Create a self-clearing issue after repeated FRMv3 failures."""
+    issue_id = _issue_id(entry, "fire_risk_outage")
+    if consecutive_failures < OUTAGE_REPAIR_THRESHOLD:
+        if consecutive_failures == 0:
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
+        return
+    ir.async_create_issue(
+        hass,
+        DOMAIN,
+        issue_id,
+        is_fixable=False,
+        is_persistent=False,
+        severity=ir.IssueSeverity.WARNING,
+        translation_key="fire_risk_outage",
+        translation_placeholders={"failures": str(consecutive_failures)},
+    )
+
+
 def async_sync_coverage_issue(
     hass: HomeAssistant,
     entry: ConfigEntry,

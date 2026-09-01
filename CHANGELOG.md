@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.7.1
+
+- Retry failed FRMv3 fire-risk refreshes after 15, 30 and at most 60 minutes
+  instead of leaving the entities unavailable until the next normal 12-hour
+  cycle.
+- Create a warning Repair after three consecutive FRMv3 failures and clear it
+  automatically after the forecast service recovers.
+- Report active-fire data as delayed once the latest product is older than the
+  60-minute situation-assessment freshness limit.
+
 ## 0.7.0
 
 - Add one user-facing source-assignment sensor for every enabled monitored

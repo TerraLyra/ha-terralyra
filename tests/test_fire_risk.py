@@ -1,7 +1,7 @@
 """Tests for FRMv3 response validation and sampling."""
 from __future__ import annotations
 
-from datetime import date
+from datetime import date, timedelta
 from io import BytesIO
 import json
 
@@ -10,7 +10,11 @@ import pytest
 
 from custom_components.terralyra.geocoding import MapPlace
 from custom_components.terralyra.map_render import COUNTRY_BORDERS, annotate_fire_risk_map
-from custom_components.terralyra.fire_risk_coordinator import _staggered_interval
+from custom_components.terralyra.fire_risk_coordinator import (
+    FIRE_RISK_RETRY_MAX,
+    _retry_interval,
+    _staggered_interval,
+)
 from custom_components.terralyra.products.fire_risk import (
     FireRiskClient,
     FireRiskError,
@@ -130,6 +134,13 @@ def test_staggered_interval_is_deterministic_and_bounded() -> None:
 
     assert first == second
     assert 11.5 * 3600 <= first.total_seconds() <= 12.5 * 3600
+
+
+def test_fire_risk_retry_interval_backs_off_and_is_bounded() -> None:
+    assert _retry_interval(1) == timedelta(minutes=15)
+    assert _retry_interval(2) == timedelta(minutes=30)
+    assert _retry_interval(3) == FIRE_RISK_RETRY_MAX
+    assert _retry_interval(20) == FIRE_RISK_RETRY_MAX
 
 
 def test_map_annotation_adds_context_and_keeps_png() -> None:
