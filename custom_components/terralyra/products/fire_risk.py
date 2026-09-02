@@ -20,6 +20,7 @@ FORECAST_DAYS = 10
 TIMEOUT = ClientTimeout(total=20, connect=5, sock_read=15)
 MAX_JSON_BYTES = 32 * 1024
 MAX_MAP_BYTES = 2 * 1024 * 1024
+MAX_ERROR_BYTES = 1024
 USER_AGENT = "ha-terralyra/0.3.1 (https://github.com/TerraLyra/ha-terralyra)"
 EUROPE_BOUNDS = (-9.975, 34.475, 45.525, 69.975)
 LOCAL_SAMPLE_RADIUS_KM = 10.0
@@ -177,8 +178,17 @@ class FireRiskClient:
                 allow_redirects=False, timeout=TIMEOUT,
             ) as response:
                 if response.status != 200:
+                    detail: str | None = None
+                    if response.content_length != 0:
+                        chunks = bytearray()
+                        async for chunk in response.content.iter_chunked(16 * 1024):
+                            chunks.extend(chunk)
+                            if len(chunks) >= MAX_ERROR_BYTES:
+                                break
+                        detail = chunks.decode(errors="replace").strip()[:MAX_ERROR_BYTES]
                     raise FireRiskHTTPError(
-                        f"FRMv3 service returned an error ({response.status})",
+                        f"FRMv3 service returned an error ({response.status})"
+                        + (f": {detail}" if detail else ""),
                         response.status,
                     )
                 if response.content_length is not None and response.content_length > limit:
