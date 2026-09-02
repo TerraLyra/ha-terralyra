@@ -156,6 +156,43 @@ async def test_forecast_fails_when_today_404() -> None:
         await FakeClient().async_forecast(47.5, 19.0, 100)
 
 
+@pytest.mark.asyncio
+async def test_async_get_includes_http_error_body() -> None:
+    class DummyBody:
+        def __init__(self, payload: bytes) -> None:
+            self._payload = payload
+
+        async def iter_chunked(self, _chunk_size: int):
+            yield self._payload
+
+    class DummyResponse:
+        def __init__(self, status: int, text: str) -> None:
+            self.status = status
+            self.content = DummyBody(text.encode())
+            self.content_length = len(text)
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
+            return None
+
+    class DummySession:
+        def __init__(self, response: DummyResponse) -> None:
+            self._response = response
+
+        def get(self, *_args, **_kwargs) -> DummyResponse:
+            return self._response
+
+    client = FireRiskClient(DummySession(DummyResponse(503, "maintenance mode")))
+    with pytest.raises(FireRiskHTTPError) as err:
+        await client._async_get({"x": "y"}, 10)
+
+    message = str(err.value)
+    assert "503" in message
+    assert "maintenance mode" in message
+
+
 def test_map_analysis_finds_maximum_inside_circle() -> None:
     source = BytesIO()
     image = Image.new("RGB", (100, 100), (1, 230, 255))
