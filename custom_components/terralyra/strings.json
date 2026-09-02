@@ -217,6 +217,10 @@
       "monitored_location_sources": {
         "name": "{location_name} active-fire sources"
       },
+      "monitored_location_status": {
+        "name": "{location_name} monitoring status",
+        "state": {"available": "All sources available", "partial": "Partially available", "initializing": "Initializing", "unavailable": "Unavailable"}
+      },
       "provider_coverage": {
         "name": "Monitored-location source coverage",
         "state": {

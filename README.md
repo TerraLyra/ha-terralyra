@@ -524,7 +524,9 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   checks; technical and resource details are in
   [`docs/GOES_TECHNICAL_SPIKE.md`](docs/GOES_TECHNICAL_SPIKE.md) and
   [`docs/GOES_DECODER_BENCHMARK.md`](docs/GOES_DECODER_BENCHMARK.md)
-- continue localization and usability review on real Home Assistant dashboards
+- continue localization and usability review on real Home Assistant dashboards;
+  every enabled location now has a translated operational-status entity with
+  equal-source health, timestamps and local incident-confirmation counts
 - submit TerraLyra artwork to the upstream Home Assistant brands repository
 
 ### Multi-source detection and incident verification

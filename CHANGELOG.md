@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.8.0
+
+- Add a translated monitoring-status sensor for every enabled location, clearly
+  distinguishing all sources available, partial availability, initialization
+  and complete unavailability.
+- Show the health of each automatically assigned equal-peer provider and
+  satellite in the location sensor attributes, without exposing coordinates.
+- Include the latest received/product timestamps plus per-location active and
+  independently corroborated incident counts.
+- Remove orphaned location-status entities automatically when a monitored
+  location is deleted, disabled or recreated.
+
 ## 0.7.4
 
 - Align the German, Spanish, French, Hungarian and Italian option and repair

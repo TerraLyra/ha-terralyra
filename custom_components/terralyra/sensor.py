@@ -45,7 +45,7 @@ async def async_setup_entry(
     location_plans = _location_source_plans(
         entry, entry.runtime_data.coordinator.monitored_locations
     )
-    _remove_orphaned_location_source_entities(hass, entry, location_plans)
+    _remove_orphaned_location_entities(hass, entry, location_plans)
     entities = [
         NearestFireSensor(entry),
         ActiveFireCountSensor(entry),
@@ -68,6 +68,7 @@ async def async_setup_entry(
         FireRiskUpdateSensor(entry),
     ]
     entities.extend(MonitoredLocationSourcesSensor(entry, plan) for plan in location_plans)
+    entities.extend(MonitoredLocationStatusSensor(entry, plan) for plan in location_plans)
     if entry.options.get(
         CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
         DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
@@ -76,22 +77,31 @@ async def async_setup_entry(
     async_add_entities(entities)
 
 
-def _remove_orphaned_location_source_entities(
+def _remove_orphaned_location_entities(
     hass: HomeAssistant,
     entry: TerraLyraConfigEntry,
     plans: tuple[LocationSourcePlan, ...],
 ) -> None:
     """Remove source sensors whose monitored location no longer exists."""
     registry = er.async_get(hass)
-    unique_id_prefix = f"{entry.entry_id}_location_sources_"
-    expected_unique_ids = {f"{unique_id_prefix}{plan.location_id}" for plan in plans}
+    prefixes = (
+        f"{entry.entry_id}_location_sources_",
+        f"{entry.entry_id}_location_status_",
+    )
+    expected_unique_ids = {
+        f"{prefix}{plan.location_id}" for prefix in prefixes for plan in plans
+    }
     for registry_entry in er.async_entries_for_config_entry(registry, entry.entry_id):
         if (
             registry_entry.entity_id.startswith("sensor.")
-            and registry_entry.unique_id.startswith(unique_id_prefix)
+            and registry_entry.unique_id.startswith(prefixes)
             and registry_entry.unique_id not in expected_unique_ids
         ):
             registry.async_remove(registry_entry.entity_id)
+
+
+# Compatibility for tests and callers from v0.7.3/v0.7.4.
+_remove_orphaned_location_source_entities = _remove_orphaned_location_entities
 
 
 class LandSurfaceTemperatureSensor(
@@ -443,10 +453,123 @@ class MonitoredLocationSourcesSensor(TerraLyraEntity, SensorEntity):
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
+        status, assignments = _location_operational_status(
+            self._plan, getattr(self.coordinator.provider, "health", ())
+        )
         return self._plan.attrs() | {
             "selection_mode": "automatic_by_location_coverage",
             "assignment_note": "all_sources_are_equal_peers",
+            "operational_status": status,
+            "source_health": assignments,
         }
+
+
+class MonitoredLocationStatusSensor(TerraLyraEntity, SensorEntity):
+    """Summarize source availability for one monitored location."""
+
+    _attr_translation_key = "monitored_location_status"
+    _attr_device_class = SensorDeviceClass.ENUM
+    _attr_options = ["available", "partial", "initializing", "unavailable"]
+    _attr_icon = "mdi:map-marker-radius-outline"
+
+    def __init__(self, entry: TerraLyraConfigEntry, plan: LocationSourcePlan) -> None:
+        super().__init__(entry)
+        self._plan = plan
+        self._attr_unique_id = f"{entry.entry_id}_location_status_{plan.location_id}"
+        self._attr_translation_placeholders = {"location_name": plan.location_name}
+
+    @property
+    def native_value(self) -> str:
+        status, _ = _location_operational_status(
+            self._plan, getattr(self.coordinator.provider, "health", ())
+        )
+        return status
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        status, assignments = _location_operational_status(
+            self._plan, getattr(self.coordinator.provider, "health", ())
+        )
+        incidents = _location_incident_summary(
+            self._plan.location_id, self.coordinator.data
+        )
+        return self._plan.attrs() | {
+            "operational_status": status,
+            "source_health": assignments,
+            "last_received_at": (
+                self.coordinator.received_timestamp.isoformat()
+                if self.coordinator.received_timestamp
+                else None
+            ),
+            "last_product_at": (
+                self.coordinator.product_timestamp.isoformat()
+                if self.coordinator.product_timestamp
+                else None
+            ),
+            **incidents,
+        }
+
+
+def _location_operational_status(
+    plan: LocationSourcePlan, health: tuple[Any, ...]
+) -> tuple[str, list[dict[str, Any]]]:
+    """Return a bounded per-location summary and equal-source details."""
+    matching = [item for item in health if plan.location_id in item.location_ids]
+    assignments: list[dict[str, Any]] = []
+    states: list[str] = []
+    for provider, satellite in zip(plan.providers, plan.satellites, strict=True):
+        item = next(
+            (
+                candidate
+                for candidate in matching
+                if (
+                    candidate.provider_id == provider
+                    or candidate.provider_id.startswith(f"{provider}:")
+                )
+                and candidate.satellite == satellite
+            ),
+            None,
+        )
+        state = item.status.value if item is not None else "initializing"
+        states.append(state)
+        assignments.append(
+            {
+                "provider": provider,
+                "name": getattr(item, "label", None),
+                "satellite": satellite,
+                "status": state,
+            }
+        )
+    if not states:
+        return "unavailable", assignments
+    usable = sum(state in {"available", "delayed"} for state in states)
+    if usable == len(states):
+        return "available", assignments
+    if usable:
+        return "partial", assignments
+    if all(state == "initializing" for state in states):
+        return "initializing", assignments
+    return "unavailable", assignments
+
+
+def _location_incident_summary(location_id: str, data: Any) -> dict[str, int]:
+    """Summarize visible incidents and independent corroboration for a location."""
+    if data is None:
+        return {"active_incidents": 0, "multi_source_incidents": 0}
+    incidents = [
+        cluster
+        for cluster in data.tracked_fires
+        if any(
+            match.location_id == location_id and match.inside_radius
+            for match in cluster.location_matches
+        )
+    ]
+    return {
+        "active_incidents": len(incidents),
+        "multi_source_incidents": sum(
+            cluster.confirmation_level.value == "multi_source" for cluster in incidents
+        ),
+    }
 
 
 def _location_source_plans(

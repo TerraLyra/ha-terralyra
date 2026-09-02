@@ -187,6 +187,10 @@
       "monitored_location_sources": {
         "name": "{location_name} aktívtűz-forrásai"
       },
+      "monitored_location_status": {
+        "name": "{location_name} megfigyelési állapota",
+        "state": {"available": "Minden forrás elérhető", "partial": "Részben elérhető", "initializing": "Inicializálás", "unavailable": "Nem érhető el"}
+      },
       "provider_coverage": {
         "name": "Figyelt helyek forráslefedettsége",
         "state": {
