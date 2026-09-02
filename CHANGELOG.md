@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.4
+
+- Add more actionable FRMv3 diagnostics when the WMS endpoint returns a non-200
+  status, capturing a bounded response snippet for easier root-cause detection.
+- Add regression coverage for non-200 FRMv3 HTTP error diagnostics.
+
 ## 0.8.3
 
 - Keep FRMv3 daily forecast entities available even when the rendered map image
