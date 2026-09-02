@@ -55,16 +55,20 @@ class FireRiskCoordinator(DataUpdateCoordinator[FireRiskForecast]):
             )
             forecast = await self.client.async_forecast(latitude, longitude, radius)
             bbox = map_bounds(latitude, longitude, radius)
-            image = await self.client.async_map(bbox, forecast.days[0].valid_date)
-            level, area_latitude, area_longitude = await self.hass.async_add_executor_job(
-                analyze_risk_map, image, bbox, latitude, longitude, radius
-            )
-            result = replace(
-                forecast,
-                area_level=level,
-                area_latitude=area_latitude,
-                area_longitude=area_longitude,
-            )
+            try:
+                image = await self.client.async_map(bbox, forecast.days[0].valid_date)
+                level, area_latitude, area_longitude = await self.hass.async_add_executor_job(
+                    analyze_risk_map, image, bbox, latitude, longitude, radius
+                )
+                result = replace(
+                    forecast,
+                    area_level=level,
+                    area_latitude=area_latitude,
+                    area_longitude=area_longitude,
+                )
+            except FireRiskError as err:
+                _LOGGER.debug("FRMv3 map analysis was not available: %s", err)
+                result = forecast
             self._consecutive_failures = 0
             self.update_interval = self._normal_interval
             async_set_fire_risk_outage_issue(

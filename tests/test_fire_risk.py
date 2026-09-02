@@ -4,9 +4,11 @@ from __future__ import annotations
 from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
 import json
+from unittest.mock import Mock
 
 from PIL import Image
 import pytest
+from homeassistant.helpers.update_coordinator import UpdateFailed
 
 from custom_components.terralyra.geocoding import MapPlace
 from custom_components.terralyra.map_render import COUNTRY_BORDERS, annotate_fire_risk_map
@@ -14,11 +16,14 @@ from custom_components.terralyra.fire_risk_coordinator import (
     FIRE_RISK_RETRY_MAX,
     _retry_interval,
     _staggered_interval,
+    FireRiskCoordinator,
 )
 from custom_components.terralyra.products.fire_risk import (
     FireRiskClient,
     FireRiskError,
     FireRiskHTTPError,
+    FireRiskForecast,
+    FireRiskDay,
     _sample_points,
     analyze_risk_map,
     map_bounds,
@@ -186,6 +191,117 @@ def test_fire_risk_retry_interval_backs_off_and_is_bounded() -> None:
     assert _retry_interval(2) == timedelta(minutes=30)
     assert _retry_interval(3) == FIRE_RISK_RETRY_MAX
     assert _retry_interval(20) == FIRE_RISK_RETRY_MAX
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "map_error",
+    [
+        FireRiskError("map temporarily unavailable"),
+        FireRiskError("map image analysis failed"),
+    ],
+)
+async def test_fire_risk_coordinator_keeps_forecast_when_map_layer_fails(
+    hass, map_error: Exception, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    days = (
+        FireRiskDay(date(2026, 8, 26), 2),
+        FireRiskDay(date(2026, 8, 27), None),
+    )
+    forecast = FireRiskForecast(
+        latitude=47.5,
+        longitude=19.0,
+        generated_at=datetime.now(UTC),
+        days=days,
+        area_level=2,
+        area_latitude=47.5,
+        area_longitude=19.0,
+        radius_km=100,
+    )
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            pass
+
+        async def async_forecast(self, latitude, longitude, radius):
+            return forecast
+
+        async def async_map(self, bbox, valid_date):
+            raise map_error
+
+    calls = Mock()
+    hass.config.latitude = 47.5
+    hass.config.longitude = 19.0
+    entry = Mock(entry_id="entry-1", options={"fire_risk_radius_km": 100})
+    coordinator = FireRiskCoordinator(hass, entry, FakeClient())
+
+    monkeypatch.setattr(
+        "custom_components.terralyra.fire_risk_coordinator.async_set_fire_risk_outage_issue",
+        lambda *args, **kwargs: calls(*args, **kwargs),
+    )
+    result = await coordinator._async_update_data()
+
+    assert result == forecast
+    calls.assert_called_once_with(
+        hass,
+        entry,
+        consecutive_failures=0,
+    )
+
+
+@pytest.mark.asyncio
+async def test_fire_risk_coordinator_retries_with_backoff_on_forecast_failure_then_recovers(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    days = (
+        FireRiskDay(date(2026, 8, 26), 2),
+    )
+    forecast = FireRiskForecast(
+        latitude=47.5,
+        longitude=19.0,
+        generated_at=datetime.now(UTC),
+        days=days,
+        area_level=2,
+        area_latitude=47.5,
+        area_longitude=19.0,
+        radius_km=100,
+    )
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def async_forecast(self, latitude, longitude, radius):
+            self.calls += 1
+            if self.calls == 1:
+                raise FireRiskError("temporary outage")
+            return forecast
+
+        async def async_map(self, bbox, valid_date):
+            raise AssertionError("map should not be fetched after forecast failure")
+
+    calls = Mock()
+    hass.config.latitude = 47.5
+    hass.config.longitude = 19.0
+    entry = Mock(entry_id="entry-1", options={"fire_risk_radius_km": 100})
+    client = FakeClient()
+    coordinator = FireRiskCoordinator(hass, entry, client)
+
+    monkeypatch.setattr(
+        "custom_components.terralyra.fire_risk_coordinator.async_set_fire_risk_outage_issue",
+        lambda *args, **kwargs: calls(*args, **kwargs),
+    )
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+    assert coordinator.update_interval == timedelta(minutes=15)
+    assert calls.call_args.kwargs == {"consecutive_failures": 1}
+
+    result = await coordinator._async_update_data()
+
+    assert result == forecast
+    assert calls.call_args.kwargs == {"consecutive_failures": 0}
+    assert coordinator.update_interval == _staggered_interval("entry-1")
 
 
 def test_map_annotation_adds_context_and_keeps_png() -> None:

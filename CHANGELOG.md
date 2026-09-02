@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.3
+
+- Keep FRMv3 daily forecast entities available even when the rendered map image
+  cannot be fetched or analyzed during transient outages; only the map-derived
+  area-maximum value falls back to its forecast sample.
+
+
 ## 0.8.2
 
 - Keep FRMv3 fire-risk forecast updates resilient when future dates are not
