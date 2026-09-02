@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.8.1
+
+- Remove persisted fire incidents that no longer belong to any enabled
+  monitored location, preventing deleted locations from leaving stale map
+  markers.
+- Reset the bounded 24-hour activity aggregate when obsolete location tracks
+  are removed, preventing misleading incident totals after location changes.
+- Apply the same current-location relevance check while building map entities
+  as an additional fail-safe.
+
 ## 0.8.0
 
 - Add a translated monitoring-status sensor for every enabled location, clearly

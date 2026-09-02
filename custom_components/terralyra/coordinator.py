@@ -175,6 +175,17 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
                 self._firms_tracks = stored["firms_tracks"]
             if isinstance(stored.get("activity_history"), list):
                 self._activity_history = stored["activity_history"]
+            # A removed monitored location must not leave its recent incidents
+            # on the map or inflate the global 24-hour activity aggregates.
+            track_count = len(self._tracks) + len(self._firms_tracks)
+            self._tracks = _tracks_inside_locations(
+                self._tracks, self.monitored_locations
+            )
+            self._firms_tracks = _tracks_inside_locations(
+                self._firms_tracks, self.monitored_locations
+            )
+            if len(self._tracks) + len(self._firms_tracks) != track_count:
+                self._activity_history = []
             self._initialized = bool(stored.get("initialized", True))
             for track in [*self._tracks, *self._firms_tracks]:
                 if track.get("place_attribution") != GEONAMES_ATTRIBUTION:
@@ -901,12 +912,36 @@ def _tracked_fire_clusters(
                 source_url=_optional_text(track.get("source_url")),
             )
         if monitored_locations:
-            _apply_location_matches(
-                cluster,
-                _matches_from_track(track, cluster, monitored_locations),
-            )
+            matches = _matches_from_track(track, cluster, monitored_locations)
+            if not any(match.inside_radius for match in matches):
+                continue
+            _apply_location_matches(cluster, matches)
         result.append(cluster)
     return sorted(result, key=lambda cluster: cluster.distance_km)
+
+
+def _tracks_inside_locations(
+    tracks: list[dict[str, Any]],
+    locations: tuple[MonitoredLocation, ...],
+) -> list[dict[str, Any]]:
+    """Keep persisted tracks relevant to at least one enabled location."""
+    retained: list[dict[str, Any]] = []
+    for track in tracks:
+        try:
+            latitude = float(track["latitude"])
+            longitude = float(track["longitude"])
+        except (KeyError, TypeError, ValueError):
+            continue
+        if any(
+            location.enabled
+            and haversine_km(
+                location.latitude, location.longitude, latitude, longitude
+            )
+            <= location.radius_km
+            for location in locations
+        ):
+            retained.append(track)
+    return retained
 
 
 def _inside_any_location(

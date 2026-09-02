@@ -28,6 +28,7 @@ from custom_components.terralyra.coordinator import (
     CoordinatorData,
     FireCluster,
     _tracked_fire_clusters,
+    _tracks_inside_locations,
 )
 from custom_components.terralyra.geo_location import (
     TerraLyraFireLocation,
@@ -41,6 +42,7 @@ from custom_components.terralyra.models import (
     MetricTrend,
     ProviderStatus,
 )
+from custom_components.terralyra.monitoring import MonitoredLocation
 from custom_components.terralyra.situation import assess_situation
 
 
@@ -286,6 +288,40 @@ def test_legacy_track_without_map_metadata_is_ignored() -> None:
     }
 
     assert _tracked_fire_clusters([legacy_track], 46.2, 20.1) == []
+
+
+def test_persisted_tracks_outside_current_locations_are_removed() -> None:
+    locations = (
+        MonitoredLocation("home", "Home", 46.2, 20.1, 50.0, True, "home"),
+    )
+    nearby = {"track_id": "nearby", "latitude": 46.25, "longitude": 20.15}
+    removed_location = {
+        "track_id": "removed-location",
+        "latitude": 0.35,
+        "longitude": 32.58,
+    }
+
+    assert _tracks_inside_locations([nearby, removed_location], locations) == [nearby]
+
+
+def test_map_excludes_recent_track_outside_current_locations() -> None:
+    locations = (
+        MonitoredLocation("home", "Home", 46.2, 20.1, 50.0, True, "home"),
+    )
+    track = {
+        "track_id": "removed-location",
+        "latitude": 0.35,
+        "longitude": 32.58,
+        "last_seen": "2026-08-25T20:20:00+00:00",
+        "confidence": 0.9,
+        "frp_mw": 12.0,
+        "peak_frp_mw": 12.0,
+        "pixel_count": 1,
+    }
+
+    assert _tracked_fire_clusters(
+        [track], 46.2, 20.1, monitored_locations=locations
+    ) == []
 
 
 def test_expired_map_entity_is_removed_from_registry() -> None:
