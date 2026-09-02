@@ -519,6 +519,14 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Next
 
+- standardize provider-specific retry handling: honor `Retry-After`, use
+  bounded backoff for rate limits and temporary 5xx outages, keep one shared
+  Repair issue per failing upstream service, and report timeout,
+  authentication, rate-limit, service-outage and invalid-response failures
+  distinctly
+- expose an appropriate next-observation indicator in a later release:
+  predicted overpass timing for polar-orbiting VIIRS sources, and expected
+  product-refresh timing for geostationary MTG and GOES sources
 - collect operational GOES-18/19 experience from covered installations while
   retaining the conservative pre-download coverage gate and product navigation
   checks; technical and resource details are in
