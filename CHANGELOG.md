@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.2
+
+- Keep FRMv3 fire-risk forecast updates resilient when future dates are not
+  yet available: a 404 for future forecast days is treated as missing data
+  for that specific day instead of failing the whole forecast.
+- Preserve 1xx/4xx/5xx failures for current forecast day to surface a clear
+  integration outage signal when the immediate-risk map is truly unavailable.
+- Add regression coverage for partial future-date 404 tolerance.
+
 ## 0.8.1
 
 - Remove persisted fire incidents that no longer belong to any enabled

@@ -39,6 +39,14 @@ class FireRiskError(Exception):
     """An FRMv3 request or response was invalid."""
 
 
+class FireRiskHTTPError(FireRiskError):
+    """A non-2xx FRMv3 HTTP response with optional status code details."""
+
+    def __init__(self, message: str, status: int) -> None:
+        super().__init__(message)
+        self.status = status
+
+
 @dataclass(frozen=True, slots=True)
 class FireRiskDay:
     """One daily FRMv3 forecast value."""
@@ -113,18 +121,23 @@ class FireRiskClient:
 
     async def _async_point(self, latitude: float, longitude: float, valid_date: date) -> int | None:
         delta = 0.05
-        payload = await self._async_get(
-            {
-                "DATASET": WMS_DATASET, "SERVICE": "WMS", "VERSION": "1.1.1",
-                "REQUEST": "GetFeatureInfo", "LAYERS": "Risk", "QUERY_LAYERS": "Risk",
-                "STYLES": "risk_map_style/nearest", "SRS": "EPSG:4326",
-                "BBOX": f"{longitude-delta},{latitude-delta},{longitude+delta},{latitude+delta}",
-                "WIDTH": "101", "HEIGHT": "101", "X": "50", "Y": "50",
-                "TIME": f"{valid_date.isoformat()}T12:00:00Z",
-                "INFO_FORMAT": "application/json", "FORMAT": "image/png",
-            },
-            MAX_JSON_BYTES,
-        )
+        try:
+            payload = await self._async_get(
+                {
+                    "DATASET": WMS_DATASET, "SERVICE": "WMS", "VERSION": "1.1.1",
+                    "REQUEST": "GetFeatureInfo", "LAYERS": "Risk", "QUERY_LAYERS": "Risk",
+                    "STYLES": "risk_map_style/nearest", "SRS": "EPSG:4326",
+                    "BBOX": f"{longitude-delta},{latitude-delta},{longitude+delta},{latitude+delta}",
+                    "WIDTH": "101", "HEIGHT": "101", "X": "50", "Y": "50",
+                    "TIME": f"{valid_date.isoformat()}T12:00:00Z",
+                    "INFO_FORMAT": "application/json", "FORMAT": "image/png",
+                },
+                MAX_JSON_BYTES,
+            )
+        except FireRiskHTTPError as err:
+            if err.status == 404 and valid_date > datetime.now(UTC).date():
+                return None
+            raise
         return parse_feature_info(payload, valid_date)
 
     async def async_map(self, bbox: tuple[float, float, float, float], valid_date: date) -> bytes:
@@ -164,7 +177,10 @@ class FireRiskClient:
                 allow_redirects=False, timeout=TIMEOUT,
             ) as response:
                 if response.status != 200:
-                    raise FireRiskError("FRMv3 service returned an error")
+                    raise FireRiskHTTPError(
+                        f"FRMv3 service returned an error ({response.status})",
+                        response.status,
+                    )
                 if response.content_length is not None and response.content_length > limit:
                     raise FireRiskError("FRMv3 response exceeds the safety limit")
                 data = bytearray()

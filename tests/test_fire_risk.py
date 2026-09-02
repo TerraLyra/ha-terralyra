@@ -1,7 +1,7 @@
 """Tests for FRMv3 response validation and sampling."""
 from __future__ import annotations
 
-from datetime import date, timedelta
+from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
 import json
 
@@ -18,6 +18,7 @@ from custom_components.terralyra.fire_risk_coordinator import (
 from custom_components.terralyra.products.fire_risk import (
     FireRiskClient,
     FireRiskError,
+    FireRiskHTTPError,
     _sample_points,
     analyze_risk_map,
     map_bounds,
@@ -27,6 +28,10 @@ from custom_components.terralyra.products.fire_risk import (
 
 def _payload(value: str) -> bytes:
     return json.dumps([{"data": {"2026-08-26T12:00:00Z": value}}]).encode()
+
+
+def _payload_for(value_date: date, value: str) -> bytes:
+    return json.dumps([{"data": {f"{value_date.isoformat()}T12:00:00Z": value}}]).encode()
 
 
 @pytest.mark.parametrize(
@@ -104,6 +109,46 @@ async def test_local_forecast_remains_unknown_when_home_area_is_nodata() -> None
 
     assert forecast.days[0].risk == "unknown"
     assert forecast.area_risk == "unknown"
+
+
+@pytest.mark.asyncio
+async def test_forecast_treats_future_date_404_as_missing_not_failure() -> None:
+    today = datetime.now(UTC).date()
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            pass
+
+        async def _async_get(self, params, limit):
+            valid_date = date.fromisoformat(params["TIME"].replace("T12:00:00Z", ""))
+            if valid_date > today:
+                raise FireRiskHTTPError("FRMv3 service returned an error", 404)
+            return _payload_for(valid_date, "moderate (2)")
+
+    forecast = await FakeClient().async_forecast(47.5, 19.0, 100)
+
+    assert forecast.days[0].level == 2
+    assert forecast.days[1].level is None
+    assert forecast.days[0].risk == "moderate"
+    assert forecast.area_level == 2
+
+
+@pytest.mark.asyncio
+async def test_forecast_fails_when_today_404() -> None:
+    today = datetime.now(UTC).date()
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            pass
+
+        async def _async_get(self, params, limit):
+            valid_date = date.fromisoformat(params["TIME"].replace("T12:00:00Z", ""))
+            if valid_date == today:
+                raise FireRiskHTTPError("FRMv3 service returned an error", 404)
+            return _payload_for(valid_date, "moderate (2)")
+
+    with pytest.raises(FireRiskError):
+        await FakeClient().async_forecast(47.5, 19.0, 100)
 
 
 def test_map_analysis_finds_maximum_inside_circle() -> None:
