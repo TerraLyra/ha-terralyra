@@ -454,7 +454,8 @@ class MonitoredLocationSourcesSensor(TerraLyraEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         status, assignments = _location_operational_status(
-            self._plan, getattr(self.coordinator.provider, "health", ())
+            self._plan,
+            getattr(getattr(self.coordinator, "provider", None), "health", ()),
         )
         return self._plan.attrs() | {
             "selection_mode": "automatic_by_location_coverage",
@@ -481,14 +482,16 @@ class MonitoredLocationStatusSensor(TerraLyraEntity, SensorEntity):
     @property
     def native_value(self) -> str:
         status, _ = _location_operational_status(
-            self._plan, getattr(self.coordinator.provider, "health", ())
+            self._plan,
+            getattr(getattr(self.coordinator, "provider", None), "health", ()),
         )
         return status
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         status, assignments = _location_operational_status(
-            self._plan, getattr(self.coordinator.provider, "health", ())
+            self._plan,
+            getattr(getattr(self.coordinator, "provider", None), "health", ()),
         )
         incidents = _location_incident_summary(
             self._plan.location_id, self.coordinator.data
