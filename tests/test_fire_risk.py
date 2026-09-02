@@ -270,6 +270,7 @@ async def test_fire_risk_coordinator_retries_with_backoff_on_forecast_failure_th
     class FakeClient(FireRiskClient):
         def __init__(self) -> None:
             self.calls = 0
+            self.map_calls = 0
 
         async def async_forecast(self, latitude, longitude, radius):
             self.calls += 1
@@ -278,7 +279,8 @@ async def test_fire_risk_coordinator_retries_with_backoff_on_forecast_failure_th
             return forecast
 
         async def async_map(self, bbox, valid_date):
-            raise AssertionError("map should not be fetched after forecast failure")
+            self.map_calls += 1
+            return b"map"
 
     calls = Mock()
     hass.config.latitude = 47.5
@@ -291,15 +293,21 @@ async def test_fire_risk_coordinator_retries_with_backoff_on_forecast_failure_th
         "custom_components.terralyra.fire_risk_coordinator.async_set_fire_risk_outage_issue",
         lambda *args, **kwargs: calls(*args, **kwargs),
     )
+    monkeypatch.setattr(
+        "custom_components.terralyra.fire_risk_coordinator.analyze_risk_map",
+        lambda *args: (2, 47.5, 19.0),
+    )
     with pytest.raises(UpdateFailed):
         await coordinator._async_update_data()
 
+    assert client.map_calls == 0
     assert coordinator.update_interval == timedelta(minutes=15)
     assert calls.call_args.kwargs == {"consecutive_failures": 1}
 
     result = await coordinator._async_update_data()
 
     assert result == forecast
+    assert client.map_calls == 1
     assert calls.call_args.kwargs == {"consecutive_failures": 0}
     assert coordinator.update_interval == _staggered_interval("entry-1")
 
