@@ -13,6 +13,7 @@ from custom_components.terralyra.providers.firms import (
     merge_monitoring_bounds,
     monitoring_bounds,
 )
+from custom_components.terralyra.providers.base import ProviderUnavailableError
 
 HEADER = (
     "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,"
@@ -186,6 +187,53 @@ async def test_multi_area_provider_deduplicates_overlapping_results() -> None:
 
     assert len(snapshot.detections) == 2
     assert snapshot.filename == "firms-viirs-2-areas.csv"
+
+
+@pytest.mark.asyncio
+async def test_multi_area_provider_survives_partial_area_failure() -> None:
+    class _AreaClient:
+        async def async_area(self, **kwargs):
+            if kwargs["west"] > 0:
+                satellite = "N20" if kwargs["source"] == "VIIRS_NOAA20_NRT" else "N21"
+                return parse_firms_csv(
+                    _csv(
+                        f"46.12345,19.54321,330.44,0.40,0.37,2026-08-28,1234,"
+                        f"{satellite},VIIRS,h,2.0NRT,295.66,8.5,D"
+                    ),
+                    source=kwargs["source"],
+                )
+            raise FirmsError("service unavailable for this area")
+
+    provider = FirmsMultiAreaProvider(
+        _AreaClient(),
+        (
+            monitoring_bounds(47.5, 19.0, 10),
+            monitoring_bounds(40.0, -74.0, 10),
+        ),
+    )
+
+    snapshot = await provider.async_fetch_latest()
+
+    assert len(snapshot.detections) == 2
+    assert snapshot.filename == "firms-viirs-2-areas.csv"
+
+
+@pytest.mark.asyncio
+async def test_multi_area_provider_all_areas_fail_with_unavailable_error() -> None:
+    class _FailingClient:
+        async def async_area(self, **kwargs):
+            raise FirmsError("service unavailable")
+
+    provider = FirmsMultiAreaProvider(
+        _FailingClient(),
+        (
+            monitoring_bounds(47.5, 19.0, 10),
+            monitoring_bounds(40.0, -74.0, 10),
+        ),
+    )
+
+    with pytest.raises(ProviderUnavailableError):
+        await provider.async_fetch_latest()
 
 
 @pytest.mark.parametrize("radius", [0, -1, 501, float("nan")])
