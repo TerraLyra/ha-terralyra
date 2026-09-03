@@ -212,9 +212,21 @@ class FirmsMultiAreaProvider:
             and now - self._cached_at < MIN_REFRESH_INTERVAL
         ):
             return self._cached_snapshot
-        snapshots = await asyncio.gather(
-            *(provider.async_fetch_latest() for provider in self._providers)
+        results = await asyncio.gather(
+            *(provider.async_fetch_latest() for provider in self._providers),
+            return_exceptions=True,
         )
+        snapshots = [result for result in results if isinstance(result, ProviderSnapshot)]
+        auth_errors = [
+            result for result in results if isinstance(result, ProviderAuthenticationError)
+        ]
+        if not snapshots:
+            if auth_errors:
+                raise auth_errors[0]
+            errors = [result for result in results if isinstance(result, Exception)]
+            detail = str(errors[0]) if errors else "NASA FIRMS returned no snapshot"
+            raise ProviderUnavailableError(detail)
+
         detections_by_id: dict[str, FireDetection] = {}
         for snapshot in snapshots:
             for detection in snapshot.detections:
