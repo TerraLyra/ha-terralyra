@@ -356,7 +356,9 @@ def test_fire_risk_retry_interval_backs_off_and_is_bounded() -> None:
 
 
 def test_fire_risk_retry_interval_uses_retry_after_hint() -> None:
-    assert _retry_interval(4, error=FireRiskRateLimitError("x", 429, timedelta(minutes=45))) == FIRE_RISK_RETRY_MAX
+    assert _retry_interval(
+        4, error=FireRiskRateLimitError("x", 429, timedelta(minutes=45))
+    ) == timedelta(minutes=45)
     assert _retry_interval(
         4, error=FireRiskRateLimitError("x", 429, timedelta(minutes=2))
     ) == timedelta(minutes=15)
