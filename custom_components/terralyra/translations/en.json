@@ -28,7 +28,11 @@
       "sources": {
         "title": "Connect optional active-fire sources",
         "description": "TerraLyra automatically assigns every relevant source to each monitored location. NOAA GOES needs no credentials. Add LSA SAF credentials and/or a NASA FIRMS MAP_KEY to extend coverage; leave fields blank to skip that source.",
-        "data": {"username": "LSA SAF username (optional)", "password": "LSA SAF password (optional)", "firms_map_key": "NASA FIRMS MAP_KEY (optional)"}
+        "data": {
+          "username": "LSA SAF username (optional)",
+          "password": "LSA SAF password (optional)",
+          "firms_map_key": "NASA FIRMS MAP_KEY (optional)"
+        }
       },
       "lsa_saf": {
         "title": "Connect to LSA SAF Data Service",
@@ -132,14 +136,37 @@
       },
       "add_location": {
         "title": "Add monitored location",
-        "data": {"name": "Name", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Monitoring radius", "enabled": "Enabled"}
+        "data": {
+          "name": "Name",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "radius_km": "Monitoring radius",
+          "enabled": "Enabled"
+        }
       },
       "edit_location": {
         "title": "Edit monitored location",
-        "data": {"location_id": "Location", "name": "Name", "latitude": "Latitude", "longitude": "Longitude", "radius_km": "Monitoring radius", "enabled": "Enabled"}
+        "data": {
+          "location_id": "Location",
+          "name": "Name",
+          "latitude": "Latitude",
+          "longitude": "Longitude",
+          "radius_km": "Monitoring radius",
+          "enabled": "Enabled"
+        }
       },
-      "toggle_location": {"title": "Enable or disable location", "data": {"location_id": "Location"}},
-      "delete_location": {"title": "Delete location", "data": {"location_id": "Location"}}
+      "toggle_location": {
+        "title": "Enable or disable location",
+        "data": {
+          "location_id": "Location"
+        }
+      },
+      "delete_location": {
+        "title": "Delete location",
+        "data": {
+          "location_id": "Location"
+        }
+      }
     },
     "error": {
       "firms_key_required": "Enter a NASA FIRMS MAP_KEY before enabling corroboration",
@@ -152,19 +179,37 @@
     }
   },
   "issues": {
-    "provider_authentication": {"title": "Active-fire source authentication failed", "description": "TerraLyra cannot authenticate with a configured active-fire source. Open the integration settings, verify the credentials, and reload the integration."},
-    "provider_outage": {"title": "Active-fire sources are repeatedly unavailable", "description": "All assigned active-fire sources failed {failures} consecutive updates. Check the source services and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."},
-    "fire_risk_outage": {"title": "Fire-risk forecast service is repeatedly unavailable", "description": "The FRMv3 forecast service failed {failures} consecutive refreshes. TerraLyra is retrying automatically with a bounded delay; active-fire monitoring and other healthy products continue normally. This notice clears after recovery."},
-    "provider_coverage": {"title": "No configured active-fire source covers some monitored locations", "description": "TerraLyra cannot currently assign a usable source to: {locations}. Add the required LSA SAF credentials or NASA FIRMS MAP_KEY, or change the monitored locations. Other covered locations continue updating."}
+    "provider_authentication": {
+      "title": "Active-fire source authentication failed",
+      "description": "TerraLyra cannot authenticate with a configured active-fire source. Open the integration settings, verify the credentials, and reload the integration."
+    },
+    "provider_outage": {
+      "title": "Active-fire sources are repeatedly unavailable",
+      "description": "All assigned active-fire sources failed {failures} consecutive updates. Check the source services and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."
+    },
+    "fire_risk_outage": {
+      "title": "Fire-risk forecast service is repeatedly unavailable",
+      "description": "The FRMv3 forecast service failed {failures} consecutive refreshes (last reason: {reason}). TerraLyra is retrying automatically with a bounded delay; active-fire monitoring and other healthy products continue normally. This notice clears after recovery."
+    },
+    "provider_coverage": {
+      "title": "No configured active-fire source covers some monitored locations",
+      "description": "TerraLyra cannot currently assign a usable source to: {locations}. Add the required LSA SAF credentials or NASA FIRMS MAP_KEY, or change the monitored locations. Other covered locations continue updating."
+    }
   },
   "entity": {
     "sensor": {
       "nearest_fire": {
         "name": "Nearest active fire"
       },
-      "active_fire_count": {"name": "Active-fire clusters"},
-      "supplemental_fire_count": {"name": "Active-fire clusters observed by NASA FIRMS"},
-      "combined_fire_count": {"name": "All active-fire clusters"},
+      "active_fire_count": {
+        "name": "Active-fire clusters"
+      },
+      "supplemental_fire_count": {
+        "name": "Active-fire clusters observed by NASA FIRMS"
+      },
+      "combined_fire_count": {
+        "name": "All active-fire clusters"
+      },
       "raw_pixel_count": {
         "name": "Fire pixels in radius"
       },
@@ -197,7 +242,12 @@
       },
       "monitored_location_status": {
         "name": "{location_name} monitoring status",
-        "state": {"available": "All sources available", "partial": "Partially available", "initializing": "Initializing", "unavailable": "Unavailable"}
+        "state": {
+          "available": "All sources available",
+          "partial": "Partially available",
+          "initializing": "Initializing",
+          "unavailable": "Unavailable"
+        }
       },
       "provider_coverage": {
         "name": "Monitored-location source coverage",
@@ -264,7 +314,12 @@
       },
       "nearest_fire_evidence": {
         "name": "Nearest fire evidence strength",
-        "state": {"no_active_fire": "No active fire", "limited": "Limited", "moderate": "Moderate", "strong": "Strong"}
+        "state": {
+          "no_active_fire": "No active fire",
+          "limited": "Limited",
+          "moderate": "Moderate",
+          "strong": "Strong"
+        }
       },
       "land_surface_temperature": {
         "name": "Land-surface temperature at Home"

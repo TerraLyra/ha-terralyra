@@ -1,10 +1,10 @@
 """Coordinator for the daily LSA SAF FRMv3 forecast."""
 from __future__ import annotations
 
-from dataclasses import replace
-from datetime import timedelta
 import hashlib
 import logging
+from dataclasses import replace
+from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
@@ -15,6 +15,9 @@ from .products.fire_risk import (
     FireRiskClient,
     FireRiskError,
     FireRiskForecast,
+    FireRiskRateLimitError,
+    FireRiskServiceUnavailableError,
+    FireRiskTemporaryServiceError,
     analyze_risk_map,
     map_bounds,
 )
@@ -72,16 +75,19 @@ class FireRiskCoordinator(DataUpdateCoordinator[FireRiskForecast]):
             self._consecutive_failures = 0
             self.update_interval = self._normal_interval
             async_set_fire_risk_outage_issue(
-                self.hass, self.entry, consecutive_failures=0
+                self.hass, self.entry, consecutive_failures=0, reason=None
             )
             return result
         except FireRiskError as err:
             self._consecutive_failures += 1
-            self.update_interval = _retry_interval(self._consecutive_failures)
+            self.update_interval = _retry_interval(
+                self._consecutive_failures, error=err
+            )
             async_set_fire_risk_outage_issue(
                 self.hass,
                 self.entry,
                 consecutive_failures=self._consecutive_failures,
+                reason=str(err),
             )
             raise UpdateFailed(str(err)) from err
 
@@ -93,8 +99,21 @@ def _staggered_interval(entry_id: str) -> timedelta:
     return timedelta(hours=12, seconds=offset_seconds)
 
 
-def _retry_interval(consecutive_failures: int) -> timedelta:
+def _retry_interval(
+    consecutive_failures: int,
+    *,
+    error: FireRiskError | None = None,
+) -> timedelta:
     """Return a bounded exponential retry interval for FRMv3 failures."""
+    if isinstance(error, (FireRiskRateLimitError, FireRiskTemporaryServiceError)):
+        retry_after = getattr(error, "retry_after", None)
+        if retry_after is not None:
+            return min(max(retry_after, FIRE_RISK_RETRY_BASE), FIRE_RISK_RETRY_MAX)
+    if isinstance(error, FireRiskServiceUnavailableError):
+        retry_after = getattr(error, "retry_after", None)
+        if retry_after is not None:
+            return min(max(retry_after, FIRE_RISK_RETRY_BASE), FIRE_RISK_RETRY_MAX)
+
     failures = max(1, consecutive_failures)
     seconds = FIRE_RISK_RETRY_BASE.total_seconds() * (2 ** (failures - 1))
     return min(timedelta(seconds=seconds), FIRE_RISK_RETRY_MAX)

@@ -1,29 +1,37 @@
 """Tests for FRMv3 response validation and sampling."""
 from __future__ import annotations
 
+import json
 from datetime import UTC, date, datetime, timedelta
 from io import BytesIO
-import json
 from unittest.mock import Mock
 
-from PIL import Image
 import pytest
 from homeassistant.helpers.update_coordinator import UpdateFailed
+from PIL import Image
 
-from custom_components.terralyra.geocoding import MapPlace
-from custom_components.terralyra.map_render import COUNTRY_BORDERS, annotate_fire_risk_map
 from custom_components.terralyra.fire_risk_coordinator import (
     FIRE_RISK_RETRY_MAX,
+    FireRiskCoordinator,
     _retry_interval,
     _staggered_interval,
-    FireRiskCoordinator,
+)
+from custom_components.terralyra.geocoding import MapPlace
+from custom_components.terralyra.map_render import (
+    COUNTRY_BORDERS,
+    annotate_fire_risk_map,
 )
 from custom_components.terralyra.products.fire_risk import (
     FireRiskClient,
-    FireRiskError,
-    FireRiskHTTPError,
-    FireRiskForecast,
     FireRiskDay,
+    FireRiskError,
+    FireRiskForecast,
+    FireRiskHTTPError,
+    FireRiskRateLimitError,
+    FireRiskServiceUnavailableError,
+    FireRiskTemporaryServiceError,
+    _parse_retry_after,
+    _safe_error_detail,
     _sample_points,
     analyze_risk_map,
     map_bounds,
@@ -170,6 +178,7 @@ async def test_async_get_includes_http_error_body() -> None:
             self.status = status
             self.content = DummyBody(text.encode())
             self.content_length = len(text)
+            self.headers = {}
 
         async def __aenter__(self):
             return self
@@ -191,6 +200,122 @@ async def test_async_get_includes_http_error_body() -> None:
     message = str(err.value)
     assert "503" in message
     assert "maintenance mode" in message
+
+
+def test_error_detail_is_bounded_and_single_line() -> None:
+    detail = _safe_error_detail(b"  maintenance\n\tmode  " + b"x" * 2048)
+
+    assert detail is not None
+    assert detail.startswith("maintenance mode ")
+    assert "\n" not in detail
+    assert len(detail) == 1024
+
+
+@pytest.mark.asyncio
+async def test_async_get_distinguishes_rate_limit() -> None:
+    class DummyBody:
+        def __init__(self, payload: bytes) -> None:
+            self._payload = payload
+
+        async def iter_chunked(self, _chunk_size: int):
+            yield self._payload
+
+    class DummyResponse:
+        def __init__(self, status: int, text: str) -> None:
+            self.status = status
+            self.content = DummyBody(text.encode())
+            self.content_length = len(text)
+            self.headers = {}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
+            return None
+
+    class DummySession:
+        def __init__(self, response: DummyResponse) -> None:
+            self._response = response
+
+        def get(self, *_args, **_kwargs) -> DummyResponse:
+            return self._response
+
+    client = FireRiskClient(DummySession(DummyResponse(429, "too many requests")))
+
+    with pytest.raises(FireRiskRateLimitError):
+        await client._async_get({"x": "y"}, 10)
+
+
+@pytest.mark.asyncio
+async def test_async_get_uses_retry_after_for_temporary_service_errors() -> None:
+    class DummyBody:
+        def __init__(self, payload: bytes) -> None:
+            self._payload = payload
+
+        async def iter_chunked(self, _chunk_size: int):
+            yield self._payload
+
+    class DummyResponse:
+        def __init__(self, status: int, text: str) -> None:
+            self.status = status
+            self.content = DummyBody(text.encode())
+            self.content_length = len(text)
+            self.headers = {"Retry-After": "45"}
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, _exc_type, _exc_val, _exc_tb):
+            return None
+
+    class DummySession:
+        def __init__(self, response: DummyResponse) -> None:
+            self._response = response
+
+        def get(self, *_args, **_kwargs) -> DummyResponse:
+            return self._response
+
+    client = FireRiskClient(DummySession(DummyResponse(500, "error")))
+
+    with pytest.raises(FireRiskTemporaryServiceError) as err:
+        await client._async_get({"x": "y"}, 10)
+
+    assert isinstance(err.value, FireRiskTemporaryServiceError)
+    assert err.value.retry_after == timedelta(seconds=45)
+
+
+def test_parse_retry_after_none_and_empty() -> None:
+    assert _parse_retry_after(None) is None
+    assert _parse_retry_after("") is None
+
+
+def test_parse_retry_after_numeric_delay() -> None:
+    assert _parse_retry_after("60") == timedelta(seconds=60)
+    assert _parse_retry_after("0") == timedelta(seconds=0)
+    assert _parse_retry_after(" -10") is None
+    assert _parse_retry_after("9" * 1000) is None
+
+
+def test_parse_retry_after_http_date_delay() -> None:
+    retry_at = datetime.now(UTC) + timedelta(minutes=2)
+    header = retry_at.strftime("%a, %d %b %Y %H:%M:%S GMT")
+
+    parsed = _parse_retry_after(header)
+
+    assert parsed is not None
+    assert timedelta(minutes=1) < parsed <= timedelta(minutes=3)
+
+
+@pytest.mark.asyncio
+async def test_async_get_maps_network_errors_to_service_unavailable() -> None:
+    class DummySession:
+        def get(self, *_args, **_kwargs):
+            raise TimeoutError("timed out")
+
+    client = FireRiskClient(DummySession())
+
+    with pytest.raises(FireRiskServiceUnavailableError):
+        await client._async_get({"x": "y"}, 10)
 
 
 def test_map_analysis_finds_maximum_inside_circle() -> None:
@@ -228,6 +353,13 @@ def test_fire_risk_retry_interval_backs_off_and_is_bounded() -> None:
     assert _retry_interval(2) == timedelta(minutes=30)
     assert _retry_interval(3) == FIRE_RISK_RETRY_MAX
     assert _retry_interval(20) == FIRE_RISK_RETRY_MAX
+
+
+def test_fire_risk_retry_interval_uses_retry_after_hint() -> None:
+    assert _retry_interval(4, error=FireRiskRateLimitError("x", 429, timedelta(minutes=45))) == FIRE_RISK_RETRY_MAX
+    assert _retry_interval(
+        4, error=FireRiskRateLimitError("x", 429, timedelta(minutes=2))
+    ) == timedelta(minutes=15)
 
 
 @pytest.mark.asyncio
@@ -283,6 +415,7 @@ async def test_fire_risk_coordinator_keeps_forecast_when_map_layer_fails(
         hass,
         entry,
         consecutive_failures=0,
+        reason=None,
     )
 
 
@@ -339,14 +472,54 @@ async def test_fire_risk_coordinator_retries_with_backoff_on_forecast_failure_th
 
     assert client.map_calls == 0
     assert coordinator.update_interval == timedelta(minutes=15)
-    assert calls.call_args.kwargs == {"consecutive_failures": 1}
+    assert calls.call_args.kwargs == {
+        "consecutive_failures": 1,
+        "reason": "temporary outage",
+    }
 
     result = await coordinator._async_update_data()
 
     assert result == forecast
     assert client.map_calls == 1
-    assert calls.call_args.kwargs == {"consecutive_failures": 0}
+    assert calls.call_args.kwargs == {"consecutive_failures": 0, "reason": None}
     assert coordinator.update_interval == _staggered_interval("entry-1")
+
+
+@pytest.mark.asyncio
+async def test_fire_risk_coordinator_uses_server_retry_after_when_available(
+    hass, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            self.calls = 0
+
+        async def async_forecast(self, latitude, longitude, radius):
+            raise FireRiskRateLimitError(
+                "too many requests", 429, timedelta(minutes=40)
+            )
+
+        async def async_map(self, bbox, valid_date):
+            raise AssertionError("map should not run")
+
+    calls = Mock()
+    hass.config.latitude = 47.5
+    hass.config.longitude = 19.0
+    entry = Mock(entry_id="entry-1", options={"fire_risk_radius_km": 100})
+    coordinator = FireRiskCoordinator(hass, entry, FakeClient())
+
+    monkeypatch.setattr(
+        "custom_components.terralyra.fire_risk_coordinator.async_set_fire_risk_outage_issue",
+        lambda *args, **kwargs: calls(*args, **kwargs),
+    )
+
+    with pytest.raises(UpdateFailed):
+        await coordinator._async_update_data()
+
+    assert coordinator.update_interval == timedelta(minutes=40)
+    assert calls.call_args.kwargs == {
+        "consecutive_failures": 1,
+        "reason": "too many requests",
+    }
 
 
 def test_map_annotation_adds_context_and_keeps_png() -> None:

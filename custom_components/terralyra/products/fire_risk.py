@@ -1,12 +1,13 @@
 """Safe client and models for the public LSA SAF FRMv3 WMS."""
 from __future__ import annotations
 
-from dataclasses import dataclass
-from datetime import UTC, date, datetime, timedelta
-from io import BytesIO
 import json
 import math
 import re
+from dataclasses import dataclass
+from datetime import UTC, date, datetime, timedelta
+from email.utils import parsedate_to_datetime
+from io import BytesIO
 from typing import Any
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
@@ -46,6 +47,31 @@ class FireRiskHTTPError(FireRiskError):
     def __init__(self, message: str, status: int) -> None:
         super().__init__(message)
         self.status = status
+
+
+class FireRiskAuthenticationError(FireRiskHTTPError):
+    """The FRMv3 endpoint rejected credentials or access."""
+
+class FireRiskRateLimitError(FireRiskHTTPError):
+    """FRMv3 denied requests due to rate limiting."""
+
+    def __init__(self, message: str, status: int, retry_after: timedelta | None = None) -> None:
+        super().__init__(message, status)
+        self.retry_after = retry_after
+
+
+class FireRiskTemporaryServiceError(FireRiskHTTPError):
+    """Transient FRMv3 service error where retrying is expected."""
+
+    def __init__(self, message: str, status: int, retry_after: timedelta | None = None) -> None:
+        super().__init__(message, status)
+        self.retry_after = retry_after
+
+
+class FireRiskServiceUnavailableError(FireRiskError):
+    """A transient FRMv3 connectivity issue occurred."""
+
+    retry_after: timedelta | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -177,15 +203,38 @@ class FireRiskClient:
                 WMS_URL, params=params, headers={"User-Agent": USER_AGENT},
                 allow_redirects=False, timeout=TIMEOUT,
             ) as response:
+                retry_after = _parse_retry_after(
+                    getattr(response, "headers", {}).get("Retry-After")
+                )
                 if response.status != 200:
                     detail: str | None = None
-                    if response.content_length != 0:
-                        chunks = bytearray()
-                        async for chunk in response.content.iter_chunked(16 * 1024):
-                            chunks.extend(chunk)
-                            if len(chunks) >= MAX_ERROR_BYTES:
-                                break
-                        detail = chunks.decode(errors="replace").strip()[:MAX_ERROR_BYTES]
+                    chunks = bytearray()
+                    async for chunk in response.content.iter_chunked(16 * 1024):
+                        chunks.extend(chunk[: MAX_ERROR_BYTES - len(chunks)])
+                        if len(chunks) >= MAX_ERROR_BYTES:
+                            break
+                    if chunks:
+                        detail = _safe_error_detail(bytes(chunks))
+                    if response.status in (401, 403, 407):
+                        raise FireRiskAuthenticationError(
+                            f"FRMv3 service authentication failed ({response.status})"
+                            + (f": {detail}" if detail else ""),
+                            response.status,
+                        )
+                    if response.status == 429:
+                        raise FireRiskRateLimitError(
+                            f"FRMv3 service rate limited ({response.status})"
+                            + (f": {detail}" if detail else ""),
+                            response.status,
+                            retry_after,
+                        )
+                    if 500 <= response.status <= 599:
+                        raise FireRiskTemporaryServiceError(
+                            f"FRMv3 service temporarily unavailable ({response.status})"
+                            + (f": {detail}" if detail else ""),
+                            response.status,
+                            retry_after,
+                        )
                     raise FireRiskHTTPError(
                         f"FRMv3 service returned an error ({response.status})"
                         + (f": {detail}" if detail else ""),
@@ -202,7 +251,40 @@ class FireRiskClient:
         except FireRiskError:
             raise
         except (ClientError, TimeoutError) as err:
-            raise FireRiskError("FRMv3 service is unavailable") from err
+            raise FireRiskServiceUnavailableError("FRMv3 service is unavailable") from err
+
+
+def _parse_retry_after(value: str | None) -> timedelta | None:
+    if not value:
+        return None
+    try:
+        seconds = int(value.strip())
+    except ValueError:
+        seconds = None
+    else:
+        if seconds < 0:
+            return None
+        try:
+            return timedelta(seconds=seconds)
+        except OverflowError:
+            return None
+
+    try:
+        retry_at = parsedate_to_datetime(value)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    if retry_at.tzinfo is None:
+        retry_at = retry_at.replace(tzinfo=UTC)
+    delay = retry_at - datetime.now(UTC)
+    if delay.total_seconds() <= 0:
+        return timedelta(seconds=0)
+    return delay
+
+
+def _safe_error_detail(payload: bytes) -> str | None:
+    """Return a bounded, single-line server error suitable for logs and repairs."""
+    detail = " ".join(payload.decode(errors="replace").split())
+    return detail[:MAX_ERROR_BYTES] or None
 
 
 def parse_feature_info(payload: bytes, valid_date: date) -> int | None:

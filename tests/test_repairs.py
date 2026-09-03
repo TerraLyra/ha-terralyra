@@ -75,6 +75,10 @@ def test_fire_risk_issue_is_warning_and_clears_after_recovery(
     )
     assert create_issue.call_args.kwargs["severity"] is ir.IssueSeverity.WARNING
     assert create_issue.call_args.kwargs["translation_key"] == "fire_risk_outage"
+    assert create_issue.call_args.kwargs["translation_placeholders"] == {
+        "failures": str(OUTAGE_REPAIR_THRESHOLD),
+        "reason": "service issue",
+    }
 
     async_set_fire_risk_outage_issue(hass, entry, consecutive_failures=0)
     delete_issue.assert_called_once_with(

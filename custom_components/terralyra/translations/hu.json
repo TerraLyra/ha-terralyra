@@ -28,7 +28,11 @@
       "sources": {
         "title": "Opcionális aktívtűz-források kapcsolása",
         "description": "A TerraLyra minden figyelt helyhez automatikusan hozzárendeli az összes releváns forrást. A NOAA GOES nem igényel hozzáférési adatot. A lefedettséget LSA SAF hozzáféréssel és/vagy NASA FIRMS MAP_KEY-jel bővítheted; az üresen hagyott forrás kimarad.",
-        "data": {"username": "LSA SAF felhasználónév (opcionális)", "password": "LSA SAF jelszó (opcionális)", "firms_map_key": "NASA FIRMS MAP_KEY (opcionális)"}
+        "data": {
+          "username": "LSA SAF felhasználónév (opcionális)",
+          "password": "LSA SAF jelszó (opcionális)",
+          "firms_map_key": "NASA FIRMS MAP_KEY (opcionális)"
+        }
       },
       "lsa_saf": {
         "title": "Kapcsolódás az LSA SAF Data Service-hez",
@@ -121,11 +125,48 @@
           "firms_map_key": "Titkos adatként kerül a Home Assistant konfigurációs bejegyzésébe, és a diagnosztikából ki van takarva. Hagyd üresen a már mentett kulcs megtartásához."
         }
       },
-      "monitored_locations": {"title": "Figyelt helyek kezelése", "menu_options": {"add_location": "Hely hozzáadása", "edit_location": "Hely szerkesztése", "toggle_location": "Hely be- vagy kikapcsolása", "delete_location": "Hely törlése"}},
-      "add_location": {"title": "Figyelt hely hozzáadása", "data": {"name": "Név", "latitude": "Szélesség", "longitude": "Hosszúság", "radius_km": "Figyelési sugár", "enabled": "Bekapcsolva"}},
-      "edit_location": {"title": "Figyelt hely szerkesztése", "data": {"location_id": "Hely", "name": "Név", "latitude": "Szélesség", "longitude": "Hosszúság", "radius_km": "Figyelési sugár", "enabled": "Bekapcsolva"}},
-      "toggle_location": {"title": "Hely be- vagy kikapcsolása", "data": {"location_id": "Hely"}},
-      "delete_location": {"title": "Hely törlése", "data": {"location_id": "Hely"}}
+      "monitored_locations": {
+        "title": "Figyelt helyek kezelése",
+        "menu_options": {
+          "add_location": "Hely hozzáadása",
+          "edit_location": "Hely szerkesztése",
+          "toggle_location": "Hely be- vagy kikapcsolása",
+          "delete_location": "Hely törlése"
+        }
+      },
+      "add_location": {
+        "title": "Figyelt hely hozzáadása",
+        "data": {
+          "name": "Név",
+          "latitude": "Szélesség",
+          "longitude": "Hosszúság",
+          "radius_km": "Figyelési sugár",
+          "enabled": "Bekapcsolva"
+        }
+      },
+      "edit_location": {
+        "title": "Figyelt hely szerkesztése",
+        "data": {
+          "location_id": "Hely",
+          "name": "Név",
+          "latitude": "Szélesség",
+          "longitude": "Hosszúság",
+          "radius_km": "Figyelési sugár",
+          "enabled": "Bekapcsolva"
+        }
+      },
+      "toggle_location": {
+        "title": "Hely be- vagy kikapcsolása",
+        "data": {
+          "location_id": "Hely"
+        }
+      },
+      "delete_location": {
+        "title": "Hely törlése",
+        "data": {
+          "location_id": "Hely"
+        }
+      }
     },
     "error": {
       "firms_key_required": "A megerősítés engedélyezése előtt add meg a NASA FIRMS MAP_KEY értékét",
@@ -138,10 +179,22 @@
     }
   },
   "issues": {
-    "provider_authentication": {"title": "Sikertelen hitelesítés egy aktívtűz-adatforrásnál", "description": "A TerraLyra nem tud hitelesíteni az egyik beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."},
-    "provider_outage": {"title": "Az aktívtűz-adatforrások ismételten nem érhetők el", "description": "Minden hozzárendelt aktívtűz-adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a forrásszolgáltatásokat és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."},
-    "fire_risk_outage": {"title": "A tűzkockázati előrejelzés szolgáltatása ismételten nem érhető el", "description": "Az FRMv3 előrejelzési szolgáltatás {failures} egymást követő frissítésnél hibázott. A TerraLyra korlátozott késleltetéssel automatikusan újrapróbálkozik; az aktívtűz-figyelés és a többi működő termék közben folytatódik. Az értesítés helyreállás után eltűnik."},
-    "provider_coverage": {"title": "Néhány figyelt helyet egyetlen beállított tűzforrás sem fed le", "description": "A TerraLyra jelenleg nem tud használható forrást rendelni ezekhez: {locations}. Adj meg LSA SAF hozzáférést vagy NASA FIRMS MAP_KEY-t, illetve módosítsd a helyeket. A többi hely frissítése folytatódik."}
+    "provider_authentication": {
+      "title": "Sikertelen hitelesítés egy aktívtűz-adatforrásnál",
+      "description": "A TerraLyra nem tud hitelesíteni az egyik beállított aktívtűz-adatforrásnál. Nyisd meg az integráció beállításait, ellenőrizd a hozzáférési adatokat, majd töltsd újra az integrációt."
+    },
+    "provider_outage": {
+      "title": "Az aktívtűz-adatforrások ismételten nem érhetők el",
+      "description": "Minden hozzárendelt aktívtűz-adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a forrásszolgáltatásokat és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."
+    },
+    "fire_risk_outage": {
+      "title": "A tűzkockázati előrejelzés szolgáltatása ismételten nem érhető el",
+      "description": "Az FRMv3 előrejelzési szolgáltatás {failures} egymást követő frissítésnél hibázott (utolsó ok: {reason}). A TerraLyra korlátozott késleltetéssel automatikusan újrapróbálkozik; az aktívtűz-figyelés és a többi működő termék közben folytatódik. Az értesítés helyreállás után eltűnik."
+    },
+    "provider_coverage": {
+      "title": "Néhány figyelt helyet egyetlen beállított tűzforrás sem fed le",
+      "description": "A TerraLyra jelenleg nem tud használható forrást rendelni ezekhez: {locations}. Adj meg LSA SAF hozzáférést vagy NASA FIRMS MAP_KEY-t, illetve módosítsd a helyeket. A többi hely frissítése folytatódik."
+    }
   },
   "entity": {
     "sensor": {
@@ -189,7 +242,12 @@
       },
       "monitored_location_status": {
         "name": "{location_name} megfigyelési állapota",
-        "state": {"available": "Minden forrás elérhető", "partial": "Részben elérhető", "initializing": "Inicializálás", "unavailable": "Nem érhető el"}
+        "state": {
+          "available": "Minden forrás elérhető",
+          "partial": "Részben elérhető",
+          "initializing": "Inicializálás",
+          "unavailable": "Nem érhető el"
+        }
       },
       "provider_coverage": {
         "name": "Figyelt helyek forráslefedettsége",
@@ -256,7 +314,12 @@
       },
       "nearest_fire_evidence": {
         "name": "A legközelebbi tűzészlelés bizonyítékerőssége",
-        "state": {"no_active_fire": "Nincs aktív tűz", "limited": "Korlátozott", "moderate": "Közepes", "strong": "Erős"}
+        "state": {
+          "no_active_fire": "Nincs aktív tűz",
+          "limited": "Korlátozott",
+          "moderate": "Közepes",
+          "strong": "Erős"
+        }
       },
       "land_surface_temperature": {
         "name": "Felszínhőmérséklet az otthonnál"

@@ -64,6 +64,7 @@ def async_set_fire_risk_outage_issue(
     entry: ConfigEntry,
     *,
     consecutive_failures: int,
+    reason: str | None = None,
 ) -> None:
     """Create a self-clearing issue after repeated FRMv3 failures."""
     issue_id = _issue_id(entry, "fire_risk_outage")
@@ -79,7 +80,10 @@ def async_set_fire_risk_outage_issue(
         is_persistent=False,
         severity=ir.IssueSeverity.WARNING,
         translation_key="fire_risk_outage",
-        translation_placeholders={"failures": str(consecutive_failures)},
+        translation_placeholders={
+            "failures": str(consecutive_failures),
+            "reason": reason or "service issue",
+        },
     )
 
 

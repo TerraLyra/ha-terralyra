@@ -5,32 +5,83 @@
       "user": {
         "title": "Choisir une source de données sur les feux actifs",
         "description": "LSA SAF est recommandé pour l’Europe et les régions voisines et nécessite un compte gratuit. NOAA GOES est destiné aux emplacements couverts de façon sûre dans l’hémisphère occidental, ne nécessite aucun compte et télécharge des données satellitaires supplémentaires.",
-        "data": {"active_fire_provider": "Source de données sur les feux actifs"}
+        "data": {
+          "active_fire_provider": "Source de données sur les feux actifs"
+        }
       },
       "monitoring_center": {
         "title": "Choisir le centre de surveillance des feux actifs",
         "description": "Utilisez le domicile en fonctionnement normal ou saisissez un autre lieu pour tester ou surveiller une zone distincte. Ce centre s’applique aux sources de feux actifs, distances, alertes, NASA FIRMS et marqueurs. Le risque FRMv3 et la température de surface restent liés au domicile.",
-        "data": {"use_custom_monitoring_center": "Utiliser un centre de surveillance personnalisé", "monitoring_center_name": "Nom du centre", "monitoring_latitude": "Latitude", "monitoring_longitude": "Longitude"},
-        "data_description": {"use_custom_monitoring_center": "Désactivé utilise le domicile de Home Assistant.", "monitoring_center_name": "Un nom court et reconnaissable, par exemple New York ou Maison de vacances.", "monitoring_latitude": "Degrés décimaux de -90 à 90.", "monitoring_longitude": "Degrés décimaux de -180 à 180."}
+        "data": {
+          "use_custom_monitoring_center": "Utiliser un centre de surveillance personnalisé",
+          "monitoring_center_name": "Nom du centre",
+          "monitoring_latitude": "Latitude",
+          "monitoring_longitude": "Longitude"
+        },
+        "data_description": {
+          "use_custom_monitoring_center": "Désactivé utilise le domicile de Home Assistant.",
+          "monitoring_center_name": "Un nom court et reconnaissable, par exemple New York ou Maison de vacances.",
+          "monitoring_latitude": "Degrés décimaux de -90 à 90.",
+          "monitoring_longitude": "Degrés décimaux de -180 à 180."
+        }
       },
-      "sources": {"title": "Connecter des sources facultatives de feux actifs", "description": "TerraLyra attribue automatiquement à chaque lieu toutes les sources pertinentes. NOAA GOES ne nécessite aucun identifiant. Ajoutez des identifiants LSA SAF et/ou une MAP_KEY NASA FIRMS pour étendre la couverture ; laissez les champs vides pour ignorer la source.", "data": {"username": "Identifiant LSA SAF (facultatif)", "password": "Mot de passe LSA SAF (facultatif)", "firms_map_key": "MAP_KEY NASA FIRMS (facultative)"}},
+      "sources": {
+        "title": "Connecter des sources facultatives de feux actifs",
+        "description": "TerraLyra attribue automatiquement à chaque lieu toutes les sources pertinentes. NOAA GOES ne nécessite aucun identifiant. Ajoutez des identifiants LSA SAF et/ou une MAP_KEY NASA FIRMS pour étendre la couverture ; laissez les champs vides pour ignorer la source.",
+        "data": {
+          "username": "Identifiant LSA SAF (facultatif)",
+          "password": "Mot de passe LSA SAF (facultatif)",
+          "firms_map_key": "MAP_KEY NASA FIRMS (facultative)"
+        }
+      },
       "lsa_saf": {
         "title": "Connexion au service de données LSA SAF",
         "description": "Saisissez les identifiants de votre compte gratuit LSA SAF Data Service. L’intégration fournit la détection des feux actifs MTG et la prévision FRMv3 du risque d’incendie.",
-        "data": {"username": "Nom d’utilisateur", "password": "Mot de passe"},
-        "data_description": {"username": "Nom d’utilisateur du service de données LSA SAF", "password": "Mot de passe du service de données LSA SAF"}
+        "data": {
+          "username": "Nom d’utilisateur",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "Nom d’utilisateur du service de données LSA SAF",
+          "password": "Mot de passe du service de données LSA SAF"
+        }
       },
       "reauth_confirm": {
         "title": "Réauthentification requise",
         "description": "Le service de données LSA SAF a refusé les identifiants enregistrés. Saisissez le nom d’utilisateur et le mot de passe actuel du même compte.",
-        "data": {"username": "Nom d’utilisateur", "password": "Mot de passe"},
-        "data_description": {"username": "Nom d’utilisateur du compte LSA SAF configuré à l’origine", "password": "Mot de passe actuel du service de données LSA SAF"}
+        "data": {
+          "username": "Nom d’utilisateur",
+          "password": "Mot de passe"
+        },
+        "data_description": {
+          "username": "Nom d’utilisateur du compte LSA SAF configuré à l’origine",
+          "password": "Mot de passe actuel du service de données LSA SAF"
+        }
       }
     },
-    "error": {"cannot_connect": "Impossible de se connecter au service de données LSA SAF", "goes_not_available": "Le centre de surveillance sélectionné se trouve hors de la zone de couverture sûre de NOAA GOES", "invalid_monitoring_center": "Saisissez un nom et des coordonnées valides pour le centre de surveillance", "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect", "invalid_firms_key": "La MAP_KEY NASA FIRMS a été refusée", "lsa_credentials_incomplete": "Saisissez l’identifiant et le mot de passe LSA SAF, ou laissez les deux champs vides", "no_source_available": "Aucune source automatique ne couvre ce lieu. Ajoutez des identifiants LSA SAF ou une MAP_KEY NASA FIRMS"},
-    "abort": {"already_configured": "Ce compte LSA SAF est déjà configuré", "reauth_successful": "Identifiants mis à jour", "wrong_account": "Les nouveaux identifiants appartiennent à un autre compte LSA SAF"}
+    "error": {
+      "cannot_connect": "Impossible de se connecter au service de données LSA SAF",
+      "goes_not_available": "Le centre de surveillance sélectionné se trouve hors de la zone de couverture sûre de NOAA GOES",
+      "invalid_monitoring_center": "Saisissez un nom et des coordonnées valides pour le centre de surveillance",
+      "invalid_auth": "Nom d’utilisateur ou mot de passe incorrect",
+      "invalid_firms_key": "La MAP_KEY NASA FIRMS a été refusée",
+      "lsa_credentials_incomplete": "Saisissez l’identifiant et le mot de passe LSA SAF, ou laissez les deux champs vides",
+      "no_source_available": "Aucune source automatique ne couvre ce lieu. Ajoutez des identifiants LSA SAF ou une MAP_KEY NASA FIRMS"
+    },
+    "abort": {
+      "already_configured": "Ce compte LSA SAF est déjà configuré",
+      "reauth_successful": "Identifiants mis à jour",
+      "wrong_account": "Les nouveaux identifiants appartiennent à un autre compte LSA SAF"
+    }
   },
-  "selector": {"active_fire_provider": {"options": {"eumetsat_lsa_saf": "EUMETSAT LSA SAF (compte requis)", "noaa_goes": "NOAA GOES-18/19 (aucun compte requis)"}}},
+  "selector": {
+    "active_fire_provider": {
+      "options": {
+        "eumetsat_lsa_saf": "EUMETSAT LSA SAF (compte requis)",
+        "noaa_goes": "NOAA GOES-18/19 (aucun compte requis)"
+      }
+    }
+  },
   "options": {
     "step": {
       "init": {
@@ -74,11 +125,48 @@
           "firms_map_key": "Stocké comme secret dans l’entrée de configuration Home Assistant et masqué dans les diagnostics. Laisser vide pour conserver une clé déjà enregistrée."
         }
       },
-      "monitored_locations": {"title": "Gérer les lieux surveillés", "menu_options": {"add_location": "Ajouter un lieu", "edit_location": "Modifier un lieu", "toggle_location": "Activer ou désactiver un lieu", "delete_location": "Supprimer un lieu"}},
-      "add_location": {"title": "Ajouter un lieu surveillé", "data": {"name": "Nom", "latitude": "Latitude géographique", "longitude": "Longitude géographique", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
-      "edit_location": {"title": "Modifier un lieu surveillé", "data": {"location_id": "Lieu", "name": "Nom", "latitude": "Latitude géographique", "longitude": "Longitude géographique", "radius_km": "Rayon de surveillance", "enabled": "Activé"}},
-      "toggle_location": {"title": "Activer ou désactiver un lieu", "data": {"location_id": "Lieu"}},
-      "delete_location": {"title": "Supprimer un lieu", "data": {"location_id": "Lieu"}}
+      "monitored_locations": {
+        "title": "Gérer les lieux surveillés",
+        "menu_options": {
+          "add_location": "Ajouter un lieu",
+          "edit_location": "Modifier un lieu",
+          "toggle_location": "Activer ou désactiver un lieu",
+          "delete_location": "Supprimer un lieu"
+        }
+      },
+      "add_location": {
+        "title": "Ajouter un lieu surveillé",
+        "data": {
+          "name": "Nom",
+          "latitude": "Latitude géographique",
+          "longitude": "Longitude géographique",
+          "radius_km": "Rayon de surveillance",
+          "enabled": "Activé"
+        }
+      },
+      "edit_location": {
+        "title": "Modifier un lieu surveillé",
+        "data": {
+          "location_id": "Lieu",
+          "name": "Nom",
+          "latitude": "Latitude géographique",
+          "longitude": "Longitude géographique",
+          "radius_km": "Rayon de surveillance",
+          "enabled": "Activé"
+        }
+      },
+      "toggle_location": {
+        "title": "Activer ou désactiver un lieu",
+        "data": {
+          "location_id": "Lieu"
+        }
+      },
+      "delete_location": {
+        "title": "Supprimer un lieu",
+        "data": {
+          "location_id": "Lieu"
+        }
+      }
     },
     "error": {
       "firms_key_required": "Saisissez un NASA FIRMS MAP_KEY avant d’activer la corroboration",
@@ -91,40 +179,200 @@
     }
   },
   "issues": {
-    "provider_authentication": {"title": "Échec d’authentification d’une source de feux actifs", "description": "TerraLyra ne peut pas s’authentifier auprès d’une source configurée. Vérifiez les identifiants dans les paramètres de l’intégration, puis rechargez-la."},
-    "provider_outage": {"title": "Les sources de feux actifs sont indisponibles de façon répétée", "description": "Toutes les sources attribuées ont échoué lors de {failures} mises à jour consécutives. Vérifiez les services et l’accès Internet de cette instance Home Assistant, puis rechargez l’intégration. Les autres produits TerraLyra peuvent continuer à être actualisés."},
-    "fire_risk_outage": {"title": "Le service de prévision du risque d’incendie est indisponible de façon répétée", "description": "Le service de prévision FRMv3 a échoué lors de {failures} actualisations consécutives. TerraLyra réessaie automatiquement avec un délai limité ; la surveillance des feux actifs et les autres produits disponibles continuent normalement. Cet avis disparaît après le rétablissement."},
-    "provider_coverage": {"title": "Aucune source configurée ne couvre certains lieux", "description": "TerraLyra ne peut actuellement attribuer de source utilisable à : {locations}. Ajoutez les identifiants LSA SAF ou une MAP_KEY NASA FIRMS, ou modifiez les lieux. Les autres lieux continuent à être actualisés."}
+    "provider_authentication": {
+      "title": "Échec d’authentification d’une source de feux actifs",
+      "description": "TerraLyra ne peut pas s’authentifier auprès d’une source configurée. Vérifiez les identifiants dans les paramètres de l’intégration, puis rechargez-la."
+    },
+    "provider_outage": {
+      "title": "Les sources de feux actifs sont indisponibles de façon répétée",
+      "description": "Toutes les sources attribuées ont échoué lors de {failures} mises à jour consécutives. Vérifiez les services et l’accès Internet de cette instance Home Assistant, puis rechargez l’intégration. Les autres produits TerraLyra peuvent continuer à être actualisés."
+    },
+    "fire_risk_outage": {
+      "title": "Le service de prévision du risque d’incendie est indisponible de façon répétée",
+      "description": "Le service de prévision FRMv3 a échoué lors de {failures} actualisations consécutives (dernier motif : {reason}). TerraLyra réessaie automatiquement avec un délai limité ; la surveillance des feux actifs et les autres produits disponibles continuent normalement. Cet avis disparaît après le rétablissement."
+    },
+    "provider_coverage": {
+      "title": "Aucune source configurée ne couvre certains lieux",
+      "description": "TerraLyra ne peut actuellement attribuer de source utilisable à : {locations}. Ajoutez les identifiants LSA SAF ou une MAP_KEY NASA FIRMS, ou modifiez les lieux. Les autres lieux continuent à être actualisés."
+    }
   },
   "entity": {
     "sensor": {
-      "nearest_fire": {"name": "Feu actif le plus proche"},
-      "active_fire_count": {"name": "Groupes de feux actifs"},
-      "supplemental_fire_count": {"name": "Groupes observés par NASA FIRMS"},
-      "combined_fire_count": {"name": "Tous les groupes de feux actifs"},
-      "raw_pixel_count": {"name": "Pixels de feu dans le rayon"},
-      "product_time": {"name": "Heure du dernier produit incendie"},
-      "product_age": {"name": "Âge du produit incendie"},
-      "provider_status": {"name": "État des données d’incendie actif", "state": {"initializing": "Initialisation", "available": "Disponible", "delayed": "Retardé", "no_product": "Aucun produit actuel", "outage": "Indisponibilité du fournisseur", "auth_error": "Erreur d’authentification"}},
-      "active_fire_provider": {"name": "Sources de feux actifs attribuées", "state": {"automatic": "Automatique", "unavailable": "Indisponible"}},
-      "monitored_location_sources": {"name": "Sources de feux actifs pour {location_name}"},
-      "monitored_location_status": {"name": "État de surveillance de {location_name}", "state": {"available": "Toutes les sources sont disponibles", "partial": "Partiellement disponible", "initializing": "Initialisation", "unavailable": "Indisponible"}},
-      "provider_coverage": {"name": "Couverture des sources par lieu", "state": {"covered": "Couverte", "partial": "Partiellement couverte", "not_covered": "Non couverte", "unknown": "Inconnue"}},
-      "fire_risk_today": {"name": "Risque d’incendie près du domicile", "state": {"low": "Faible", "moderate": "Modéré", "high": "Élevé", "very_high": "Très élevé", "extreme": "Extrême", "unknown": "Inconnu"}},
-      "fire_risk_area_maximum": {"name": "Risque d’incendie maximal dans la zone surveillée", "state": {"low": "Faible", "moderate": "Modéré", "high": "Élevé", "very_high": "Très élevé", "extreme": "Extrême", "unknown": "Inconnu"}},
-      "fire_risk_update": {"name": "Dernière mise à jour de la prévision du risque d’incendie"},
-      "recent_detections": {"name": "Détections d’incendie au cours de la dernière heure"},
-      "fire_activity_frp_change": {"name": "Variation de la FRP de l’activité incendie sur une heure"},
-      "new_incidents_24h": {"name": "Nouveaux incendies au cours des dernières 24 heures"}
-      ,"active_fire_situation": {"name": "Situation des incendies actifs", "state": {"normal": "Normale", "elevated": "Élevée", "high": "Haute", "critical": "Critique", "unknown": "Inconnue"}}
-      ,"fire_source_confirmation": {"name": "Confirmation indépendante de la source d’incendie", "state": {"disabled": "Désactivée", "not_available": "Indisponible", "no_active_fire": "Aucun feu actif", "single_source": "Source unique", "multi_source": "Plusieurs sources"}}
-      ,"nearest_fire_evidence": {"name": "Force des indices du feu le plus proche", "state": {"no_active_fire": "Aucun feu actif", "limited": "Limitée", "moderate": "Modérée", "strong": "Forte"}}
-      ,"land_surface_temperature": {"name": "Température de surface au domicile"}
+      "nearest_fire": {
+        "name": "Feu actif le plus proche"
+      },
+      "active_fire_count": {
+        "name": "Groupes de feux actifs"
+      },
+      "supplemental_fire_count": {
+        "name": "Groupes observés par NASA FIRMS"
+      },
+      "combined_fire_count": {
+        "name": "Tous les groupes de feux actifs"
+      },
+      "raw_pixel_count": {
+        "name": "Pixels de feu dans le rayon"
+      },
+      "product_time": {
+        "name": "Heure du dernier produit incendie"
+      },
+      "product_age": {
+        "name": "Âge du produit incendie"
+      },
+      "provider_status": {
+        "name": "État des données d’incendie actif",
+        "state": {
+          "initializing": "Initialisation",
+          "available": "Disponible",
+          "delayed": "Retardé",
+          "no_product": "Aucun produit actuel",
+          "outage": "Indisponibilité du fournisseur",
+          "auth_error": "Erreur d’authentification"
+        }
+      },
+      "active_fire_provider": {
+        "name": "Sources de feux actifs attribuées",
+        "state": {
+          "automatic": "Automatique",
+          "unavailable": "Indisponible"
+        }
+      },
+      "monitored_location_sources": {
+        "name": "Sources de feux actifs pour {location_name}"
+      },
+      "monitored_location_status": {
+        "name": "État de surveillance de {location_name}",
+        "state": {
+          "available": "Toutes les sources sont disponibles",
+          "partial": "Partiellement disponible",
+          "initializing": "Initialisation",
+          "unavailable": "Indisponible"
+        }
+      },
+      "provider_coverage": {
+        "name": "Couverture des sources par lieu",
+        "state": {
+          "covered": "Couverte",
+          "partial": "Partiellement couverte",
+          "not_covered": "Non couverte",
+          "unknown": "Inconnue"
+        }
+      },
+      "fire_risk_today": {
+        "name": "Risque d’incendie près du domicile",
+        "state": {
+          "low": "Faible",
+          "moderate": "Modéré",
+          "high": "Élevé",
+          "very_high": "Très élevé",
+          "extreme": "Extrême",
+          "unknown": "Inconnu"
+        }
+      },
+      "fire_risk_area_maximum": {
+        "name": "Risque d’incendie maximal dans la zone surveillée",
+        "state": {
+          "low": "Faible",
+          "moderate": "Modéré",
+          "high": "Élevé",
+          "very_high": "Très élevé",
+          "extreme": "Extrême",
+          "unknown": "Inconnu"
+        }
+      },
+      "fire_risk_update": {
+        "name": "Dernière mise à jour de la prévision du risque d’incendie"
+      },
+      "recent_detections": {
+        "name": "Détections d’incendie au cours de la dernière heure"
+      },
+      "fire_activity_frp_change": {
+        "name": "Variation de la FRP de l’activité incendie sur une heure"
+      },
+      "new_incidents_24h": {
+        "name": "Nouveaux incendies au cours des dernières 24 heures"
+      },
+      "active_fire_situation": {
+        "name": "Situation des incendies actifs",
+        "state": {
+          "normal": "Normale",
+          "elevated": "Élevée",
+          "high": "Haute",
+          "critical": "Critique",
+          "unknown": "Inconnue"
+        }
+      },
+      "fire_source_confirmation": {
+        "name": "Confirmation indépendante de la source d’incendie",
+        "state": {
+          "disabled": "Désactivée",
+          "not_available": "Indisponible",
+          "no_active_fire": "Aucun feu actif",
+          "single_source": "Source unique",
+          "multi_source": "Plusieurs sources"
+        }
+      },
+      "nearest_fire_evidence": {
+        "name": "Force des indices du feu le plus proche",
+        "state": {
+          "no_active_fire": "Aucun feu actif",
+          "limited": "Limitée",
+          "moderate": "Modérée",
+          "strong": "Forte"
+        }
+      },
+      "land_surface_temperature": {
+        "name": "Température de surface au domicile"
+      }
     },
-    "event": {"new_fire": {"name": "Nouveau feu actif"}, "fire_risk_increase": {"name": "Augmentation du risque d’incendie"}, "fire_trend": {"name": "Changement de tendance d’un incendie"}},
-    "select": {"fire_risk_day": {"name": "Jour de prévision du risque d’incendie", "state": {"today": "Aujourd’hui", "tomorrow": "Demain", "in_2_days": "Dans 2 jours", "in_3_days": "Dans 3 jours", "in_4_days": "Dans 4 jours", "in_5_days": "Dans 5 jours", "in_6_days": "Dans 6 jours", "in_7_days": "Dans 7 jours", "in_8_days": "Dans 8 jours", "in_9_days": "Dans 9 jours"}}},
-    "camera": {"fire_risk_map": {"name": "Carte de prévision du risque d’incendie"}},
-    "calendar": {"fire_risk_forecast": {"name": "Prévision du risque d’incendie sur 10 jours"}},
-    "number": {"monitoring_radius": {"name": "Rayon de surveillance des feux actifs"}, "fire_risk_radius": {"name": "Rayon de prévision du risque d’incendie"}, "fire_history_hours": {"name": "Fenêtre d’historique des feux"}}
+    "event": {
+      "new_fire": {
+        "name": "Nouveau feu actif"
+      },
+      "fire_risk_increase": {
+        "name": "Augmentation du risque d’incendie"
+      },
+      "fire_trend": {
+        "name": "Changement de tendance d’un incendie"
+      }
+    },
+    "select": {
+      "fire_risk_day": {
+        "name": "Jour de prévision du risque d’incendie",
+        "state": {
+          "today": "Aujourd’hui",
+          "tomorrow": "Demain",
+          "in_2_days": "Dans 2 jours",
+          "in_3_days": "Dans 3 jours",
+          "in_4_days": "Dans 4 jours",
+          "in_5_days": "Dans 5 jours",
+          "in_6_days": "Dans 6 jours",
+          "in_7_days": "Dans 7 jours",
+          "in_8_days": "Dans 8 jours",
+          "in_9_days": "Dans 9 jours"
+        }
+      }
+    },
+    "camera": {
+      "fire_risk_map": {
+        "name": "Carte de prévision du risque d’incendie"
+      }
+    },
+    "calendar": {
+      "fire_risk_forecast": {
+        "name": "Prévision du risque d’incendie sur 10 jours"
+      }
+    },
+    "number": {
+      "monitoring_radius": {
+        "name": "Rayon de surveillance des feux actifs"
+      },
+      "fire_risk_radius": {
+        "name": "Rayon de prévision du risque d’incendie"
+      },
+      "fire_history_hours": {
+        "name": "Fenêtre d’historique des feux"
+      }
+    }
   }
 }
