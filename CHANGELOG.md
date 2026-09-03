@@ -1,10 +1,7 @@
 # Changelog
 
-## 0.8.5
+## 0.8.6
 
-- Make the NASA FIRMS multi-area active-fire provider resilient to partial area
-  failures, so one bad monitoring box no longer invalidates all FIRMS detections.
-- Add regression coverage for partial and complete FIRMS multi-area failures.
 - Improve FRMv3 reliability by classifying temporary HTTP failures (auth/rate-limit/
   temporary service), capturing `Retry-After` hints when present, and using that
   signal for smarter backoff.
@@ -12,6 +9,12 @@
   warning repair notification.
 - Keep the specialized FRMv3 HTTP failures compatible with existing HTTP error
   handling, and sanitize server-provided details before showing them.
+
+## 0.8.5
+
+- Make the NASA FIRMS multi-area active-fire provider resilient to partial area
+  failures, so one bad monitoring box no longer invalidates all FIRMS detections.
+- Add regression coverage for partial and complete FIRMS multi-area failures.
 
 ## 0.8.4
 
