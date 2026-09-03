@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.8.5
+
+- Make the NASA FIRMS multi-area active-fire provider resilient to partial area
+  failures, so one bad monitoring box no longer invalidates all FIRMS detections.
+- Add regression coverage for partial and complete FIRMS multi-area failures.
+
 ## 0.8.4
 
 - Add more actionable FRMv3 diagnostics when the WMS endpoint returns a non-200
