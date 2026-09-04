@@ -124,21 +124,24 @@ class FireRiskClient:
 
     def export_map_cache(self) -> dict[str, Any] | None:
         """Return a bounded, version-independent cache payload for HA storage."""
+        cache_key = getattr(self, "_map_cache_key", None)
+        cache_value = getattr(self, "_map_cache_value", None)
+        cache_time = getattr(self, "_map_cache_time", None)
         if (
-            self._map_cache_key is None
-            or self._map_cache_value is None
-            or self._map_cache_time is None
-            or len(self._map_cache_value) > MAX_MAP_BYTES
-            or not self._map_cache_value.startswith(b"\x89PNG\r\n\x1a\n")
-            or datetime.now(UTC) - self._map_cache_time >= MAP_STALE_TTL
+            cache_key is None
+            or cache_value is None
+            or cache_time is None
+            or len(cache_value) > MAX_MAP_BYTES
+            or not cache_value.startswith(b"\x89PNG\r\n\x1a\n")
+            or datetime.now(UTC) - cache_time >= MAP_STALE_TTL
         ):
             return None
-        bbox, valid_date = self._map_cache_key
+        bbox, valid_date = cache_key
         return {
             "bounds": list(bbox),
             "valid_date": valid_date.isoformat(),
-            "cached_at": self._map_cache_time.isoformat(),
-            "png": base64.b64encode(self._map_cache_value).decode("ascii"),
+            "cached_at": cache_time.isoformat(),
+            "png": base64.b64encode(cache_value).decode("ascii"),
         }
 
     def import_map_cache(self, payload: object) -> bool:

@@ -448,7 +448,7 @@ def test_map_analysis_finds_maximum_inside_circle() -> None:
 
 
 def test_fire_risk_map_cache_round_trip_is_bounded() -> None:
-    source = FireRiskClient(DummySession())
+    source = FireRiskClient(object())
     bbox = (14.0, 44.0, 24.0, 51.0)
     valid_date = datetime.now(UTC).date()
     image = b"\x89PNG\r\n\x1a\ncache"
@@ -457,7 +457,7 @@ def test_fire_risk_map_cache_round_trip_is_bounded() -> None:
     source._map_cache_time = datetime.now(UTC)
 
     payload = source.export_map_cache()
-    restored = FireRiskClient(DummySession())
+    restored = FireRiskClient(object())
 
     assert payload is not None
     assert restored.import_map_cache(payload)
@@ -480,7 +480,7 @@ def test_fire_risk_map_cache_round_trip_is_bounded() -> None:
     ],
 )
 def test_fire_risk_map_cache_rejects_invalid_payload(payload: object) -> None:
-    assert not FireRiskClient(DummySession()).import_map_cache(payload)
+    assert not FireRiskClient(object()).import_map_cache(payload)
 
 
 @pytest.mark.parametrize("radius", [0, 501, float("nan"), float("inf")])
