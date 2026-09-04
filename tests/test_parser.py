@@ -5,10 +5,10 @@ import gzip
 import pytest
 
 from custom_components.terralyra.api import LsaSafError, validate_service_url
+from custom_components.terralyra.clustering import haversine_km
 from custom_components.terralyra.products.fire import (
     MAX_COMPRESSED_BYTES,
     MAX_UNCOMPRESSED_BYTES,
-    haversine_km,
     parse_product,
 )
 
