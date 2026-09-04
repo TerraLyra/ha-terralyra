@@ -121,7 +121,7 @@
           "fire_history_hours": "Ennyi ideig maradnak láthatók az inaktív tűzjelölések a térképen. Az ismételt riasztások elnyomását nem hosszabbítja meg.",
           "resolve_place_names": "A legközelebbi települést helyben keresi meg a csomagolt GeoNames cities500 adatbázisból. Koordinátát nem küld külső szolgáltatásnak.",
           "enable_land_surface_temperature": "Opcionális és alapból kikapcsolt. Bekapcsolva a Home Assistant körülbelül 15 percenként elküldi az Otthon szélességi és hosszúsági koordinátáját az LSA SAF hivatalos adaguc.lsasvcs.ipma.pt WMS-szolgáltatásának a legfrissebb műholdas felszínhőmérséklet lekéréséhez.",
-          "enable_firms": "Bekapcsolva a NASA FIRMS minden figyelt helyhez egyenrangú forrásként lesz hozzárendelve. A Home Assistant minden engedélyezett hely körüli kis határolóterületet elküldi a hivatalos FIRMS API-nak. Saját ingyenes MAP_KEY szükséges.",
+          "enable_firms": "Bekapcsolva a NASA FIRMS NOAA-20/21 VIIRS és Terra/Aqua MODIS észlelései minden figyelt helyhez egyenrangú műholdas bizonyítékként lesznek hozzárendelve. A Home Assistant minden engedélyezett hely körüli kis határolóterületet elküldi a hivatalos FIRMS API-nak. Saját ingyenes MAP_KEY szükséges.",
           "firms_map_key": "Titkos adatként kerül a Home Assistant konfigurációs bejegyzésébe, és a diagnosztikából ki van takarva. Hagyd üresen a már mentett kulcs megtartásához."
         }
       },
@@ -190,6 +190,10 @@
     "upstream_provider_issue": {
       "title": "A(z) {service} figyelmet igényel",
       "description": "A(z) {service} {failure} hibát jelzett {failures} egymást követő frissítésnél. A TerraLyra korlátozott késleltetéssel újrapróbálkozik, miközben a többi működő forrás tovább frissül. Ha a hiba tartós, ellenőrizd a hozzáférést és a szolgáltatás elérhetőségét."
+    },
+    "upstream_goes_issue": {
+      "title": "A NOAA GOES adatai figyelmet igényelnek",
+      "description": "A(z) {service} {failure} hibát jelzett {failures} egymást követő frissítésnél. A NOAA GOES nem igényel hozzáférési adatot. A TerraLyra korlátozott késleltetéssel automatikusan újrapróbálkozik, miközben a többi működő forrás tovább frissül; ha a hiba tartós, ellenőrizd a NOAA szolgáltatás elérhetőségét."
     },
     "fire_risk_outage": {
       "title": "A tűzkockázati előrejelzés szolgáltatása ismételten nem érhető el",

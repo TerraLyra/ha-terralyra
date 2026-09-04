@@ -121,7 +121,7 @@
           "fire_history_hours": "Tiempo durante el que los marcadores de incendios inactivos permanecen visibles en el mapa. No prolonga la supresión de alertas repetidas.",
           "resolve_place_names": "Busca localmente el asentamiento más cercano mediante la base de datos GeoNames cities500 incluida. No se envían coordenadas a servicios externos.",
           "enable_land_surface_temperature": "Opcional y desactivado por defecto. Al activarlo, Home Assistant envía aproximadamente cada 15 minutos las coordenadas de Casa al servicio WMS oficial de LSA SAF adaguc.lsasvcs.ipma.pt.",
-          "enable_firms": "Al activarlo, NASA FIRMS se asigna como fuente equivalente a cada ubicación vigilada. Home Assistant envía una pequeña zona alrededor de cada ubicación habilitada a la API oficial de FIRMS. Se requiere un MAP_KEY personal gratuito.",
+          "enable_firms": "Al activarlo, las observaciones NASA FIRMS de NOAA-20/21 VIIRS y Terra/Aqua MODIS se asignan como evidencia satelital equivalente a cada ubicación vigilada. Home Assistant envía una pequeña zona alrededor de cada ubicación habilitada a la API oficial de FIRMS. Se requiere un MAP_KEY personal gratuito.",
           "firms_map_key": "Se guarda como secreto en la entrada de configuración de Home Assistant y se oculta en los diagnósticos. Déjalo vacío para conservar una clave ya guardada."
         }
       },
@@ -190,6 +190,10 @@
     "upstream_provider_issue": {
       "title": "{service} necesita atención",
       "description": "{service} informó de {failure} durante {failures} actualizaciones consecutivas. TerraLyra vuelve a intentarlo con una demora limitada mientras las demás fuentes sanas continúan. Si persiste, comprueba las credenciales y la disponibilidad del servicio."
+    },
+    "upstream_goes_issue": {
+      "title": "Los datos de NOAA GOES necesitan atención",
+      "description": "{service} informó de {failure} durante {failures} actualizaciones consecutivas. NOAA GOES no requiere credenciales. TerraLyra vuelve a intentarlo automáticamente con una demora limitada mientras las demás fuentes sanas continúan; si persiste, comprueba la disponibilidad del servicio NOAA."
     },
     "fire_risk_outage": {
       "title": "El servicio de previsión del riesgo de incendio no está disponible repetidamente",

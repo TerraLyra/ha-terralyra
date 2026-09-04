@@ -129,6 +129,9 @@ def apply_incident_metadata(cluster: FireCluster, incident: dict[str, Any]) -> N
         str(provider)
         for provider in incident.get("providers", ["eumetsat_lsa_saf"])
     )
+    cluster.satellites = tuple(
+        str(satellite) for satellite in incident.get("satellites", [])
+    )
     cluster.corroborating_detections = int(
         incident.get("corroborating_detections", 0)
     )
@@ -184,6 +187,7 @@ def _new_incident(cluster: FireCluster) -> dict[str, Any]:
         "minimum_distance_km": cluster.distance_km,
         "confirmation_level": cluster.confirmation_level.value,
         "providers": list(cluster.providers),
+        "satellites": list(cluster.satellites),
         "corroborating_detections": cluster.corroborating_detections,
     }
     add_observation_and_update_trends(incident, cluster)
@@ -214,6 +218,7 @@ def _update_incident(incident: dict[str, Any], cluster: FireCluster) -> list[str
             "pixel_count": cluster.pixel_count,
             "confirmation_level": cluster.confirmation_level.value,
             "providers": list(cluster.providers),
+            "satellites": list(cluster.satellites),
             "corroborating_detections": cluster.corroborating_detections,
             "minimum_distance_km": min(
                 float(incident.get("minimum_distance_km", cluster.distance_km)),

@@ -73,14 +73,17 @@ def cluster_detections(
 
     clusters: list[FireCluster] = []
     for group in groups:
-        provider_frp: dict[str, float] = {}
+        source_frp: dict[tuple[str, str], float] = {}
+        source_counts: dict[tuple[str, str], int] = {}
         for item in group:
-            provider_frp[item.provider] = provider_frp.get(item.provider, 0.0) + (
+            source = (item.provider, item.satellite)
+            source_frp[source] = source_frp.get(source, 0.0) + (
                 item.frp_mw or 0.0
             )
+            source_counts[source] = source_counts.get(source, 0) + 1
         # Independent satellites can observe the same energy. Use the largest
         # source total instead of adding equal observations twice.
-        total_frp = max(provider_frp.values(), default=0.0)
+        total_frp = max(source_frp.values(), default=0.0)
         if total_frp > 0:
             weights = [max(item.frp_mw or 0.0, 0.000001) for item in group]
             weight_total = sum(weights)
@@ -102,6 +105,8 @@ def cluster_detections(
             latitude = sum(item.latitude for item in group) / len(group)
             longitude = sum(item.longitude for item in group) / len(group)
         providers = tuple(sorted({item.provider for item in group}))
+        satellites = tuple(sorted({item.satellite for item in group}))
+        independent_sources = len(source_counts)
         clusters.append(
             FireCluster(
                 latitude=latitude,
@@ -114,14 +119,15 @@ def cluster_detections(
                 acquired=max(item.timestamp for item in group),
                 pixel_count=len(group),
                 providers=providers,
+                satellites=satellites,
                 confirmation_level=(
                     ConfirmationLevel.MULTI_SOURCE
-                    if len(providers) > 1
+                    if independent_sources > 1
                     else ConfirmationLevel.SINGLE_SOURCE
                 ),
                 corroborating_detections=(
-                    sum(item.provider != providers[0] for item in group)
-                    if providers
+                    len(group) - max(source_counts.values())
+                    if source_counts
                     else 0
                 ),
             )

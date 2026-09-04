@@ -1,4 +1,5 @@
 """Tests for actionable Home Assistant repair issues."""
+
 from __future__ import annotations
 
 from unittest.mock import Mock, patch
@@ -84,9 +85,7 @@ def test_fire_risk_issue_is_warning_and_clears_after_recovery(
     }
 
     async_set_fire_risk_outage_issue(hass, entry, consecutive_failures=0)
-    delete_issue.assert_called_once_with(
-        hass, "terralyra", "entry-1_fire_risk_outage"
-    )
+    delete_issue.assert_called_once_with(hass, "terralyra", "entry-1_fire_risk_outage")
 
 
 @patch("custom_components.terralyra.repairs.ir.async_delete_issue")
@@ -105,9 +104,7 @@ def test_coverage_issue_lists_only_uncovered_locations_and_clears(
     }
 
     async_sync_coverage_issue(hass, entry, (covered,))
-    delete_issue.assert_called_once_with(
-        hass, "terralyra", "entry-1_provider_coverage"
-    )
+    delete_issue.assert_called_once_with(hass, "terralyra", "entry-1_provider_coverage")
 
 
 @patch("custom_components.terralyra.repairs.ir.async_delete_issue")
@@ -159,3 +156,22 @@ def test_provider_authentication_issue_is_immediate(create_issue: Mock) -> None:
     async_sync_provider_health_issues(Mock(), _entry(), (health,))
 
     assert create_issue.call_args.kwargs["severity"] is ir.IssueSeverity.ERROR
+
+
+@patch("custom_components.terralyra.repairs.ir.async_create_issue")
+def test_goes_provider_issue_uses_credential_free_guidance(
+    create_issue: Mock,
+) -> None:
+    health = ProviderHealth(
+        "noaa_goes:G18",
+        "NOAA GOES",
+        "G18",
+        ("california",),
+        ProviderStatus.OUTAGE,
+        "invalid_response",
+        OUTAGE_REPAIR_THRESHOLD,
+    )
+
+    async_sync_provider_health_issues(Mock(), _entry(), (health,))
+
+    assert create_issue.call_args.kwargs["translation_key"] == "upstream_goes_issue"

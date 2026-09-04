@@ -626,7 +626,10 @@ def _annotate_corroboration(
         corroborating = sum(cluster.corroborating_detections for cluster in clusters)
         level = (
             ConfirmationLevel.MULTI_SOURCE
-            if any(len(cluster.providers) > 1 for cluster in clusters)
+            if any(
+                cluster.confirmation_level is ConfirmationLevel.MULTI_SOURCE
+                for cluster in clusters
+            )
             else ConfirmationLevel.SINGLE_SOURCE
         )
         return level, corroborating
@@ -665,6 +668,14 @@ def _annotate_corroboration(
         if unique_matches:
             cluster.confirmation_level = ConfirmationLevel.MULTI_SOURCE
             cluster.providers = ("eumetsat_lsa_saf", "nasa_firms")
+            cluster.satellites = tuple(
+                sorted(
+                    {
+                        *cluster.satellites,
+                        *(match.detection.satellite for match in matches),
+                    }
+                )
+            )
         elif not provider_available:
             cluster.confirmation_level = ConfirmationLevel.NOT_AVAILABLE
         else:
@@ -707,9 +718,6 @@ def _firms_only_clusters(
     clusters = cluster_detections(
         unmatched, home_lat, home_lon, cluster_radius_km
     )
-    for cluster in clusters:
-        cluster.providers = ("nasa_firms",)
-        cluster.confirmation_level = ConfirmationLevel.SINGLE_SOURCE
     return clusters
 
 
@@ -904,6 +912,9 @@ def _tracked_fire_clusters(
                 str(provider)
                 for provider in track.get("providers", ["eumetsat_lsa_saf"])
             )
+            satellites = tuple(
+                str(satellite) for satellite in track.get("satellites", [])
+            )
             corroborating_detections = int(
                 track.get("corroborating_detections", 0)
             )
@@ -939,6 +950,7 @@ def _tracked_fire_clusters(
                 trend_window_minutes=trend_window_minutes,
                 confirmation_level=confirmation_level,
                 providers=providers,
+                satellites=satellites,
                 corroborating_detections=corroborating_detections,
                 source_url=_optional_text(track.get("source_url")),
             )

@@ -29,7 +29,7 @@ def _cluster(at: datetime = BASE, **changes) -> FireCluster:
 
 
 def test_new_incident_has_stable_id_and_initial_aggregates() -> None:
-    cluster = _cluster()
+    cluster = _cluster(satellites=("N20", "Terra"))
 
     result = update_incidents(
         [], [cluster], now=BASE, matching_radius_km=3.0, memory_hours=6
@@ -46,6 +46,7 @@ def test_new_incident_has_stable_id_and_initial_aggregates() -> None:
     assert incident["detections_total"] == 2
     assert incident["frp_trend"] == "unknown"
     assert incident["trend_sample_count"] == 1
+    assert incident["satellites"] == ["N20", "Terra"]
 
 
 def test_continuing_incident_updates_current_and_maximum_values() -> None:

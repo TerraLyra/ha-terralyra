@@ -1,4 +1,5 @@
 """Conservative active-fire refresh and observation estimates."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -10,11 +11,13 @@ from .models import ProviderStatus
 GEOSTATIONARY_REFRESH = timedelta(minutes=10)
 FIRMS_REFRESH = timedelta(minutes=15)
 VIIRS_WINDOW_HALF_WIDTH = timedelta(minutes=45)
-_VIIRS_LOCAL_SOLAR_TIMES = (
+_POLAR_LOCAL_SOLAR_TIMES = (
     time(1, 30),
     time(2, 20),
+    time(10, 30),
     time(13, 30),
     time(14, 20),
+    time(22, 30),
 )
 _USABLE_STATUSES = {ProviderStatus.AVAILABLE, ProviderStatus.DELAYED}
 
@@ -39,9 +42,7 @@ class SourceUpdateEstimate:
             "name": self.name,
             "satellite": self.satellite,
             "status": self.status,
-            "expected_at": (
-                self.expected_at.isoformat() if self.expected_at else None
-            ),
+            "expected_at": (self.expected_at.isoformat() if self.expected_at else None),
             "estimate_type": self.estimate_type,
             "cadence_minutes": self.cadence_minutes,
             "observation_window_start": (
@@ -88,7 +89,7 @@ def location_update_estimates(
 
         if provider == "nasa_firms":
             expected = _next_refresh(received_at, current, FIRMS_REFRESH)
-            overpass = next_viirs_overpass_window(
+            overpass = next_polar_overpass_window(
                 float(location.longitude), now=current
             )
             estimates.append(
@@ -98,7 +99,7 @@ def location_update_estimates(
                     satellite,
                     status.value,
                     expected,
-                    "api_refresh_with_nominal_overpass_window",
+                    "api_refresh_with_nominal_polar_overpass_window",
                     15,
                     overpass[0],
                     overpass[1],
@@ -124,6 +125,24 @@ def next_viirs_overpass_window(
     longitude: float, *, now: datetime | None = None
 ) -> tuple[datetime, datetime]:
     """Return a deliberately broad nominal NOAA-20/21 local-solar window."""
+    return _next_overpass_window(
+        longitude, _POLAR_LOCAL_SOLAR_TIMES[:2] + _POLAR_LOCAL_SOLAR_TIMES[3:5], now=now
+    )
+
+
+def next_polar_overpass_window(
+    longitude: float, *, now: datetime | None = None
+) -> tuple[datetime, datetime]:
+    """Return a broad nominal window for configured VIIRS and MODIS satellites."""
+    return _next_overpass_window(longitude, _POLAR_LOCAL_SOLAR_TIMES, now=now)
+
+
+def _next_overpass_window(
+    longitude: float,
+    local_solar_times: tuple[time, ...],
+    *,
+    now: datetime | None = None,
+) -> tuple[datetime, datetime]:
     if not -180.0 <= longitude <= 180.0:
         raise ValueError("Longitude is out of range")
     current = _as_utc(now or datetime.now(UTC))
@@ -131,7 +150,7 @@ def next_viirs_overpass_window(
     candidates: list[datetime] = []
     for day_offset in range(-1, 3):
         day = (current + timedelta(days=day_offset)).date()
-        for local_time in _VIIRS_LOCAL_SOLAR_TIMES:
+        for local_time in local_solar_times:
             nominal_local = datetime.combine(day, local_time, UTC)
             candidate = nominal_local - solar_offset
             if candidate + VIIRS_WINDOW_HALF_WIDTH > current:

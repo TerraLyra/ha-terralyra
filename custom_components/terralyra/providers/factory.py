@@ -1,4 +1,5 @@
 """Construct geographically relevant active-fire providers."""
+
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
@@ -10,7 +11,7 @@ from ..const import (
     ACTIVE_FIRE_PROVIDER_GOES,
     ACTIVE_FIRE_PROVIDER_LSA_SAF,
 )
-from ..coverage import plan_location_sources
+from ..coverage import NASA_FIRMS_SATELLITES, plan_location_sources
 from ..monitoring import MonitoredLocation
 from ..products.fire import ActiveFireClient
 from ..products.firms import FirmsClient
@@ -123,7 +124,7 @@ def build_provider_pool(
             ProviderBinding(
                 "nasa_firms",
                 "NASA FIRMS",
-                "NOAA-20/NOAA-21 VIIRS",
+                NASA_FIRMS_SATELLITES,
                 tuple(location.id for location in enabled_locations),
                 FirmsMultiAreaProvider(
                     FirmsClient(session, str(firms_map_key)),

@@ -1,4 +1,5 @@
 """Provider-neutral active-fire data models."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -41,6 +42,7 @@ from .const import (
     ATTR_PLACE_ATTRIBUTION,
     ATTR_PLACE_NAME,
     ATTR_PROVIDERS,
+    ATTR_SATELLITES,
     ATTR_SOURCE_URL,
     ATTR_TRACK_ID,
     ATTR_TREND_SAMPLES,
@@ -192,6 +194,7 @@ class FireCluster:
     trend_window_minutes: float | None = None
     confirmation_level: ConfirmationLevel = ConfirmationLevel.SINGLE_SOURCE
     providers: tuple[str, ...] = ()
+    satellites: tuple[str, ...] = ()
     corroborating_detections: int = 0
     source_url: str | None = None
     location_matches: tuple[IncidentLocationMatch, ...] = ()
@@ -252,6 +255,7 @@ class FireCluster:
             attrs[ATTR_TREND_WINDOW_MINUTES] = round(self.trend_window_minutes, 1)
         attrs[ATTR_CONFIRMATION_LEVEL] = self.confirmation_level.value
         attrs[ATTR_PROVIDERS] = list(self.providers)
+        attrs[ATTR_SATELLITES] = list(self.satellites)
         attrs[ATTR_CORROBORATING_DETECTIONS] = self.corroborating_detections
         if self.source_url is not None:
             attrs[ATTR_SOURCE_URL] = self.source_url

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.11.0
+
+- Add NASA FIRMS Terra and Aqua MODIS near-real-time active-fire observations
+  alongside the existing NOAA-20 and NOAA-21 VIIRS feeds, using the same
+  user-supplied MAP_KEY and bounded 15-minute cache.
+- Treat observations from different satellites as independent evidence even
+  when they arrive through the same provider, while preventing duplicate FRP
+  values from being added together.
+- Preserve contributing satellite names on live and persisted incidents and
+  expose them in Home Assistant attributes.
+- Extend the expected-observation estimate with broad Terra/Aqua nominal local
+  overpass windows without presenting them as precise orbital predictions.
+- Clarify the NOAA GOES Repair message: the public GOES source needs no account,
+  API key or credentials, so users should check service availability instead.
+
 ## 0.10.0
 
 - Add a translated timestamp sensor for every enabled monitored location that

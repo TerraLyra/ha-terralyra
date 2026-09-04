@@ -121,7 +121,7 @@
           "fire_history_hours": "So lange bleiben inaktive Brandmarkierungen auf der Karte sichtbar. Die Unterdrückung wiederholter Warnungen wird dadurch nicht verlängert.",
           "resolve_place_names": "Ermittelt den nächsten Ort lokal anhand der enthaltenen GeoNames-cities500-Datenbank. Es werden keine Koordinaten an externe Dienste gesendet.",
           "enable_land_surface_temperature": "Optional und standardmäßig deaktiviert. Bei Aktivierung sendet Home Assistant etwa alle 15 Minuten die Koordinaten des Zuhauses an den offiziellen LSA-SAF-WMS-Dienst adaguc.lsasvcs.ipma.pt.",
-          "enable_firms": "Bei Aktivierung wird NASA FIRMS jedem überwachten Ort als gleichrangige Quelle zugewiesen. Home Assistant sendet einen kleinen Begrenzungsbereich um jeden aktivierten Ort an die offizielle FIRMS-API. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
+          "enable_firms": "Bei Aktivierung werden NASA-FIRMS-Beobachtungen von NOAA-20/21 VIIRS und Terra/Aqua MODIS jedem überwachten Ort als gleichrangige Satellitennachweise zugewiesen. Home Assistant sendet einen kleinen Begrenzungsbereich um jeden aktivierten Ort an die offizielle FIRMS-API. Ein persönlicher kostenloser MAP_KEY ist erforderlich.",
           "firms_map_key": "Wird geheim im Home-Assistant-Konfigurationseintrag gespeichert und in Diagnosen ausgeblendet. Leer lassen, um einen bereits gespeicherten Schlüssel beizubehalten."
         }
       },
@@ -190,6 +190,10 @@
     "upstream_provider_issue": {
       "title": "{service} erfordert Aufmerksamkeit",
       "description": "{service} meldete bei {failures} aufeinanderfolgenden Aktualisierungen den Fehler {failure}. TerraLyra versucht es mit begrenzter Verzögerung erneut, während andere fehlerfreie Quellen weiterlaufen. Prüfen Sie bei anhaltendem Fehler Zugangsdaten und Verfügbarkeit."
+    },
+    "upstream_goes_issue": {
+      "title": "NOAA-GOES-Daten erfordern Aufmerksamkeit",
+      "description": "{service} meldete bei {failures} aufeinanderfolgenden Aktualisierungen den Fehler {failure}. NOAA GOES benötigt keine Zugangsdaten. TerraLyra versucht es automatisch mit begrenzter Verzögerung erneut, während andere fehlerfreie Quellen weiterlaufen; prüfen Sie bei anhaltendem Fehler die Verfügbarkeit des NOAA-Dienstes."
     },
     "fire_risk_outage": {
       "title": "Der Waldbrandgefahren-Vorhersagedienst ist wiederholt nicht verfügbar",

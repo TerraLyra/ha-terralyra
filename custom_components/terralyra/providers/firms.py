@@ -1,4 +1,5 @@
-"""NASA FIRMS VIIRS provider adapter for the common active-fire model."""
+"""NASA FIRMS polar-orbiting provider adapter for the active-fire model."""
+
 from __future__ import annotations
 
 import asyncio
@@ -25,11 +26,16 @@ from .base import (
 )
 
 PROVIDER = "nasa_firms"
-PRODUCT = "VIIRS active fire NRT"
-SOURCE_RESOLUTION_KM = 0.375
+PRODUCTS = {
+    "VIIRS_NOAA20_NRT": ("VIIRS active fire NRT", 0.375),
+    "VIIRS_NOAA21_NRT": ("VIIRS active fire NRT", 0.375),
+    "MODIS_NRT": ("MODIS active fire NRT", 1.0),
+}
 DELAY_THRESHOLD = timedelta(hours=6)
 PUBLIC_SOURCE_URL = "https://firms.modaps.eosdis.nasa.gov/"
-SOURCES = ("VIIRS_NOAA20_NRT", "VIIRS_NOAA21_NRT")
+SOURCES = ("VIIRS_NOAA20_NRT", "VIIRS_NOAA21_NRT", "MODIS_NRT")
+SATELLITE_SUMMARY = "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS"
+PRODUCT_SUMMARY = "VIIRS and MODIS active fire NRT"
 MIN_REFRESH_INTERVAL = timedelta(minutes=15)
 MAX_MONITORING_AREAS = 10
 
@@ -64,9 +70,7 @@ class FirmsActiveFireProvider:
         except FirmsAuthenticationError as err:
             raise ProviderAuthenticationError(str(err)) from err
         except FirmsRateLimitError as err:
-            raise ProviderRateLimitError(
-                str(err), retry_after=err.retry_after
-            ) from err
+            raise ProviderRateLimitError(str(err), retry_after=err.retry_after) from err
         except FirmsTimeoutError as err:
             raise ProviderTimeoutError(str(err)) from err
         except FirmsTemporaryServiceError as err:
@@ -79,6 +83,7 @@ class FirmsActiveFireProvider:
             raise ProviderUnavailableError(str(err)) from err
 
         received = datetime.now(UTC)
+        product_name, source_resolution_km = PRODUCTS[self._source]
         product_time = max(
             (record.acquired for record in records),
             default=received,
@@ -87,16 +92,16 @@ class FirmsActiveFireProvider:
             FireDetection(
                 provider=PROVIDER,
                 satellite=record.satellite,
-                product=f"{PRODUCT} ({record.source})",
+                product=f"{product_name} ({record.source})",
                 timestamp=record.acquired,
                 latitude=record.latitude,
                 longitude=record.longitude,
                 frp_mw=record.frp_mw,
-                # FIRMS VIIRS confidence is categorical; preserve it instead
-                # of presenting a fabricated probability to Home Assistant.
+                # Confidence semantics differ between FIRMS products; preserve
+                # the source token instead of fabricating one probability.
                 confidence=None,
                 classification=record.confidence_category,
-                source_resolution_km=SOURCE_RESOLUTION_KM,
+                source_resolution_km=source_resolution_km,
                 source_detection_id=(
                     f"{record.source}:{record.satellite}:"
                     f"{record.acquired.isoformat()}:{record.latitude:.5f}:"
@@ -107,8 +112,8 @@ class FirmsActiveFireProvider:
         )
         return ProviderSnapshot(
             provider=PROVIDER,
-            satellite="viirs",
-            product=f"{PRODUCT} ({self._source})",
+            satellite="VIIRS" if self._source.startswith("VIIRS_") else "MODIS",
+            product=f"{product_name} ({self._source})",
             product_timestamp=product_time,
             received_timestamp=received,
             status=(
@@ -124,7 +129,7 @@ class FirmsActiveFireProvider:
 
 
 class FirmsMultiSatelliteProvider:
-    """Fetch both supported VIIRS feeds as one independent provider snapshot."""
+    """Fetch supported VIIRS and MODIS feeds as one cached provider snapshot."""
 
     def __init__(
         self,
@@ -150,7 +155,7 @@ class FirmsMultiSatelliteProvider:
         self._cached_at: datetime | None = None
 
     async def async_fetch_latest(self) -> ProviderSnapshot:
-        """Return all successful NOAA-20/21 observations without double counting sources."""
+        """Return successful polar observations without double counting sources."""
         now = datetime.now(UTC)
         if (
             self._cached_snapshot is not None
@@ -162,16 +167,24 @@ class FirmsMultiSatelliteProvider:
             *(provider.async_fetch_latest() for provider in self._providers),
             return_exceptions=True,
         )
-        snapshots = [result for result in results if isinstance(result, ProviderSnapshot)]
+        snapshots = [
+            result for result in results if isinstance(result, ProviderSnapshot)
+        ]
         auth_errors = [
-            result for result in results if isinstance(result, ProviderAuthenticationError)
+            result
+            for result in results
+            if isinstance(result, ProviderAuthenticationError)
         ]
         if auth_errors:
             raise auth_errors[0]
         if not snapshots:
             errors = [result for result in results if isinstance(result, Exception)]
             normalized = next(
-                (error for error in errors if isinstance(error, ActiveFireProviderError)),
+                (
+                    error
+                    for error in errors
+                    if isinstance(error, ActiveFireProviderError)
+                ),
                 None,
             )
             if normalized is not None:
@@ -180,7 +193,11 @@ class FirmsMultiSatelliteProvider:
             raise ProviderUnavailableError(detail)
         detections = tuple(
             sorted(
-                (detection for snapshot in snapshots for detection in snapshot.detections),
+                (
+                    detection
+                    for snapshot in snapshots
+                    for detection in snapshot.detections
+                ),
                 key=lambda detection: (
                     detection.timestamp,
                     detection.satellite,
@@ -190,17 +207,22 @@ class FirmsMultiSatelliteProvider:
         )
         snapshot = ProviderSnapshot(
             provider=PROVIDER,
-            satellite="NOAA-20/NOAA-21 VIIRS",
-            product="VIIRS active fire NRT",
+            satellite=SATELLITE_SUMMARY,
+            product=PRODUCT_SUMMARY,
             product_timestamp=max(snapshot.product_timestamp for snapshot in snapshots),
-            received_timestamp=max(snapshot.received_timestamp for snapshot in snapshots),
+            received_timestamp=max(
+                snapshot.received_timestamp for snapshot in snapshots
+            ),
             status=(
                 ProviderStatus.AVAILABLE
-                if any(snapshot.status is ProviderStatus.AVAILABLE for snapshot in snapshots)
+                if any(
+                    snapshot.status is ProviderStatus.AVAILABLE
+                    for snapshot in snapshots
+                )
                 else ProviderStatus.DELAYED
             ),
             source_url=PUBLIC_SOURCE_URL,
-            filename="firms-viirs-noaa20-noaa21-area.csv",
+            filename="firms-viirs-modis-area.csv",
             detections=detections,
         )
         self._cached_snapshot = snapshot
@@ -245,16 +267,24 @@ class FirmsMultiAreaProvider:
             *(provider.async_fetch_latest() for provider in self._providers),
             return_exceptions=True,
         )
-        snapshots = [result for result in results if isinstance(result, ProviderSnapshot)]
+        snapshots = [
+            result for result in results if isinstance(result, ProviderSnapshot)
+        ]
         auth_errors = [
-            result for result in results if isinstance(result, ProviderAuthenticationError)
+            result
+            for result in results
+            if isinstance(result, ProviderAuthenticationError)
         ]
         if not snapshots:
             if auth_errors:
                 raise auth_errors[0]
             errors = [result for result in results if isinstance(result, Exception)]
             normalized = next(
-                (error for error in errors if isinstance(error, ActiveFireProviderError)),
+                (
+                    error
+                    for error in errors
+                    if isinstance(error, ActiveFireProviderError)
+                ),
                 None,
             )
             if normalized is not None:
@@ -273,8 +303,8 @@ class FirmsMultiAreaProvider:
                 detections_by_id[detection_id] = detection
         snapshot = ProviderSnapshot(
             provider=PROVIDER,
-            satellite="NOAA-20/NOAA-21 VIIRS",
-            product="VIIRS active fire NRT",
+            satellite=SATELLITE_SUMMARY,
+            product=PRODUCT_SUMMARY,
             product_timestamp=max(item.product_timestamp for item in snapshots),
             received_timestamp=max(item.received_timestamp for item in snapshots),
             status=(
@@ -283,7 +313,7 @@ class FirmsMultiAreaProvider:
                 else ProviderStatus.DELAYED
             ),
             source_url=PUBLIC_SOURCE_URL,
-            filename=f"firms-viirs-{len(self._providers)}-areas.csv",
+            filename=f"firms-polar-{len(self._providers)}-areas.csv",
             detections=tuple(
                 sorted(
                     detections_by_id.values(),

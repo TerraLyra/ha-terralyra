@@ -1,4 +1,5 @@
 """Bounded client and parser for the official NASA FIRMS Area API."""
+
 from __future__ import annotations
 
 import csv
@@ -14,7 +15,7 @@ from .http import parse_retry_after
 
 FIRMS_HOST = "firms.modaps.eosdis.nasa.gov"
 FIRMS_BASE_URL = f"https://{FIRMS_HOST}/api/area/csv"
-ALLOWED_SOURCES = frozenset({"VIIRS_NOAA20_NRT", "VIIRS_NOAA21_NRT"})
+ALLOWED_SOURCES = frozenset({"VIIRS_NOAA20_NRT", "VIIRS_NOAA21_NRT", "MODIS_NRT"})
 TIMEOUT = ClientTimeout(total=30, connect=8, sock_read=20)
 MAX_CSV_BYTES = 2 * 1024 * 1024
 MAX_CSV_ROWS = 20_000
@@ -34,6 +35,11 @@ _REQUIRED_FIELDS = frozenset(
         "frp",
     }
 )
+_SOURCE_IDENTITIES = {
+    "VIIRS_NOAA20_NRT": (frozenset({"N20"}), "VIIRS"),
+    "VIIRS_NOAA21_NRT": (frozenset({"N21"}), "VIIRS"),
+    "MODIS_NRT": (frozenset({"Terra", "Aqua"}), "MODIS"),
+}
 
 
 class FirmsError(Exception):
@@ -88,7 +94,9 @@ class FirmsClient:
     ) -> tuple[FirmsDetection, ...]:
         """Return at most one day of detections inside a validated bounding box."""
         _validate_request(source, west, south, east, north)
-        area = ",".join(_format_coordinate(value) for value in (west, south, east, north))
+        area = ",".join(
+            _format_coordinate(value) for value in (west, south, east, north)
+        )
         url = "/".join(
             (
                 FIRMS_BASE_URL,
@@ -201,7 +209,9 @@ def parse_firms_csv(payload: bytes, *, source: str) -> tuple[FirmsDetection, ...
 
     try:
         reader = csv.DictReader(io.StringIO(text, newline=""))
-        if reader.fieldnames is None or not _REQUIRED_FIELDS.issubset(reader.fieldnames):
+        if reader.fieldnames is None or not _REQUIRED_FIELDS.issubset(
+            reader.fieldnames
+        ):
             raise FirmsInvalidResponseError("FIRMS CSV is missing required fields")
         detections: list[FirmsDetection] = []
         for index, row in enumerate(reader, start=1):
@@ -216,6 +226,9 @@ def parse_firms_csv(payload: bytes, *, source: str) -> tuple[FirmsDetection, ...
             acquired = _parse_acquired(row["acq_date"], row["acq_time"])
             satellite = _safe_token(row["satellite"], 16)
             instrument = _safe_token(row["instrument"], 16)
+            allowed_satellites, expected_instrument = _SOURCE_IDENTITIES[source]
+            if satellite not in allowed_satellites or instrument != expected_instrument:
+                raise ValueError
             confidence = _safe_token(row["confidence"], 16).lower()
             detections.append(
                 FirmsDetection(

@@ -1,4 +1,5 @@
 """Actionable Home Assistant repair issues for TerraLyra."""
+
 from __future__ import annotations
 
 import re
@@ -42,6 +43,7 @@ def async_sync_provider_health_issues(
                 ir.async_delete_issue(hass, DOMAIN, issue_id)
             continue
 
+        is_goes = item.provider_id.startswith("noaa_goes")
         ir.async_create_issue(
             hass,
             DOMAIN,
@@ -53,7 +55,9 @@ def async_sync_provider_health_issues(
                 if authentication_failure
                 else ir.IssueSeverity.WARNING
             ),
-            translation_key="upstream_provider_issue",
+            translation_key=(
+                "upstream_goes_issue" if is_goes else "upstream_provider_issue"
+            ),
             translation_placeholders={
                 "service": item.label,
                 "failure": item.failure_type or "unknown",

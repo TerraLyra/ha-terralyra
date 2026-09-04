@@ -1,4 +1,5 @@
 """Tests for the bounded NASA FIRMS client and provider adapter."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -51,6 +52,32 @@ def test_parse_viirs_csv_preserves_source_semantics() -> None:
     assert record.satellite == "N20"
     assert record.confidence_category == "n"
     assert record.frp_mw == pytest.approx(2.24)
+
+
+def test_parse_modis_csv_preserves_terra_semantics() -> None:
+    records = parse_firms_csv(
+        _csv(
+            "46.12345,19.54321,330.44,1.00,1.00,2026-08-28,1031,"
+            "Terra,MODIS,87,6.1NRT,295.66,4.5,D"
+        ),
+        source="MODIS_NRT",
+    )
+
+    assert len(records) == 1
+    assert records[0].satellite == "Terra"
+    assert records[0].instrument == "MODIS"
+    assert records[0].confidence_category == "87"
+
+
+def test_parse_rejects_source_identity_mismatch() -> None:
+    with pytest.raises(FirmsInvalidResponseError):
+        parse_firms_csv(
+            _csv(
+                "46.12345,19.54321,330.44,1.00,1.00,2026-08-28,1031,"
+                "Terra,MODIS,87,6.1NRT,295.66,4.5,D"
+            ),
+            source="VIIRS_NOAA20_NRT",
+        )
 
 
 @pytest.mark.parametrize(
@@ -144,32 +171,36 @@ class _MultiClient:
     async def async_area(self, **kwargs):
         self.calls += 1
         source = kwargs["source"]
-        satellite = "N20" if source == "VIIRS_NOAA20_NRT" else "N21"
-        minute = "1234" if satellite == "N20" else "1235"
+        satellite, instrument, minute = {
+            "VIIRS_NOAA20_NRT": ("N20", "VIIRS", "1234"),
+            "VIIRS_NOAA21_NRT": ("N21", "VIIRS", "1235"),
+            "MODIS_NRT": ("Terra", "MODIS", "1031"),
+        }[source]
         return parse_firms_csv(
             _csv(
                 f"46.12345,19.54321,330.44,0.40,0.37,2026-08-28,{minute},"
-                f"{satellite},VIIRS,h,2.0NRT,295.66,8.5,D"
+                f"{satellite},{instrument},h,2.0NRT,295.66,8.5,D"
             ),
             source=source,
         )
 
 
 @pytest.mark.asyncio
-async def test_multi_satellite_provider_combines_noaa20_and_noaa21() -> None:
+async def test_multi_satellite_provider_combines_viirs_and_modis() -> None:
     client = _MultiClient()
-    provider = FirmsMultiSatelliteProvider(
-        client, west=14, south=43, east=24, north=50
-    )
+    provider = FirmsMultiSatelliteProvider(client, west=14, south=43, east=24, north=50)
     snapshot = await provider.async_fetch_latest()
     cached = await provider.async_fetch_latest()
 
     assert snapshot.provider == "nasa_firms"
-    assert snapshot.satellite == "NOAA-20/NOAA-21 VIIRS"
-    assert len(snapshot.detections) == 2
-    assert {item.satellite for item in snapshot.detections} == {"N20", "N21"}
+    assert snapshot.satellite == "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS"
+    assert len(snapshot.detections) == 3
+    assert {item.satellite for item in snapshot.detections} == {"N20", "N21", "Terra"}
+    assert next(
+        item for item in snapshot.detections if item.satellite == "Terra"
+    ).source_resolution_km == pytest.approx(1.0)
     assert cached is snapshot
-    assert client.calls == 2
+    assert client.calls == 3
 
 
 def test_monitoring_bounds_are_bounded_and_contain_home() -> None:
@@ -205,7 +236,9 @@ def test_distant_monitoring_bounds_remain_separate() -> None:
 
 def test_monitoring_bound_plan_rejects_unbounded_input() -> None:
     with pytest.raises(ValueError):
-        merge_monitoring_bounds(tuple((index, 0, index + 0.5, 1) for index in range(11)))
+        merge_monitoring_bounds(
+            tuple((index, 0, index + 0.5, 1) for index in range(11))
+        )
     with pytest.raises(ValueError):
         merge_monitoring_bounds(((0, 0, 21, 1),))
 
@@ -214,10 +247,19 @@ def test_monitoring_bound_plan_rejects_unbounded_input() -> None:
 async def test_multi_area_provider_deduplicates_overlapping_results() -> None:
     class DuplicateClient:
         async def async_area(self, **kwargs):
+            satellite, instrument = (
+                ("Terra", "MODIS")
+                if kwargs["source"] == "MODIS_NRT"
+                else (
+                    ("N20", "VIIRS")
+                    if kwargs["source"] == "VIIRS_NOAA20_NRT"
+                    else ("N21", "VIIRS")
+                )
+            )
             return parse_firms_csv(
                 _csv(
                     "46.12345,19.54321,330.44,0.40,0.37,2026-08-28,1234,"
-                    "N20,VIIRS,h,2.0NRT,295.66,8.5,D"
+                    f"{satellite},{instrument},h,2.0NRT,295.66,8.5,D"
                 ),
                 source=kwargs["source"],
             )
@@ -232,8 +274,8 @@ async def test_multi_area_provider_deduplicates_overlapping_results() -> None:
 
     snapshot = await provider.async_fetch_latest()
 
-    assert len(snapshot.detections) == 2
-    assert snapshot.filename == "firms-viirs-2-areas.csv"
+    assert len(snapshot.detections) == 3
+    assert snapshot.filename == "firms-polar-2-areas.csv"
 
 
 @pytest.mark.asyncio
@@ -241,11 +283,15 @@ async def test_multi_area_provider_survives_partial_area_failure() -> None:
     class _AreaClient:
         async def async_area(self, **kwargs):
             if kwargs["west"] > 0:
-                satellite = "N20" if kwargs["source"] == "VIIRS_NOAA20_NRT" else "N21"
+                satellite, instrument = {
+                    "VIIRS_NOAA20_NRT": ("N20", "VIIRS"),
+                    "VIIRS_NOAA21_NRT": ("N21", "VIIRS"),
+                    "MODIS_NRT": ("Aqua", "MODIS"),
+                }[kwargs["source"]]
                 return parse_firms_csv(
                     _csv(
                         f"46.12345,19.54321,330.44,0.40,0.37,2026-08-28,1234,"
-                        f"{satellite},VIIRS,h,2.0NRT,295.66,8.5,D"
+                        f"{satellite},{instrument},h,2.0NRT,295.66,8.5,D"
                     ),
                     source=kwargs["source"],
                 )
@@ -261,8 +307,8 @@ async def test_multi_area_provider_survives_partial_area_failure() -> None:
 
     snapshot = await provider.async_fetch_latest()
 
-    assert len(snapshot.detections) == 2
-    assert snapshot.filename == "firms-viirs-2-areas.csv"
+    assert len(snapshot.detections) == 3
+    assert snapshot.filename == "firms-polar-2-areas.csv"
 
 
 @pytest.mark.asyncio

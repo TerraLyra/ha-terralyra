@@ -1,4 +1,5 @@
 """Regression tests for the provider-neutral active-fire pipeline."""
+
 from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
@@ -118,7 +119,47 @@ def test_independent_sources_with_small_location_offset_form_one_incident() -> N
     assert len(clusters) == 1
     assert clusters[0].confirmation_level.value == "multi_source"
     assert clusters[0].providers == ("EUMETSAT LSA SAF", "NASA FIRMS")
+    assert clusters[0].satellites == ("MTG", "NOAA-20 VIIRS")
     assert clusters[0].frp_mw == 11.0
+
+
+def test_independent_firms_satellites_corroborate_without_double_counting_frp() -> None:
+    acquired = datetime(2026, 8, 27, 16, 20, tzinfo=UTC)
+    clusters = cluster_detections(
+        [
+            (
+                _detection(
+                    provider="nasa_firms",
+                    satellite="N20",
+                    timestamp=acquired,
+                    frp_mw=10.0,
+                ),
+                0.0,
+            ),
+            (
+                _detection(
+                    provider="nasa_firms",
+                    satellite="Terra",
+                    timestamp=acquired,
+                    latitude=46.251,
+                    longitude=20.141,
+                    frp_mw=12.0,
+                ),
+                0.0,
+            ),
+        ],
+        46.25,
+        20.14,
+        cluster_radius_km=1.0,
+    )
+
+    assert len(clusters) == 1
+    assert clusters[0].confirmation_level.value == "multi_source"
+    assert clusters[0].providers == ("nasa_firms",)
+    assert clusters[0].satellites == ("N20", "Terra")
+    assert clusters[0].corroborating_detections == 1
+    assert clusters[0].frp_mw == 12.0
+    assert clusters[0].attrs()["satellites"] == ["N20", "Terra"]
 
 
 def test_same_source_keeps_configured_clustering_radius() -> None:
@@ -246,15 +287,11 @@ def test_clustering_merges_connected_pixels_independent_of_seed_distance() -> No
             0.0,
         ),
         (
-            _detection(
-                provider="nasa_firms", latitude=46.009, longitude=20.000
-            ),
+            _detection(provider="nasa_firms", latitude=46.009, longitude=20.000),
             1.0,
         ),
         (
-            _detection(
-                provider="nasa_firms", latitude=46.018, longitude=20.000
-            ),
+            _detection(provider="nasa_firms", latitude=46.018, longitude=20.000),
             2.0,
         ),
     ]
@@ -327,7 +364,9 @@ def test_provider_status_sensor_marks_old_available_data_as_delayed() -> None:
 def test_active_fire_provider_sensor_exposes_equal_automatic_sources() -> None:
     entity = object.__new__(ActiveFireProviderSensor)
     binding = SimpleNamespace(provider_id="noaa_goes", satellite="G19")
-    health = SimpleNamespace(attrs=lambda: {"provider": "noaa_goes", "status": "available"})
+    health = SimpleNamespace(
+        attrs=lambda: {"provider": "noaa_goes", "status": "available"}
+    )
     entity.coordinator = SimpleNamespace(
         provider=SimpleNamespace(bindings=(binding,), health=(health,)),
     )
@@ -407,12 +446,14 @@ def test_monitored_location_sources_sensor_is_readable_and_equal_peer() -> None:
     ]
     assert entity.extra_state_attributes["satellites"] == [
         "G18",
-        "NOAA-20/NOAA-21 VIIRS",
+        "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS",
     ]
     assert entity.extra_state_attributes["relationship"] == "equal_peers"
 
 
-@pytest.mark.parametrize("data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])])
+@pytest.mark.parametrize(
+    "data", [None, SimpleNamespace(active_clusters=[], tracked_fires=[])]
+)
 def test_active_fire_summary_identifies_terralyra_map_source(data: object) -> None:
     """Map-card support information stays explicit even with no detections."""
     entity = object.__new__(ActiveFireCountSensor)
@@ -442,7 +483,10 @@ def test_source_specific_and_combined_counts_do_not_double_count() -> None:
     assert primary.native_value == 2
     assert supplemental.native_value == 1
     assert combined.native_value == 2
-    assert primary.extra_state_attributes["count_scope"] == "all_assigned_sources_deduplicated"
+    assert (
+        primary.extra_state_attributes["count_scope"]
+        == "all_assigned_sources_deduplicated"
+    )
     assert supplemental.extra_state_attributes["provider_role"] == "equal_peer"
     assert combined.extra_state_attributes == {
         "distinct_clusters": 2,

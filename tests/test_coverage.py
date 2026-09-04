@@ -1,4 +1,5 @@
 """Tests for conservative active-fire provider coverage reporting."""
+
 from __future__ import annotations
 
 import pytest
@@ -77,9 +78,15 @@ def test_sources_are_automatically_assigned_as_equal_peers() -> None:
     )
 
     assert europe.providers == ("eumetsat_lsa_saf", "nasa_firms")
-    assert europe.satellites == ("MTG", "NOAA-20/NOAA-21 VIIRS")
+    assert europe.satellites == (
+        "MTG",
+        "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS",
+    )
     assert california.providers == ("noaa_goes", "nasa_firms")
-    assert california.satellites == ("G18", "NOAA-20/NOAA-21 VIIRS")
+    assert california.satellites == (
+        "G18",
+        "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS",
+    )
     assert summarize_source_plans((europe, california)) == "covered"
     assert europe.attrs()["source_names"] == ["EUMETSAT LSA SAF", "NASA FIRMS"]
     assert california.attrs()["source_names"] == ["NOAA GOES", "NASA FIRMS"]

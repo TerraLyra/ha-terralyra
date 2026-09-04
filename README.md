@@ -37,7 +37,7 @@ not relabel third-party data as its own.
 | GOES ABI Fire/Hot Spot Characterization | ABI-L2-FDCF | ~2 km / 10 min full disk | **Implemented, coverage-gated** |
 | Fire Risk Map v3 Forecast | FRMv3 | Europe / daily, day 0…9 | **Implemented** |
 | MTG Land Surface Temperature | LSA-007 / MTLST | ~2 km / 10 min; up to 60 min publication delay | **Implemented, optional** |
-| Independent active-fire corroboration | NASA FIRMS NOAA-20/NOAA-21 VIIRS NRT | ~375 m / provider-dependent NRT latency | **Implemented, optional** |
+| Independent active-fire corroboration | NASA FIRMS NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS NRT | ~375 m–1 km / provider-dependent NRT latency | **Implemented, optional** |
 | Evapotranspiration | LSA SAF ET family | product-dependent | Roadmap |
 | Solar radiation / fluxes | LSA SAF radiation family | product-dependent | Roadmap |
 | Vegetation metrics | NDVI/FVC/LAI/FAPAR/GPP | product-dependent | Roadmap |
@@ -189,6 +189,7 @@ Event data includes:
 - `distance_trend`
 - `confirmation_level`
 - `providers`
+- `satellites`
 - `corroborating_detections`
 - `place_name`
 - `nearest_settlement`
@@ -331,7 +332,7 @@ conservative coverage gate.
 - **Resolve nearby place names**: uses the bundled offline GeoNames database.
 - **Land-surface temperature**: creates the optional MTLST point sensor and
   sends Home coordinates to the official LSA SAF WMS while enabled.
-- **NASA FIRMS corroboration**: enables independent VIIRS comparison and
+- **NASA FIRMS corroboration**: enables independent VIIRS and MODIS comparison and
   requires the user's own FIRMS MAP_KEY.
 
 ## Optional NASA FIRMS source
@@ -342,7 +343,8 @@ NASA FIRMS observations and enter the key. TerraLyra validates the key before
 saving the option.
 
 When enabled, TerraLyra requests only the bounded areas around all enabled
-monitored locations from the NOAA-20 and NOAA-21 VIIRS near-real-time feeds.
+monitored locations from the NOAA-20 and NOAA-21 VIIRS plus Terra and Aqua
+MODIS near-real-time feeds.
 Overlapping safe boxes are merged; geographically distant boxes remain
 separate, with at most ten planned areas. Results are deduplicated across
 areas. Requests are cached for at least 15 minutes, use a maximum one-day query
@@ -350,6 +352,10 @@ window, and are isolated from their equal peers: a FIRMS outage cannot stop
 healthy MTG or GOES updates.
 
 Detections within 5 km and 6 hours are treated as independent corroboration.
+Independent satellites remain separate evidence even when NASA FIRMS delivers
+them through the same API. Their duplicate observations are clustered without
+adding the same fire energy twice, and contributing satellite names are kept
+on the incident attributes.
 FIRMS-only detections can appear as **NASA FIRMS · …** map markers. Nearby
 observations from independent providers are correlated into one incident, with
 the contributing providers preserved as evidence. The source-specific and
@@ -370,12 +376,12 @@ keeps the complete source-by-source estimate in its attributes:
 - MTG and GOES use the official 10-minute product cadence, anchored to the
   latest successfully received product.
 - NASA FIRMS uses TerraLyra's bounded 15-minute API refresh interval. Its
-  attributes also include a broad longitude-adjusted NOAA-20/21 VIIRS nominal
-  overpass window.
+  attributes also include a broad longitude-adjusted NOAA-20/21 VIIRS and
+  Terra/Aqua MODIS nominal overpass window.
 
 These values are estimates, not service guarantees. Publication latency,
 clouds, scan-mode changes, maintenance and upstream outages can delay usable
-data. The VIIRS window intentionally avoids false minute-level precision; an
+data. The polar-orbit window intentionally avoids false minute-level precision; an
 exact orbital pass predictor would require current orbital elements from an
 additional external service.
 
@@ -517,7 +523,7 @@ custom_components/terralyra/
 ├── select.py              # FRMv3 forecast day 0–9
 ├── providers/
 │   ├── base.py            # typed provider interface
-│   ├── firms.py           # NOAA-20/21 VIIRS corroboration adapter
+│   ├── firms.py           # VIIRS and MODIS corroboration adapter
 │   ├── goes.py            # conservative GOES-18/19 coverage selection
 │   ├── goes_active.py     # GOES discovery/download/decoder provider adapter
 │   ├── goes_spike.py      # dependency-free GOES filename/timing validation
@@ -562,7 +568,7 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 - NASA FIRMS can be enabled as an optional equal active-fire source with the
   user's personal MAP_KEY; it remains disabled by default
-- bounded NOAA-20 and NOAA-21 VIIRS Area API requests are cached for at least
+- bounded NOAA-20/21 VIIRS and Terra/Aqua MODIS Area API requests are cached for at least
   15 minutes and failures never stop healthy peer-source monitoring
 - nearby independent-provider detections are correlated within explicit
   5 km and 6 hour gates, with source attribution retained on each incident
@@ -623,7 +629,7 @@ Satellite fire detection is **not an emergency warning service**. Cloud, viewing
 
 MTFRPPixel is currently an LSA SAF demonstration product, so its availability or format may change.
 
-NASA FIRMS near-real-time data has its own latency, coverage, confidence and
+NASA FIRMS VIIRS and MODIS near-real-time data has its own latency, coverage, confidence and
 false-positive limitations. Multi-source agreement strengthens the available
 satellite evidence but does not prove that an emergency is occurring.
 

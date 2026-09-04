@@ -1,4 +1,5 @@
 """Conservative geographic coverage assessment for active-fire providers."""
+
 from __future__ import annotations
 
 import math
@@ -14,6 +15,7 @@ from .providers.goes import select_goes_satellite
 MTG_SUB_SATELLITE_LONGITUDE = 0.0
 MAX_SAFE_MTG_CENTRAL_ANGLE_DEGREES = 78.0
 NASA_FIRMS_PROVIDER = "nasa_firms"
+NASA_FIRMS_SATELLITES = "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS"
 
 SOURCE_DISPLAY_NAMES = {
     ACTIVE_FIRE_PROVIDER_LSA_SAF: "EUMETSAT LSA SAF",
@@ -63,9 +65,7 @@ class LocationSourcePlan:
                 "name": SOURCE_DISPLAY_NAMES.get(provider, provider),
                 "satellite": satellite,
             }
-            for provider, satellite in zip(
-                self.providers, self.satellites, strict=True
-            )
+            for provider, satellite in zip(self.providers, self.satellites, strict=True)
         ]
         return {
             "location_id": self.location_id,
@@ -106,7 +106,7 @@ def plan_location_sources(
         satellites.append(goes.satellite)
     if firms_available:
         providers.append(NASA_FIRMS_PROVIDER)
-        satellites.append("NOAA-20/NOAA-21 VIIRS")
+        satellites.append(NASA_FIRMS_SATELLITES)
     return LocationSourcePlan(
         location.id,
         location.name,
