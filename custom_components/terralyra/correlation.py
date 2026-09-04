@@ -66,7 +66,7 @@ def correlate_detections(
         matches: list[DetectionMatch] = []
         for candidate in secondary:
             _validate_timestamp(candidate)
-            if candidate.provider == detection.provider:
+            if _source_family(candidate) == _source_family(detection):
                 continue
             time_difference = abs(candidate.timestamp - detection.timestamp)
             if time_difference > max_time_difference:
@@ -111,3 +111,8 @@ def _validate_thresholds(distance_km: float, window: timedelta) -> None:
 def _validate_timestamp(detection: FireDetection) -> None:
     if detection.timestamp.tzinfo is None:
         raise ValueError("Detection timestamp must include a timezone")
+
+
+def _source_family(detection: FireDetection) -> str:
+    """Return the independent evidence family for one detection."""
+    return detection.source_family or detection.provider
