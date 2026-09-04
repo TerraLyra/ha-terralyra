@@ -145,6 +145,10 @@ class FireDetection:
     temporal_filtered: bool | None = None
     source_resolution_km: float | None = None
     source_detection_id: str | None = None
+    # Distinct feeds produced by the same algorithm/provider family must not be
+    # counted as independent confirmation. When omitted, ``provider`` remains
+    # the family identifier for backwards compatibility.
+    source_family: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
