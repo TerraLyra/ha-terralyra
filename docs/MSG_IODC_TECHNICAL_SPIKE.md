@@ -1,7 +1,8 @@
 # MSG-IODC FRP-PIXEL technical spike
 
-Status: **documented access path and conservative coverage foundation
-implemented; live ingestion awaits a bounded HDF5 decoder and fixture**
+Status: **documented access path, conservative coverage foundation and bounded
+schema probe implemented; live ingestion awaits a validated synthetic fixture
+and decoder**
 
 ## Decision
 
@@ -12,9 +13,12 @@ degrees east, has approximately 3 km nadir resolution and a 15-minute cadence.
 The existing TerraLyra LSA SAF account and HTTP security boundary can therefore
 be reused.
 
-The source remains runtime-disabled until a representative List Product can be
-turned into a redistributable test fixture and its HDF5 schema is validated.
-Directory listings alone are not a safe parser contract.
+The source remains runtime-disabled until a representative List Product is
+inspected and its validated schema is turned into a tiny synthetic test fixture.
+Directory listings alone are not a safe parser contract. The development-only
+`tools/probe_msg_iodc.py` utility retrieves one recent product using credentials
+from process environment variables, keeps it only in memory, reads metadata but
+not science-array values, and emits bounded JSON suitable for schema review.
 
 ## Verified access characteristics
 
@@ -48,10 +52,10 @@ They may be equal observing feeds without being statistically independent.
 
 ## Required next implementation slice
 
-1. Obtain one current, representative List Product using the user's existing
-   LSA SAF account without storing credentials or raw private URLs in fixtures.
-2. Record dataset names, dtypes, shapes, units, fill values and product-level
-   metadata; create a tiny synthetic HDF5 fixture from that schema.
+1. Run the bounded schema probe for one current, representative List Product
+   using the user's existing LSA SAF account; do not commit its output until the
+   metadata has been reviewed for safe redistribution.
+2. Create a tiny synthetic HDF5 fixture containing only the required schema.
 3. Implement a bounded decoder that reads only List Products and rejects
    redirects, oversized files, unknown filenames, missing datasets and unsafe
    coordinates or timestamps.
