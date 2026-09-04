@@ -554,6 +554,12 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Next
 
+- obtain a documented near-real-time Himawari-9 FRP-PIXEL List Product endpoint
+  and access terms; a conservative, runtime-disabled coverage foundation and
+  the remaining go/no-go gates are recorded in
+  [`docs/HIMAWARI_TECHNICAL_SPIKE.md`](docs/HIMAWARI_TECHNICAL_SPIKE.md)
+- evaluate MSG-IODC FRP-PIXEL in parallel because its documented LSA SAF data
+  path can reuse more of the existing authenticated FRP architecture
 - collect operational GOES-18/19 experience from covered installations while
   retaining the conservative pre-download coverage gate and product navigation
   checks; technical and resource details are in
