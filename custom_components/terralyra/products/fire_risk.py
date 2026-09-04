@@ -1,18 +1,21 @@
 """Safe client and models for the public LSA SAF FRMv3 WMS."""
 from __future__ import annotations
 
+import base64
+import binascii
 import json
 import logging
 import math
 import re
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
-from email.utils import parsedate_to_datetime
 from io import BytesIO
 from typing import Any
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
 from PIL import Image, UnidentifiedImageError
+
+from .http import parse_retry_after
 
 PRODUCT_ID = "FRMv3"
 LSA_ID = "LSA-504.3"
@@ -118,6 +121,66 @@ class FireRiskClient:
         self._map_cache_key: tuple[tuple[float, float, float, float], date] | None = None
         self._map_cache_value: bytes | None = None
         self._map_cache_time: datetime | None = None
+
+    def export_map_cache(self) -> dict[str, Any] | None:
+        """Return a bounded, version-independent cache payload for HA storage."""
+        if (
+            self._map_cache_key is None
+            or self._map_cache_value is None
+            or self._map_cache_time is None
+            or len(self._map_cache_value) > MAX_MAP_BYTES
+            or not self._map_cache_value.startswith(b"\x89PNG\r\n\x1a\n")
+            or datetime.now(UTC) - self._map_cache_time >= MAP_STALE_TTL
+        ):
+            return None
+        bbox, valid_date = self._map_cache_key
+        return {
+            "bounds": list(bbox),
+            "valid_date": valid_date.isoformat(),
+            "cached_at": self._map_cache_time.isoformat(),
+            "png": base64.b64encode(self._map_cache_value).decode("ascii"),
+        }
+
+    def import_map_cache(self, payload: object) -> bool:
+        """Restore only a recent, valid and size-bounded PNG cache payload."""
+        try:
+            if not isinstance(payload, dict):
+                return False
+            raw_bounds = payload["bounds"]
+            encoded = payload["png"]
+            if (
+                not isinstance(raw_bounds, list)
+                or len(raw_bounds) != 4
+                or not isinstance(encoded, str)
+                or len(encoded) > ((MAX_MAP_BYTES + 2) // 3) * 4 + 4
+            ):
+                return False
+            bbox = tuple(float(value) for value in raw_bounds)
+            west, south, east, north = bbox
+            if (
+                not all(math.isfinite(value) for value in bbox)
+                or not -180 <= west < east <= 180
+                or not -90 <= south < north <= 90
+            ):
+                return False
+            valid_date = date.fromisoformat(str(payload["valid_date"]))
+            cached_at = datetime.fromisoformat(str(payload["cached_at"]))
+            if cached_at.tzinfo is None or cached_at.utcoffset() is None:
+                return False
+            cached_at = cached_at.astimezone(UTC)
+            age = datetime.now(UTC) - cached_at
+            if age < timedelta(0) or age >= MAP_STALE_TTL:
+                return False
+            image = base64.b64decode(encoded, validate=True)
+            if len(image) > MAX_MAP_BYTES or not image.startswith(b"\x89PNG\r\n\x1a\n"):
+                return False
+        except (KeyError, TypeError, ValueError, binascii.Error):
+            return False
+
+        self._map_cache_key = (bbox, valid_date)
+        self._map_cache_value = image
+        self._map_cache_time = cached_at
+        return True
 
     async def async_forecast(
         self, latitude: float, longitude: float, radius_km: float
@@ -280,30 +343,8 @@ class FireRiskClient:
 
 
 def _parse_retry_after(value: str | None) -> timedelta | None:
-    if not value:
-        return None
-    try:
-        seconds = int(value.strip())
-    except ValueError:
-        seconds = None
-    else:
-        if seconds < 0:
-            return None
-        try:
-            return timedelta(seconds=seconds)
-        except OverflowError:
-            return None
-
-    try:
-        retry_at = parsedate_to_datetime(value)
-    except (OverflowError, TypeError, ValueError):
-        return None
-    if retry_at.tzinfo is None:
-        retry_at = retry_at.replace(tzinfo=UTC)
-    delay = retry_at - datetime.now(UTC)
-    if delay.total_seconds() <= 0:
-        return timedelta(seconds=0)
-    return delay
+    """Retain the public test seam while sharing the hardened parser."""
+    return parse_retry_after(value)
 
 
 def _safe_error_detail(payload: bytes) -> str | None:

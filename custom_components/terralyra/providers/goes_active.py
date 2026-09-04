@@ -15,7 +15,13 @@ from ..products.goes import (
     GoesProductClient,
     GoesProductError,
 )
-from .base import ProviderNoDataError, ProviderUnavailableError
+from .base import (
+    ProviderInvalidResponseError,
+    ProviderNoDataError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+)
 from .goes import GoesCoverage, select_goes_satellite
 
 DELAYED_AFTER = timedelta(minutes=30)
@@ -67,11 +73,20 @@ class GoesActiveFireProvider:
         except ProviderNoDataError:
             raise
         except (GoesDiscoveryError, GoesProductError) as err:
+            message = "GOES active-fire data is temporarily unavailable"
+            if err.failure_type == "rate_limit":
+                raise ProviderRateLimitError(
+                    message, retry_after=err.retry_after
+                ) from err
+            if err.failure_type == "timeout":
+                raise ProviderTimeoutError(message) from err
+            if err.failure_type == "invalid_response":
+                raise ProviderInvalidResponseError(message) from err
             raise ProviderUnavailableError(
-                "GOES active-fire data is temporarily unavailable"
+                message, retry_after=err.retry_after
             ) from err
         if not isinstance(snapshot, ProviderSnapshot):
-            raise ProviderUnavailableError("GOES decoder returned invalid data")
+            raise ProviderInvalidResponseError("GOES decoder returned invalid data")
         expected = item.metadata
         if (
             snapshot.provider != "noaa_goes"
@@ -81,7 +96,7 @@ class GoesActiveFireProvider:
             or snapshot.filename != expected.filename
             or snapshot.source_url != item.public_url
         ):
-            raise ProviderUnavailableError("GOES decoder identity mismatch")
+            raise ProviderInvalidResponseError("GOES decoder identity mismatch")
         status = (
             ProviderStatus.DELAYED
             if current - snapshot.product_timestamp > DELAYED_AFTER

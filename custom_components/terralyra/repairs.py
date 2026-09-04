@@ -1,12 +1,15 @@
 """Actionable Home Assistant repair issues for TerraLyra."""
 from __future__ import annotations
 
+import re
+
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers import issue_registry as ir
 
 from .const import DOMAIN
 from .coverage import LocationCoverage, LocationSourcePlan
+from .providers.pool import ProviderHealth
 
 OUTAGE_REPAIR_THRESHOLD = 3
 
@@ -14,6 +17,49 @@ OUTAGE_REPAIR_THRESHOLD = 3
 def _issue_id(entry: ConfigEntry, kind: str) -> str:
     """Return an issue id scoped to one config entry."""
     return f"{entry.entry_id}_{kind}"
+
+
+def _provider_issue_id(entry: ConfigEntry, provider_id: str) -> str:
+    """Return a safe issue id scoped to one configured provider."""
+    safe_id = re.sub(r"[^a-z0-9_-]", "_", provider_id.lower())[:80]
+    return _issue_id(entry, f"provider_{safe_id}")
+
+
+def async_sync_provider_health_issues(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    health: tuple[ProviderHealth, ...],
+) -> None:
+    """Create at most one self-clearing Repair for each unhealthy peer."""
+    for item in health:
+        issue_id = _provider_issue_id(entry, item.provider_id)
+        authentication_failure = item.failure_type == "authentication"
+        if not authentication_failure and (
+            item.failure_type is None
+            or item.consecutive_failures < OUTAGE_REPAIR_THRESHOLD
+        ):
+            if item.failure_type is None:
+                ir.async_delete_issue(hass, DOMAIN, issue_id)
+            continue
+
+        ir.async_create_issue(
+            hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            is_persistent=False,
+            severity=(
+                ir.IssueSeverity.ERROR
+                if authentication_failure
+                else ir.IssueSeverity.WARNING
+            ),
+            translation_key="upstream_provider_issue",
+            translation_placeholders={
+                "service": item.label,
+                "failure": item.failure_type or "unknown",
+                "failures": str(item.consecutive_failures),
+            },
+        )
 
 
 def async_set_authentication_issue(

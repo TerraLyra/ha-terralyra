@@ -273,6 +273,13 @@ the time Home Assistant received the product. Failed refreshes retain the last
 successful data and persistent fire tracks; they are never converted into a
 false zero-fire observation.
 
+Each assigned source is retried independently. TerraLyra honors bounded
+`Retry-After` advice and uses exponential backoff for repeated failures, while
+healthy equal peers continue normally. Provider health attributes and
+privacy-safe diagnostics distinguish authentication, rate-limit, timeout,
+service-outage, no-product and invalid-response states, including the next
+retry time.
+
 Provider health and geographic coverage are intentionally separate. The
 **Monitored-location source coverage** evaluates every enabled location using
 conservative pre-download satellite geometry and reports `covered`, `partially
@@ -438,8 +445,11 @@ show_state: false
 
 Add `select.terralyra_fire_risk_forecast_day` beside the image to choose a named
 forecast day. Forecast data refreshes every 12 hours; generated map images are
-cached for one hour. Data is EUMETSAT / LSA SAF, CC BY 4.0; settlement labels
-are GeoNames, CC BY 4.0.
+cached for one hour. The most recent valid, size-bounded PNG can be reused for
+the exact same date and bounds for up to 24 hours during a temporary outage,
+including after a Home Assistant restart. Authentication failures are never
+hidden by this fallback. Data is EUMETSAT / LSA SAF, CC BY 4.0; settlement
+labels are GeoNames, CC BY 4.0.
 
 To remain friendly to the public service at larger adoption levels, the raw map
 download is shared by the regional analysis and camera preview. Each Home
@@ -519,11 +529,6 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Next
 
-- standardize provider-specific retry handling: honor `Retry-After`, use
-  bounded backoff for rate limits and temporary 5xx outages, keep one shared
-  Repair issue per failing upstream service, and report timeout,
-  authentication, rate-limit, service-outage and invalid-response failures
-  distinctly
 - expose an appropriate next-observation indicator in a later release:
   predicted overpass timing for polar-orbiting VIIRS sources, and expected
   product-refresh timing for geostationary MTG and GOES sources
@@ -588,12 +593,13 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ## Home Assistant Repairs
 
-TerraLyra creates an actionable Home Assistant repair notice when provider
-credentials are rejected, when all assigned active-fire sources fail at least
-three consecutive updates, or when no configured source geographically covers
+TerraLyra creates one actionable Home Assistant repair notice for each upstream
+provider whose credentials are rejected or which fails at least three
+consecutive attempts, and also when no configured source geographically covers
 one or more enabled monitored locations. A successful update or corrected
-configuration removes the corresponding notice automatically. An isolated
-peer-source or transient network failure does not create a repair notice.
+configuration removes the corresponding notice automatically. A short
+transient failure does not create a repair notice, and healthy peer sources
+continue independently.
 
 ## Important limitations
 

@@ -8,6 +8,7 @@ from datetime import timedelta
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 
 from .const import CONF_FIRE_RISK_RADIUS_KM, CONF_RADIUS_KM, DEFAULT_RADIUS_KM, DOMAIN
@@ -26,6 +27,7 @@ from .repairs import async_set_fire_risk_outage_issue
 _LOGGER = logging.getLogger(__name__)
 FIRE_RISK_RETRY_BASE = timedelta(minutes=15)
 FIRE_RISK_RETRY_MAX = timedelta(hours=1)
+FIRE_RISK_STORE_VERSION = 1
 
 
 class FireRiskCoordinator(DataUpdateCoordinator[FireRiskForecast]):
@@ -36,6 +38,11 @@ class FireRiskCoordinator(DataUpdateCoordinator[FireRiskForecast]):
     ) -> None:
         self.entry = entry
         self.client = client
+        self._map_store = Store(
+            hass,
+            FIRE_RISK_STORE_VERSION,
+            f"{DOMAIN}.{entry.entry_id}.fire_risk_map",
+        )
         self._normal_interval = _staggered_interval(entry.entry_id)
         self._consecutive_failures = 0
         super().__init__(
@@ -45,6 +52,12 @@ class FireRiskCoordinator(DataUpdateCoordinator[FireRiskForecast]):
             name=f"{DOMAIN}_fire_risk",
             update_interval=self._normal_interval,
         )
+
+    async def _async_setup(self) -> None:
+        """Restore a recent bounded map for outage fallback after HA restart."""
+        importer = getattr(self.client, "import_map_cache", None)
+        if importer is not None:
+            importer(await self._map_store.async_load())
 
     async def _async_update_data(self) -> FireRiskForecast:
         try:
@@ -69,6 +82,9 @@ class FireRiskCoordinator(DataUpdateCoordinator[FireRiskForecast]):
                     area_latitude=area_latitude,
                     area_longitude=area_longitude,
                 )
+                exporter = getattr(self.client, "export_map_cache", None)
+                if exporter is not None and (cache := exporter()) is not None:
+                    await self._map_store.async_save(cache)
             except FireRiskError as err:
                 _LOGGER.debug("FRMv3 map analysis was not available: %s", err)
                 result = forecast

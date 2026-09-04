@@ -187,6 +187,10 @@
       "title": "Aktivbrandquellen sind wiederholt nicht verfügbar",
       "description": "Alle zugewiesenen Aktivbrandquellen sind bei {failures} aufeinanderfolgenden Aktualisierungen ausgefallen. Prüfen Sie die Quelldienste und den Internetzugang dieser Home-Assistant-Instanz und laden Sie die Integration neu. Andere TerraLyra-Produkte können weiterhin aktualisiert werden."
     },
+    "upstream_provider_issue": {
+      "title": "{service} erfordert Aufmerksamkeit",
+      "description": "{service} meldete bei {failures} aufeinanderfolgenden Aktualisierungen den Fehler {failure}. TerraLyra versucht es mit begrenzter Verzögerung erneut, während andere fehlerfreie Quellen weiterlaufen. Prüfen Sie bei anhaltendem Fehler Zugangsdaten und Verfügbarkeit."
+    },
     "fire_risk_outage": {
       "title": "Der Waldbrandgefahren-Vorhersagedienst ist wiederholt nicht verfügbar",
       "description": "Der FRMv3-Vorhersagedienst ist bei {failures} aufeinanderfolgenden Aktualisierungen fehlgeschlagen (letzter Grund: {reason}). TerraLyra versucht es automatisch mit einer begrenzten Verzögerung erneut; die Aktive-Feuer-Überwachung und andere funktionierende Produkte laufen weiter. Der Hinweis verschwindet nach der Wiederherstellung."

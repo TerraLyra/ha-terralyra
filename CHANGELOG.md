@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.9.0
+
+- Add a common reliability layer for the equal-peer MTG, GOES and NASA FIRMS
+  active-fire providers, distinguishing authentication, rate-limit, timeout,
+  service-outage, no-product and invalid-response states.
+- Honor bounded upstream `Retry-After` hints and exponentially delay only a
+  failing peer while healthy providers continue at the normal polling rate.
+- Expose privacy-safe failure category, consecutive-failure count and next
+  retry time in provider health attributes and diagnostics.
+- Create one translated, self-clearing Home Assistant Repair per failing
+  upstream provider; authentication is reported immediately and transient
+  failures only after three consecutive attempts.
+- Persist the size-bounded last valid FRMv3 PNG for up to 24 hours so the
+  same-date, same-bounds outage fallback survives a Home Assistant restart.
+- Add regression coverage for retry deferral, recovery, Repair lifecycle,
+  normalized provider errors and safe FRMv3 cache restoration.
+
 ## 0.8.7
 
 - Keep the last valid FRMv3 map available for up to 24 hours when a refresh is

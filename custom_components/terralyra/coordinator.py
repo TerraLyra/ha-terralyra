@@ -62,6 +62,7 @@ from .monitoring import (
     monitored_location_from_center,
 )
 from .providers.base import (
+    ActiveFireProviderError,
     ActiveFireProvider,
     ProviderAuthenticationError,
     ProviderNoDataError,
@@ -70,6 +71,7 @@ from .providers.base import (
 from .repairs import (
     async_set_authentication_issue,
     async_set_provider_outage_issue,
+    async_sync_provider_health_issues,
 )
 from .situation import SituationAssessment, assess_situation
 from .tracking import update_incidents
@@ -150,14 +152,19 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self._place_resolver = place_resolver
         self._pending_place_ids: set[str] = set()
         self._consecutive_provider_failures = 0
+        self._normal_interval = timedelta(
+            minutes=int(
+                entry.options.get(
+                    CONF_SCAN_INTERVAL_MINUTES, DEFAULT_SCAN_INTERVAL_MINUTES
+                )
+            )
+        )
         super().__init__(
             hass,
             _LOGGER,
             config_entry=entry,
             name=DOMAIN,
-            update_interval=timedelta(
-                minutes=int(entry.options.get(CONF_SCAN_INTERVAL_MINUTES, DEFAULT_SCAN_INTERVAL_MINUTES))
-            ),
+            update_interval=self._normal_interval,
         )
 
     async def _async_setup(self) -> None:
@@ -203,22 +210,27 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
             snapshot = await self.provider.async_fetch_latest()
         except ProviderAuthenticationError as err:
             self._set_provider_failure_status(ProviderStatus.AUTH_ERROR)
-            async_set_authentication_issue(self.hass, self.entry, active=True)
+            has_peer_health = self._sync_provider_health_issues()
+            async_set_authentication_issue(
+                self.hass, self.entry, active=not has_peer_health
+            )
             raise ConfigEntryAuthFailed from err
         except ProviderNoDataError as err:
             self._set_provider_failure_status(ProviderStatus.NO_PRODUCT)
-            self._record_provider_outage()
+            self._record_provider_outage(err)
             raise UpdateFailed(str(err)) from err
         except ProviderUnavailableError as err:
             self._set_provider_failure_status(ProviderStatus.OUTAGE)
-            self._record_provider_outage()
+            self._record_provider_outage(err)
             raise UpdateFailed(str(err)) from err
 
         self._consecutive_provider_failures = 0
+        self.update_interval = self._normal_interval
         async_set_authentication_issue(self.hass, self.entry, active=False)
         async_set_provider_outage_issue(
             self.hass, self.entry, consecutive_failures=0
         )
+        self._sync_provider_health_issues()
         self.provider_status = snapshot.status
         self.provider_name = snapshot.provider
         self.satellite = snapshot.satellite
@@ -473,14 +485,33 @@ class TerraLyraCoordinator(DataUpdateCoordinator[CoordinatorData]):
         self.provider_status = status
         self.async_update_listeners()
 
-    def _record_provider_outage(self) -> None:
-        """Count repeated failures and synchronize the repair issue."""
+    def _record_provider_outage(self, error: ActiveFireProviderError) -> None:
+        """Count failures, honor retry advice and synchronize Repair issues."""
         self._consecutive_provider_failures += 1
-        async_set_provider_outage_issue(
-            self.hass,
-            self.entry,
-            consecutive_failures=self._consecutive_provider_failures,
+        delay = error.retry_after or min(
+            self._normal_interval
+            * (2 ** max(0, self._consecutive_provider_failures - 1)),
+            timedelta(hours=1),
         )
+        self.update_interval = max(timedelta(minutes=1), delay)
+        if self._sync_provider_health_issues():
+            async_set_provider_outage_issue(
+                self.hass, self.entry, consecutive_failures=0
+            )
+        else:
+            async_set_provider_outage_issue(
+                self.hass,
+                self.entry,
+                consecutive_failures=self._consecutive_provider_failures,
+            )
+
+    def _sync_provider_health_issues(self) -> bool:
+        """Expose bounded per-peer failures without leaking upstream responses."""
+        health = tuple(getattr(self.provider, "health", ()))
+        if health:
+            async_sync_provider_health_issues(self.hass, self.entry, health)
+            return True
+        return False
 
     async def _async_resolve_new_fire_place(
         self, track: dict[str, Any], cluster: FireCluster

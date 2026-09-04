@@ -9,7 +9,10 @@ import pytest
 from custom_components.terralyra.models import ProviderSnapshot, ProviderStatus
 from custom_components.terralyra.products.goes import GoesDiscoveryError
 from custom_components.terralyra.providers.base import (
+    ProviderInvalidResponseError,
     ProviderNoDataError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
     ProviderUnavailableError,
 )
 from custom_components.terralyra.providers.goes_active import GoesActiveFireProvider
@@ -137,3 +140,27 @@ def test_provider_rejects_locations_outside_goes_coverage() -> None:
             latitude=47.49,
             longitude=19.04,
         )
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("failure_type", "provider_error"),
+    [
+        ("rate_limit", ProviderRateLimitError),
+        ("timeout", ProviderTimeoutError),
+        ("invalid_response", ProviderInvalidResponseError),
+        ("service_outage", ProviderUnavailableError),
+    ],
+)
+async def test_goes_provider_preserves_normalized_failure_type(
+    failure_type: str, provider_error: type[Exception]
+) -> None:
+    provider = _provider()
+    provider._discovery.async_latest = AsyncMock(
+        side_effect=GoesDiscoveryError("safe", failure_type=failure_type)
+    )
+
+    with pytest.raises(provider_error) as caught:
+        await provider.async_fetch_latest()
+
+    assert caught.value.failure_type == failure_type

@@ -187,6 +187,10 @@
       "title": "Le fonti di incendi attivi sono ripetutamente non disponibili",
       "description": "Tutte le fonti assegnate non sono riuscite in {failures} aggiornamenti consecutivi. Verifica i servizi e l’accesso Internet di questa istanza Home Assistant, quindi ricarica l’integrazione. Gli altri prodotti TerraLyra possono continuare ad aggiornarsi."
     },
+    "upstream_provider_issue": {
+      "title": "{service} richiede attenzione",
+      "description": "{service} ha segnalato {failure} per {failures} aggiornamenti consecutivi. TerraLyra riprova con un ritardo limitato mentre le altre fonti funzionanti continuano. Se il problema persiste, controlla le credenziali e la disponibilità del servizio."
+    },
     "fire_risk_outage": {
       "title": "Il servizio di previsione del rischio incendi è ripetutamente non disponibile",
       "description": "Il servizio di previsione FRMv3 non è riuscito in {failures} aggiornamenti consecutivi (ultima causa: {reason}). TerraLyra riprova automaticamente con un ritardo limitato; il monitoraggio degli incendi attivi e gli altri prodotti disponibili continuano normalmente. L'avviso scompare dopo il ripristino."

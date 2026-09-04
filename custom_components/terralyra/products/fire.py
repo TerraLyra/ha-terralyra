@@ -17,9 +17,13 @@ from ..api import (
     LsaSafApi,
     LsaSafAuthError,
     LsaSafError,
+    LsaSafRateLimitError,
+    LsaSafServiceUnavailableError,
+    LsaSafTimeoutError,
     validate_service_url,
 )
 from ..clustering import haversine_km
+from .http import parse_retry_after
 
 
 class LsaSafNoDataError(LsaSafError):
@@ -103,6 +107,19 @@ class ActiveFireClient(LsaSafApi):
                 ) as response:
                     if response.status in (401, 403):
                         raise LsaSafAuthError("Invalid or expired LSA SAF credentials")
+                    retry_after = parse_retry_after(
+                        getattr(response, "headers", {}).get("Retry-After")
+                    )
+                    if response.status == 429:
+                        raise LsaSafRateLimitError(
+                            "LSA SAF service rate limited the request",
+                            retry_after=retry_after,
+                        )
+                    if 500 <= response.status <= 599:
+                        raise LsaSafServiceUnavailableError(
+                            f"LSA SAF service is temporarily unavailable ({response.status})",
+                            retry_after=retry_after,
+                        )
                     if response.status == 404:
                         continue
                     if 300 <= response.status < 400:
@@ -115,8 +132,12 @@ class ActiveFireClient(LsaSafApi):
                     return parse_product(filename, url, payload)
             except LsaSafError:
                 raise
-            except (ClientError, TimeoutError) as err:
-                raise LsaSafError("Could not securely retrieve LSA SAF data") from err
+            except TimeoutError as err:
+                raise LsaSafTimeoutError("LSA SAF request timed out") from err
+            except ClientError as err:
+                raise LsaSafServiceUnavailableError(
+                    "Could not securely retrieve LSA SAF data"
+                ) from err
 
         raise LsaSafNoDataError("No MTFRPPixel ListProduct found in the last 4 hours")
 

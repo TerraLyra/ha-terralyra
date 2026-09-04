@@ -11,8 +11,11 @@ from custom_components.terralyra.repairs import (
     async_set_fire_risk_outage_issue,
     async_set_authentication_issue,
     async_set_provider_outage_issue,
+    async_sync_provider_health_issues,
     async_sync_coverage_issue,
 )
+from custom_components.terralyra.models import ProviderStatus
+from custom_components.terralyra.providers.pool import ProviderHealth
 
 
 def _entry() -> Mock:
@@ -105,3 +108,54 @@ def test_coverage_issue_lists_only_uncovered_locations_and_clears(
     delete_issue.assert_called_once_with(
         hass, "terralyra", "entry-1_provider_coverage"
     )
+
+
+@patch("custom_components.terralyra.repairs.ir.async_delete_issue")
+@patch("custom_components.terralyra.repairs.ir.async_create_issue")
+def test_provider_health_creates_one_bounded_issue_and_clears(
+    create_issue: Mock, delete_issue: Mock
+) -> None:
+    hass = Mock()
+    entry = _entry()
+    failed = ProviderHealth(
+        "nasa/firms",
+        "NASA FIRMS",
+        "VIIRS",
+        ("home",),
+        ProviderStatus.OUTAGE,
+        "rate_limit",
+        OUTAGE_REPAIR_THRESHOLD,
+    )
+    healthy = ProviderHealth(
+        "mtg",
+        "EUMETSAT LSA SAF",
+        "MTG",
+        ("home",),
+        ProviderStatus.AVAILABLE,
+    )
+
+    async_sync_provider_health_issues(hass, entry, (failed, healthy))
+
+    assert create_issue.call_args.kwargs["translation_placeholders"] == {
+        "service": "NASA FIRMS",
+        "failure": "rate_limit",
+        "failures": str(OUTAGE_REPAIR_THRESHOLD),
+    }
+    delete_issue.assert_called_once_with(hass, "terralyra", "entry-1_provider_mtg")
+
+
+@patch("custom_components.terralyra.repairs.ir.async_create_issue")
+def test_provider_authentication_issue_is_immediate(create_issue: Mock) -> None:
+    health = ProviderHealth(
+        "mtg",
+        "EUMETSAT LSA SAF",
+        "MTG",
+        ("home",),
+        ProviderStatus.AUTH_ERROR,
+        "authentication",
+        1,
+    )
+
+    async_sync_provider_health_issues(Mock(), _entry(), (health,))
+
+    assert create_issue.call_args.kwargs["severity"] is ir.IssueSeverity.ERROR

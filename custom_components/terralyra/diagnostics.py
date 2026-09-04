@@ -65,6 +65,11 @@ async def async_get_config_entry_diagnostics(
                     "satellite": item.satellite,
                     "assigned_location_count": len(item.location_ids),
                     "status": item.status.value,
+                    "failure_type": item.failure_type,
+                    "consecutive_failures": item.consecutive_failures,
+                    "retry_at": (
+                        item.retry_at.isoformat() if item.retry_at else None
+                    ),
                 }
                 for item in provider_health
             ],

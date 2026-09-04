@@ -3,12 +3,21 @@ from __future__ import annotations
 
 from datetime import UTC, datetime, timedelta
 
-from ..api import LsaSafAuthError, LsaSafError
+from ..api import (
+    LsaSafAuthError,
+    LsaSafError,
+    LsaSafRateLimitError,
+    LsaSafServiceUnavailableError,
+    LsaSafTimeoutError,
+)
 from ..models import FireDetection, ProviderSnapshot, ProviderStatus
 from ..products.fire import ActiveFireClient, LsaSafNoDataError
 from .base import (
     ProviderAuthenticationError,
+    ProviderInvalidResponseError,
     ProviderNoDataError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
     ProviderUnavailableError,
 )
 
@@ -33,8 +42,18 @@ class MtgActiveFireProvider:
             raise ProviderAuthenticationError(str(err)) from err
         except LsaSafNoDataError as err:
             raise ProviderNoDataError(str(err)) from err
+        except LsaSafRateLimitError as err:
+            raise ProviderRateLimitError(
+                str(err), retry_after=err.retry_after
+            ) from err
+        except LsaSafTimeoutError as err:
+            raise ProviderTimeoutError(str(err)) from err
+        except LsaSafServiceUnavailableError as err:
+            raise ProviderUnavailableError(
+                str(err), retry_after=err.retry_after
+            ) from err
         except LsaSafError as err:
-            raise ProviderUnavailableError(str(err)) from err
+            raise ProviderInvalidResponseError(str(err)) from err
         received = datetime.now(UTC)
         detections = tuple(
             FireDetection(

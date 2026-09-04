@@ -187,6 +187,10 @@
       "title": "Las fuentes de incendios activos no están disponibles repetidamente",
       "description": "Todas las fuentes asignadas fallaron en {failures} actualizaciones consecutivas. Comprueba los servicios y el acceso a Internet de esta instancia de Home Assistant y vuelve a cargar la integración. Otros productos de TerraLyra pueden seguir actualizándose."
     },
+    "upstream_provider_issue": {
+      "title": "{service} necesita atención",
+      "description": "{service} informó de {failure} durante {failures} actualizaciones consecutivas. TerraLyra vuelve a intentarlo con una demora limitada mientras las demás fuentes sanas continúan. Si persiste, comprueba las credenciales y la disponibilidad del servicio."
+    },
     "fire_risk_outage": {
       "title": "El servicio de previsión del riesgo de incendio no está disponible repetidamente",
       "description": "El servicio de previsión FRMv3 falló en {failures} actualizaciones consecutivas (última causa: {reason}). TerraLyra vuelve a intentarlo automáticamente con una demora limitada; la vigilancia de incendios activos y los demás productos disponibles continúan con normalidad. El aviso desaparece al recuperarse."

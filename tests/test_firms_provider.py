@@ -1,11 +1,17 @@
 """Tests for the bounded NASA FIRMS client and provider adapter."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from custom_components.terralyra.products.firms import FirmsError, parse_firms_csv
+from custom_components.terralyra.products.firms import (
+    FirmsError,
+    FirmsInvalidResponseError,
+    FirmsRateLimitError,
+    FirmsTimeoutError,
+    parse_firms_csv,
+)
 from custom_components.terralyra.providers.firms import (
     FirmsActiveFireProvider,
     FirmsMultiAreaProvider,
@@ -13,7 +19,12 @@ from custom_components.terralyra.providers.firms import (
     merge_monitoring_bounds,
     monitoring_bounds,
 )
-from custom_components.terralyra.providers.base import ProviderUnavailableError
+from custom_components.terralyra.providers.base import (
+    ProviderInvalidResponseError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+)
 
 HEADER = (
     "latitude,longitude,bright_ti4,scan,track,acq_date,acq_time,"
@@ -88,6 +99,42 @@ async def test_provider_normalizes_without_fabricating_probability() -> None:
     assert detection.classification == "h"
     assert detection.source_resolution_km == pytest.approx(0.375)
     assert "N21" in (detection.source_detection_id or "")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("source_error", "provider_error", "failure_type"),
+    [
+        (
+            FirmsRateLimitError("limited", timedelta(minutes=20)),
+            ProviderRateLimitError,
+            "rate_limit",
+        ),
+        (FirmsTimeoutError("late"), ProviderTimeoutError, "timeout"),
+        (
+            FirmsInvalidResponseError("invalid"),
+            ProviderInvalidResponseError,
+            "invalid_response",
+        ),
+    ],
+)
+async def test_firms_provider_preserves_normalized_failure_type(
+    source_error: Exception,
+    provider_error: type[Exception],
+    failure_type: str,
+) -> None:
+    class FailingClient:
+        async def async_area(self, **_kwargs):
+            raise source_error
+
+    provider = FirmsActiveFireProvider(
+        FailingClient(), source="VIIRS_NOAA21_NRT", west=14, south=43, east=24, north=50
+    )
+
+    with pytest.raises(provider_error) as caught:
+        await provider.async_fetch_latest()
+
+    assert caught.value.failure_type == failure_type
 
 
 class _MultiClient:

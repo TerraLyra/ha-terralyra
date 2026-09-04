@@ -10,8 +10,19 @@ from ..products.firms import (
     FirmsAuthenticationError,
     FirmsClient,
     FirmsError,
+    FirmsInvalidResponseError,
+    FirmsRateLimitError,
+    FirmsTemporaryServiceError,
+    FirmsTimeoutError,
 )
-from .base import ProviderAuthenticationError, ProviderUnavailableError
+from .base import (
+    ActiveFireProviderError,
+    ProviderAuthenticationError,
+    ProviderInvalidResponseError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
+    ProviderUnavailableError,
+)
 
 PROVIDER = "nasa_firms"
 PRODUCT = "VIIRS active fire NRT"
@@ -52,6 +63,18 @@ class FirmsActiveFireProvider:
             )
         except FirmsAuthenticationError as err:
             raise ProviderAuthenticationError(str(err)) from err
+        except FirmsRateLimitError as err:
+            raise ProviderRateLimitError(
+                str(err), retry_after=err.retry_after
+            ) from err
+        except FirmsTimeoutError as err:
+            raise ProviderTimeoutError(str(err)) from err
+        except FirmsTemporaryServiceError as err:
+            raise ProviderUnavailableError(
+                str(err), retry_after=err.retry_after
+            ) from err
+        except FirmsInvalidResponseError as err:
+            raise ProviderInvalidResponseError(str(err)) from err
         except FirmsError as err:
             raise ProviderUnavailableError(str(err)) from err
 
@@ -147,6 +170,12 @@ class FirmsMultiSatelliteProvider:
             raise auth_errors[0]
         if not snapshots:
             errors = [result for result in results if isinstance(result, Exception)]
+            normalized = next(
+                (error for error in errors if isinstance(error, ActiveFireProviderError)),
+                None,
+            )
+            if normalized is not None:
+                raise normalized
             detail = str(errors[0]) if errors else "NASA FIRMS returned no snapshot"
             raise ProviderUnavailableError(detail)
         detections = tuple(
@@ -224,6 +253,12 @@ class FirmsMultiAreaProvider:
             if auth_errors:
                 raise auth_errors[0]
             errors = [result for result in results if isinstance(result, Exception)]
+            normalized = next(
+                (error for error in errors if isinstance(error, ActiveFireProviderError)),
+                None,
+            )
+            if normalized is not None:
+                raise normalized
             detail = str(errors[0]) if errors else "NASA FIRMS returned no snapshot"
             raise ProviderUnavailableError(detail)
 

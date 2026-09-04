@@ -447,6 +447,42 @@ def test_map_analysis_finds_maximum_inside_circle() -> None:
     assert longitude == pytest.approx(19.05, abs=0.1)
 
 
+def test_fire_risk_map_cache_round_trip_is_bounded() -> None:
+    source = FireRiskClient(DummySession())
+    bbox = (14.0, 44.0, 24.0, 51.0)
+    valid_date = datetime.now(UTC).date()
+    image = b"\x89PNG\r\n\x1a\ncache"
+    source._map_cache_key = (bbox, valid_date)
+    source._map_cache_value = image
+    source._map_cache_time = datetime.now(UTC)
+
+    payload = source.export_map_cache()
+    restored = FireRiskClient(DummySession())
+
+    assert payload is not None
+    assert restored.import_map_cache(payload)
+    assert restored._map_cache_key == (bbox, valid_date)
+    assert restored._map_cache_value == image
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        None,
+        {},
+        {"bounds": [14, 44, 24], "valid_date": "2026-08-26", "cached_at": "x", "png": "x"},
+        {
+            "bounds": [14, 44, 24, 51],
+            "valid_date": "2026-08-26",
+            "cached_at": datetime.now(UTC).isoformat(),
+            "png": "bm90IGEgcG5n",
+        },
+    ],
+)
+def test_fire_risk_map_cache_rejects_invalid_payload(payload: object) -> None:
+    assert not FireRiskClient(DummySession()).import_map_cache(payload)
+
+
 @pytest.mark.parametrize("radius", [0, 501, float("nan"), float("inf")])
 def test_map_analysis_rejects_invalid_radius(radius: float) -> None:
     with pytest.raises(FireRiskError):

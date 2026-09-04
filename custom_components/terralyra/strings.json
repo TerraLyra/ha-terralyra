@@ -164,6 +164,10 @@
       "title": "Active-fire sources are repeatedly unavailable",
       "description": "All assigned active-fire sources failed {failures} consecutive updates. Check the source services and this Home Assistant instance's internet access, then reload the integration. Other TerraLyra products may continue to update."
     },
+    "upstream_provider_issue": {
+      "title": "{service} needs attention",
+      "description": "{service} reported {failure} for {failures} consecutive updates. TerraLyra is retrying it with a bounded delay while other healthy sources continue. Check the service credentials and availability if this persists."
+    },
     "fire_risk_outage": {
       "title": "Fire-risk forecast service is repeatedly unavailable",
       "description": "The FRMv3 forecast service failed {failures} consecutive refreshes. TerraLyra is retrying automatically with a bounded delay; active-fire monitoring and other healthy products continue normally. This notice clears after recovery."

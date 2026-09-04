@@ -1,7 +1,7 @@
 """Tests for automatic equal-peer active-fire source pooling."""
 from __future__ import annotations
 
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from unittest.mock import AsyncMock
 
 import pytest
@@ -13,6 +13,7 @@ from custom_components.terralyra.models import (
 )
 from custom_components.terralyra.providers.base import (
     ProviderAuthenticationError,
+    ProviderRateLimitError,
     ProviderUnavailableError,
 )
 from custom_components.terralyra.providers.pool import (
@@ -102,3 +103,45 @@ async def test_pool_reports_when_every_source_rejects_authentication() -> None:
 
     with pytest.raises(ProviderAuthenticationError):
         await pool.async_fetch_latest()
+
+
+@pytest.mark.asyncio
+async def test_failed_peer_is_deferred_while_healthy_peer_continues() -> None:
+    current = [NOW]
+    failed = _binding("mtg", "MTG", ProviderUnavailableError())
+    healthy = _binding("firms", "VIIRS", _snapshot("NASA FIRMS", "VIIRS"))
+    pool = MultiProviderPool((failed, healthy), now=lambda: current[0])
+
+    await pool.async_fetch_latest()
+    await pool.async_fetch_latest()
+
+    assert failed.provider.async_fetch_latest.await_count == 1
+    assert healthy.provider.async_fetch_latest.await_count == 2
+    assert pool.health[0].consecutive_failures == 1
+    assert pool.health[0].failure_type == "service_outage"
+    assert pool.health[0].retry_at == NOW + timedelta(minutes=5)
+
+
+@pytest.mark.asyncio
+async def test_provider_retry_after_is_honored_and_clears_after_recovery() -> None:
+    current = [NOW]
+    binding = _binding(
+        "firms",
+        "VIIRS",
+        ProviderRateLimitError(retry_after=timedelta(minutes=17)),
+    )
+    pool = MultiProviderPool((binding,), now=lambda: current[0])
+
+    with pytest.raises(ProviderUnavailableError) as first_error:
+        await pool.async_fetch_latest()
+    assert first_error.value.retry_after == timedelta(minutes=17)
+    assert pool.health[0].failure_type == "rate_limit"
+
+    binding.provider.async_fetch_latest.side_effect = None
+    binding.provider.async_fetch_latest.return_value = _snapshot("NASA FIRMS", "VIIRS")
+    current[0] += timedelta(minutes=18)
+    await pool.async_fetch_latest()
+
+    assert pool.health[0].consecutive_failures == 0
+    assert pool.health[0].failure_type is None
+    assert pool.health[0].retry_at is None

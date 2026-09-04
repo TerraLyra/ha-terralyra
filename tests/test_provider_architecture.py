@@ -7,7 +7,12 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from custom_components.terralyra.api import LsaSafAuthError, LsaSafError
+from custom_components.terralyra.api import (
+    LsaSafAuthError,
+    LsaSafError,
+    LsaSafRateLimitError,
+    LsaSafTimeoutError,
+)
 from custom_components.terralyra.clustering import cluster_detections
 from custom_components.terralyra.coverage import plan_location_sources
 from custom_components.terralyra.models import (
@@ -23,7 +28,10 @@ from custom_components.terralyra.products.fire import (
 )
 from custom_components.terralyra.providers.base import (
     ProviderAuthenticationError,
+    ProviderInvalidResponseError,
     ProviderNoDataError,
+    ProviderRateLimitError,
+    ProviderTimeoutError,
     ProviderUnavailableError,
 )
 from custom_components.terralyra.providers.mtg import (
@@ -190,7 +198,9 @@ async def test_mtg_adapter_marks_old_products_as_delayed() -> None:
     [
         (LsaSafAuthError("auth"), ProviderAuthenticationError),
         (LsaSafNoDataError("missing"), ProviderNoDataError),
-        (LsaSafError("outage"), ProviderUnavailableError),
+        (LsaSafRateLimitError("limited"), ProviderRateLimitError),
+        (LsaSafTimeoutError("late"), ProviderTimeoutError),
+        (LsaSafError("invalid"), ProviderInvalidResponseError),
     ],
 )
 async def test_mtg_adapter_normalizes_provider_errors(

@@ -17,6 +17,7 @@ from aiohttp import ClientError, ClientSession, ClientTimeout
 from defusedxml import ElementTree as ET
 
 from ..providers.goes_spike import GoesObjectMetadata, parse_fdc_filename
+from .http import parse_retry_after
 
 BUCKETS = {"G18": "noaa-goes18", "G19": "noaa-goes19"}
 PRODUCT_PREFIX = "ABI-L2-FDCF"
@@ -33,9 +34,31 @@ USER_AGENT = "ha-terralyra (https://github.com/TerraLyra/ha-terralyra)"
 class GoesDiscoveryError(Exception):
     """The NOAA product catalogue returned an unsafe or invalid response."""
 
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_type: str = "invalid_response",
+        retry_after: timedelta | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.failure_type = failure_type
+        self.retry_after = retry_after
+
 
 class GoesProductError(Exception):
     """A GOES product could not be downloaded and decoded safely."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        failure_type: str = "invalid_response",
+        retry_after: timedelta | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.failure_type = failure_type
+        self.retry_after = retry_after
 
 
 @dataclass(frozen=True, slots=True)
@@ -85,6 +108,21 @@ class GoesDiscoveryClient:
                 allow_redirects=False,
                 timeout=DOWNLOAD_TIMEOUT,
             ) as response:
+                retry_after = parse_retry_after(
+                    getattr(response, "headers", {}).get("Retry-After")
+                )
+                if response.status == 429:
+                    raise GoesDiscoveryError(
+                        "NOAA GOES catalogue rate limited the request",
+                        failure_type="rate_limit",
+                        retry_after=retry_after,
+                    )
+                if 500 <= response.status <= 599:
+                    raise GoesDiscoveryError(
+                        f"NOAA GOES catalogue is temporarily unavailable ({response.status})",
+                        failure_type="service_outage",
+                        retry_after=retry_after,
+                    )
                 if response.status != 200:
                     raise GoesDiscoveryError("NOAA GOES catalogue returned an error")
                 if (
@@ -104,8 +142,15 @@ class GoesDiscoveryClient:
                 return bytes(data)
         except GoesDiscoveryError:
             raise
-        except (ClientError, TimeoutError) as err:
-            raise GoesDiscoveryError("NOAA GOES catalogue is unavailable") from err
+        except TimeoutError as err:
+            raise GoesDiscoveryError(
+                "NOAA GOES catalogue request timed out", failure_type="timeout"
+            ) from err
+        except ClientError as err:
+            raise GoesDiscoveryError(
+                "NOAA GOES catalogue is unavailable",
+                failure_type="service_outage",
+            ) from err
 
 
 class GoesProductClient:
@@ -154,8 +199,14 @@ class GoesProductClient:
             raise
         except asyncio.CancelledError:
             raise
-        except (ClientError, TimeoutError) as err:
-            raise GoesProductError("NOAA GOES product is unavailable") from err
+        except TimeoutError as err:
+            raise GoesProductError(
+                "NOAA GOES product request timed out", failure_type="timeout"
+            ) from err
+        except ClientError as err:
+            raise GoesProductError(
+                "NOAA GOES product is unavailable", failure_type="service_outage"
+            ) from err
         except Exception as err:
             # Decoder details can contain native-library internals and local
             # paths. Expose only a stable, non-sensitive provider error here.
@@ -171,6 +222,21 @@ class GoesProductClient:
                 allow_redirects=False,
                 timeout=TIMEOUT,
             ) as response:
+                retry_after = parse_retry_after(
+                    getattr(response, "headers", {}).get("Retry-After")
+                )
+                if response.status == 429:
+                    raise GoesProductError(
+                        "NOAA GOES product rate limited the request",
+                        failure_type="rate_limit",
+                        retry_after=retry_after,
+                    )
+                if 500 <= response.status <= 599:
+                    raise GoesProductError(
+                        f"NOAA GOES product is temporarily unavailable ({response.status})",
+                        failure_type="service_outage",
+                        retry_after=retry_after,
+                    )
                 if response.status != 200:
                     raise GoesProductError("NOAA GOES product returned an error")
                 if (
@@ -192,8 +258,14 @@ class GoesProductClient:
                     raise GoesProductError("NOAA GOES product is incomplete")
         except GoesProductError:
             raise
-        except (ClientError, TimeoutError) as err:
-            raise GoesProductError("NOAA GOES product is unavailable") from err
+        except TimeoutError as err:
+            raise GoesProductError(
+                "NOAA GOES product request timed out", failure_type="timeout"
+            ) from err
+        except ClientError as err:
+            raise GoesProductError(
+                "NOAA GOES product is unavailable", failure_type="service_outage"
+            ) from err
 
 
 def catalogue_prefix(satellite: str, hour: datetime) -> str:

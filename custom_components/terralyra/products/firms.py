@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import csv
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 import io
 import math
 import re
 from urllib.parse import quote
 
 from aiohttp import ClientError, ClientSession, ClientTimeout
+
+from .http import parse_retry_after
 
 FIRMS_HOST = "firms.modaps.eosdis.nasa.gov"
 FIRMS_BASE_URL = f"https://{FIRMS_HOST}/api/area/csv"
@@ -40,6 +42,30 @@ class FirmsError(Exception):
 
 class FirmsAuthenticationError(FirmsError):
     """The FIRMS MAP_KEY was rejected."""
+
+
+class FirmsRateLimitError(FirmsError):
+    """FIRMS asked the client to reduce its request rate."""
+
+    def __init__(self, message: str, retry_after: timedelta | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class FirmsTemporaryServiceError(FirmsError):
+    """FIRMS returned a temporary server-side error."""
+
+    def __init__(self, message: str, retry_after: timedelta | None = None) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
+
+class FirmsTimeoutError(FirmsError):
+    """The bounded FIRMS request timed out."""
+
+
+class FirmsInvalidResponseError(FirmsError):
+    """FIRMS returned data that failed safe validation."""
 
 
 class FirmsClient:
@@ -85,22 +111,42 @@ class FirmsClient:
             ) as response:
                 if response.status in (401, 403):
                     raise FirmsAuthenticationError("FIRMS MAP_KEY was rejected")
+                retry_after = parse_retry_after(
+                    getattr(response, "headers", {}).get("Retry-After")
+                )
+                if response.status == 429:
+                    raise FirmsRateLimitError(
+                        "FIRMS service rate limited the request", retry_after
+                    )
+                if 500 <= response.status <= 599:
+                    raise FirmsTemporaryServiceError(
+                        f"FIRMS service is temporarily unavailable ({response.status})",
+                        retry_after,
+                    )
                 if response.status != 200:
-                    raise FirmsError("FIRMS service returned an error")
+                    raise FirmsInvalidResponseError(
+                        f"FIRMS service returned an error ({response.status})"
+                    )
                 if (
                     response.content_length is not None
                     and response.content_length > MAX_CSV_BYTES
                 ):
-                    raise FirmsError("FIRMS response exceeds the safety limit")
+                    raise FirmsInvalidResponseError(
+                        "FIRMS response exceeds the safety limit"
+                    )
                 data = bytearray()
                 async for chunk in response.content.iter_chunked(16 * 1024):
                     data.extend(chunk)
                     if len(data) > MAX_CSV_BYTES:
-                        raise FirmsError("FIRMS response exceeds the safety limit")
+                        raise FirmsInvalidResponseError(
+                            "FIRMS response exceeds the safety limit"
+                        )
                 return bytes(data)
         except (FirmsAuthenticationError, FirmsError):
             raise
-        except (ClientError, TimeoutError) as err:
+        except TimeoutError as err:
+            raise FirmsTimeoutError("FIRMS request timed out") from err
+        except ClientError as err:
             raise FirmsError("FIRMS service is unavailable") from err
 
 
@@ -145,22 +191,22 @@ def parse_firms_csv(payload: bytes, *, source: str) -> tuple[FirmsDetection, ...
     if source not in ALLOWED_SOURCES:
         raise FirmsError("Unsupported FIRMS source")
     if len(payload) > MAX_CSV_BYTES:
-        raise FirmsError("FIRMS response exceeds the safety limit")
+        raise FirmsInvalidResponseError("FIRMS response exceeds the safety limit")
     try:
         text = payload.decode("utf-8-sig")
     except UnicodeDecodeError as err:
-        raise FirmsError("FIRMS response is not valid UTF-8") from err
+        raise FirmsInvalidResponseError("FIRMS response is not valid UTF-8") from err
     if any(len(line.encode("utf-8")) > MAX_LINE_BYTES for line in text.splitlines()):
-        raise FirmsError("FIRMS CSV line exceeds the safety limit")
+        raise FirmsInvalidResponseError("FIRMS CSV line exceeds the safety limit")
 
     try:
         reader = csv.DictReader(io.StringIO(text, newline=""))
         if reader.fieldnames is None or not _REQUIRED_FIELDS.issubset(reader.fieldnames):
-            raise FirmsError("FIRMS CSV is missing required fields")
+            raise FirmsInvalidResponseError("FIRMS CSV is missing required fields")
         detections: list[FirmsDetection] = []
         for index, row in enumerate(reader, start=1):
             if index > MAX_CSV_ROWS:
-                raise FirmsError("FIRMS CSV contains too many rows")
+                raise FirmsInvalidResponseError("FIRMS CSV contains too many rows")
             latitude = float(row["latitude"])
             longitude = float(row["longitude"])
             frp_mw = float(row["frp"])
@@ -186,7 +232,7 @@ def parse_firms_csv(payload: bytes, *, source: str) -> tuple[FirmsDetection, ...
     except FirmsError:
         raise
     except (KeyError, TypeError, ValueError, csv.Error) as err:
-        raise FirmsError("FIRMS CSV has an unexpected shape") from err
+        raise FirmsInvalidResponseError("FIRMS CSV has an unexpected shape") from err
     return tuple(detections)
 
 

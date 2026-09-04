@@ -1,6 +1,7 @@
 """Shared LSA SAF Data Service HTTP client."""
 from __future__ import annotations
 
+from datetime import timedelta
 from urllib.parse import urlsplit
 
 from aiohttp import ClientSession, ClientTimeout, encode_basic_auth
@@ -12,9 +13,37 @@ REQUEST_TIMEOUT = ClientTimeout(total=30, connect=10, sock_read=20)
 class LsaSafError(Exception):
     """Base LSA SAF error."""
 
+    failure_type = "invalid_response"
+
+    def __init__(
+        self, message: str = "", *, retry_after: timedelta | None = None
+    ) -> None:
+        super().__init__(message)
+        self.retry_after = retry_after
+
 
 class LsaSafAuthError(LsaSafError):
     """Authentication error."""
+
+    failure_type = "authentication"
+
+
+class LsaSafRateLimitError(LsaSafError):
+    """The LSA SAF service requested slower polling."""
+
+    failure_type = "rate_limit"
+
+
+class LsaSafServiceUnavailableError(LsaSafError):
+    """The LSA SAF service is temporarily unavailable."""
+
+    failure_type = "service_outage"
+
+
+class LsaSafTimeoutError(LsaSafServiceUnavailableError):
+    """The bounded LSA SAF request timed out."""
+
+    failure_type = "timeout"
 
 
 class LsaSafApi:

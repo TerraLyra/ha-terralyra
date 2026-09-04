@@ -187,6 +187,10 @@
       "title": "Az aktívtűz-adatforrások ismételten nem érhetők el",
       "description": "Minden hozzárendelt aktívtűz-adatforrás {failures} egymást követő frissítésnél hibázott. Ellenőrizd a forrásszolgáltatásokat és a Home Assistant internetkapcsolatát, majd töltsd újra az integrációt. A TerraLyra többi terméke ettől még frissülhet."
     },
+    "upstream_provider_issue": {
+      "title": "A(z) {service} figyelmet igényel",
+      "description": "A(z) {service} {failure} hibát jelzett {failures} egymást követő frissítésnél. A TerraLyra korlátozott késleltetéssel újrapróbálkozik, miközben a többi működő forrás tovább frissül. Ha a hiba tartós, ellenőrizd a hozzáférést és a szolgáltatás elérhetőségét."
+    },
     "fire_risk_outage": {
       "title": "A tűzkockázati előrejelzés szolgáltatása ismételten nem érhető el",
       "description": "Az FRMv3 előrejelzési szolgáltatás {failures} egymást követő frissítésnél hibázott (utolsó ok: {reason}). A TerraLyra korlátozott késleltetéssel automatikusan újrapróbálkozik; az aktívtűz-figyelés és a többi működő termék közben folytatódik. Az értesítés helyreállás után eltűnik."
