@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.8.7
+
+- Keep the last valid FRMv3 map available for up to 24 hours when a refresh is
+  temporarily rate-limited, the service returns a transient server error, or
+  the connection fails.
+- Reuse a stale map only for the exact same bounds and forecast date, and never
+  conceal authentication errors or serve an expired image.
+- Remove the stale development version from the FRMv3 HTTP User-Agent.
+
 ## 0.8.6
 
 - Improve FRMv3 reliability by classifying temporary HTTP failures (auth/rate-limit/

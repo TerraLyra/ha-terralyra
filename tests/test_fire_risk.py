@@ -22,6 +22,7 @@ from custom_components.terralyra.map_render import (
     annotate_fire_risk_map,
 )
 from custom_components.terralyra.products.fire_risk import (
+    FireRiskAuthenticationError,
     FireRiskClient,
     FireRiskDay,
     FireRiskError,
@@ -316,6 +317,118 @@ async def test_async_get_maps_network_errors_to_service_unavailable() -> None:
 
     with pytest.raises(FireRiskServiceUnavailableError):
         await client._async_get({"x": "y"}, 10)
+
+
+@pytest.mark.asyncio
+async def test_async_map_returns_last_cached_map_on_temporary_fetch_error() -> None:
+    source = BytesIO()
+    Image.new("RGB", (768, 512), "#10cfe0").save(source, format="PNG")
+    cached_map = source.getvalue()
+    bbox = (14.0, 44.0, 24.0, 51.0)
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            super().__init__(session=Mock())
+            self.calls = 0
+
+        async def _async_get(self, params, limit):
+            self.calls += 1
+            if self.calls == 1:
+                return cached_map
+            raise FireRiskTemporaryServiceError("FRMv3 temporary outage", 500)
+
+    client = FakeClient()
+    today = datetime.now(UTC).date()
+
+    first = await client.async_map(bbox, today)
+    client._map_cache_time = datetime.now(UTC) - timedelta(hours=2)
+    second = await client.async_map(bbox, today)
+
+    assert first == cached_map
+    assert second == cached_map
+    assert client.calls == 2
+
+
+@pytest.mark.asyncio
+async def test_async_map_does_not_fallback_for_authentication_error() -> None:
+    bbox = (14.0, 44.0, 24.0, 51.0)
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            super().__init__(session=Mock())
+            self.calls = 0
+
+        async def _async_get(self, params, limit):
+            self.calls += 1
+            if self.calls == 1:
+                source = BytesIO()
+                Image.new("RGB", (768, 512), "#10cfe0").save(source, format="PNG")
+                return source.getvalue()
+            raise FireRiskAuthenticationError("FRMv3 authentication error", 403)
+
+    client = FakeClient()
+    today = datetime.now(UTC).date()
+
+    await client.async_map(bbox, today)
+    client._map_cache_time = datetime.now(UTC) - timedelta(hours=2)
+
+    with pytest.raises(FireRiskAuthenticationError):
+        await client.async_map(bbox, today)
+
+
+@pytest.mark.asyncio
+async def test_async_map_does_not_reuse_cache_for_another_date() -> None:
+    source = BytesIO()
+    Image.new("RGB", (768, 512), "#10cfe0").save(source, format="PNG")
+    cached_map = source.getvalue()
+    bbox = (14.0, 44.0, 24.0, 51.0)
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            super().__init__(session=Mock())
+            self.calls = 0
+
+        async def _async_get(self, params, limit):
+            self.calls += 1
+            if self.calls == 1:
+                return cached_map
+            raise FireRiskTemporaryServiceError("FRMv3 temporary outage", 500)
+
+    client = FakeClient()
+    today = datetime.now(UTC).date()
+
+    await client.async_map(bbox, today)
+
+    with pytest.raises(FireRiskTemporaryServiceError):
+        await client.async_map(bbox, today + timedelta(days=1))
+
+
+@pytest.mark.asyncio
+async def test_async_map_does_not_reuse_expired_stale_cache() -> None:
+    source = BytesIO()
+    Image.new("RGB", (768, 512), "#10cfe0").save(source, format="PNG")
+    cached_map = source.getvalue()
+    bbox = (14.0, 44.0, 24.0, 51.0)
+
+    class FakeClient(FireRiskClient):
+        def __init__(self) -> None:
+            super().__init__(session=Mock())
+            self.calls = 0
+
+        async def _async_get(self, params, limit):
+            self.calls += 1
+            if self.calls == 1:
+                return cached_map
+            raise FireRiskTemporaryServiceError("FRMv3 temporary outage", 500)
+
+    client = FakeClient()
+    today = datetime.now(UTC).date()
+
+    await client.async_map(bbox, today)
+    client._map_cache_time = datetime.now(UTC) - timedelta(hours=25)
+
+    with pytest.raises(FireRiskTemporaryServiceError):
+        await client.async_map(bbox, today)
 
 
 def test_map_analysis_finds_maximum_inside_circle() -> None:

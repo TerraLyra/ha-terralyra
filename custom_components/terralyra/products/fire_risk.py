@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import math
 import re
 from dataclasses import dataclass
@@ -22,9 +23,13 @@ TIMEOUT = ClientTimeout(total=20, connect=5, sock_read=15)
 MAX_JSON_BYTES = 32 * 1024
 MAX_MAP_BYTES = 2 * 1024 * 1024
 MAX_ERROR_BYTES = 1024
-USER_AGENT = "ha-terralyra/0.3.1 (https://github.com/TerraLyra/ha-terralyra)"
+MAP_CACHE_TTL = timedelta(hours=1)
+MAP_STALE_TTL = timedelta(hours=24)
+USER_AGENT = "ha-terralyra (https://github.com/TerraLyra/ha-terralyra)"
 EUROPE_BOUNDS = (-9.975, 34.475, 45.525, 69.975)
 LOCAL_SAMPLE_RADIUS_KM = 10.0
+
+_LOGGER = logging.getLogger(__name__)
 
 RISK_NAMES = {1: "low", 2: "moderate", 3: "high", 4: "very_high", 5: "extreme"}
 RISK_PATTERN = re.compile(r"^(?:[a-z_ ]+)\(([1-5])\)$", re.IGNORECASE)
@@ -51,6 +56,7 @@ class FireRiskHTTPError(FireRiskError):
 
 class FireRiskAuthenticationError(FireRiskHTTPError):
     """The FRMv3 endpoint rejected credentials or access."""
+
 
 class FireRiskRateLimitError(FireRiskHTTPError):
     """FRMv3 denied requests due to rate limiting."""
@@ -177,19 +183,38 @@ class FireRiskClient:
             self._map_cache_key == key
             and self._map_cache_value is not None
             and self._map_cache_time is not None
-            and datetime.now(UTC) - self._map_cache_time < timedelta(hours=1)
+            and datetime.now(UTC) - self._map_cache_time < MAP_CACHE_TTL
         ):
             return self._map_cache_value
-        image = await self._async_get(
-            {
-                "DATASET": WMS_DATASET, "SERVICE": "WMS", "VERSION": "1.1.1",
-                "REQUEST": "GetMap", "LAYERS": "Risk", "STYLES": "risk_map_style/nearest",
-                "SRS": "EPSG:4326", "BBOX": f"{west},{south},{east},{north}",
-                "WIDTH": "768", "HEIGHT": "512", "TRANSPARENT": "TRUE",
-                "TIME": f"{valid_date.isoformat()}T12:00:00Z", "FORMAT": "image/png",
-            },
-            MAX_MAP_BYTES,
-        )
+        try:
+            image = await self._async_get(
+                {
+                    "DATASET": WMS_DATASET, "SERVICE": "WMS", "VERSION": "1.1.1",
+                    "REQUEST": "GetMap", "LAYERS": "Risk", "STYLES": "risk_map_style/nearest",
+                    "SRS": "EPSG:4326", "BBOX": f"{west},{south},{east},{north}",
+                    "WIDTH": "768", "HEIGHT": "512", "TRANSPARENT": "TRUE",
+                    "TIME": f"{valid_date.isoformat()}T12:00:00Z", "FORMAT": "image/png",
+                },
+                MAX_MAP_BYTES,
+            )
+        except (
+            FireRiskRateLimitError,
+            FireRiskTemporaryServiceError,
+            FireRiskServiceUnavailableError,
+        ) as err:
+            if (
+                self._map_cache_key == key
+                and self._map_cache_value is not None
+                and self._map_cache_time is not None
+                and datetime.now(UTC) - self._map_cache_time < MAP_STALE_TTL
+            ):
+                _LOGGER.debug(
+                    "Using stale cached FRMv3 map for %s after fetch failure: %s",
+                    valid_date,
+                    err,
+                )
+                return self._map_cache_value
+            raise
         if not image.startswith(b"\x89PNG\r\n\x1a\n"):
             raise FireRiskError("FRMv3 map response is not a PNG image")
         self._map_cache_key = key
