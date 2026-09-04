@@ -18,6 +18,7 @@ def _detection(
     longitude: float = 19.0,
     timestamp: datetime = NOW,
     detection_id: str = "id",
+    source_family: str | None = None,
 ) -> FireDetection:
     return FireDetection(
         provider=provider,
@@ -27,6 +28,7 @@ def _detection(
         latitude=latitude,
         longitude=longitude,
         source_detection_id=detection_id,
+        source_family=source_family,
     )
 
 
@@ -69,6 +71,24 @@ def test_same_provider_does_not_self_correlate() -> None:
     result = correlate_detections((primary,), (duplicate,))
 
     assert result[0].providers == ("nasa_firms",)
+    assert not result[0].is_multi_source
+
+
+def test_same_source_family_does_not_create_false_independent_confirmation() -> None:
+    primary = _detection(
+        "lsa_saf_mtg",
+        detection_id="mtg",
+        source_family="lsa_saf_frp_pixel",
+    )
+    iodc = _detection(
+        "lsa_saf_msg_iodc",
+        detection_id="iodc",
+        source_family="lsa_saf_frp_pixel",
+    )
+
+    result = correlate_detections((primary,), (iodc,))
+
+    assert result[0].matches == ()
     assert not result[0].is_multi_source
 
 
