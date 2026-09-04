@@ -385,5 +385,17 @@
         "name": "Brandverlaufsfenster"
       }
     }
+  },
+  "services": {
+    "probe_msg_iodc": {
+      "name": "MSG-IODC-Kompatibilität prüfen",
+      "description": "Lädt mit dem gespeicherten LSA-SAF-Konto ein aktuelles, größenbegrenztes MSG-IODC List Product und gibt nur Metadaten zurück. Die Quelle wird nicht aktiviert, die Datei nicht gespeichert und es werden keine Brandbeobachtungswerte gelesen.",
+      "fields": {
+        "config_entry_id": {
+          "name": "TerraLyra-Konfiguration",
+          "description": "Konfigurationseintrag, dessen gespeicherte LSA-SAF-Zugangsdaten verwendet werden."
+        }
+      }
+    }
   }
 }

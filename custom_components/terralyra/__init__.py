@@ -1,13 +1,17 @@
 """TerraLyra integration."""
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
-
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+import voluptuous as vol
+from homeassistant.config_entries import ConfigEntry, ConfigEntryState
+from homeassistant.core import HomeAssistant, ServiceCall, ServiceResponse, SupportsResponse
+from homeassistant.exceptions import ServiceValidationError
 from homeassistant.helpers.aiohttp_client import async_get_clientsession
+from homeassistant.helpers.typing import ConfigType
 
 from .const import (
+    ATTR_CONFIG_ENTRY_ID,
     CONF_ENABLE_FIRMS,
     CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
     CONF_FIRMS_MAP_KEY,
@@ -27,6 +31,7 @@ from .const import (
     DOMAIN,
     LEGACY_CUSTOM_LOCATION_ID,
     PLATFORMS,
+    SERVICE_PROBE_MSG_IODC,
 )
 from .coordinator import TerraLyraCoordinator
 from .fire_risk_coordinator import FireRiskCoordinator
@@ -39,6 +44,13 @@ from .monitoring import (
 )
 from .products.fire_risk import FireRiskClient
 from .products.lst import LandSurfaceTemperatureClient
+from .products.msg_iodc import (
+    MsgIodcAuthenticationError,
+    MsgIodcSchemaError,
+    MsgIodcUnavailableError,
+    async_fetch_latest_list_product,
+    inspect_list_product_schema,
+)
 from .providers.factory import build_provider_pool
 from .repairs import async_sync_coverage_issue
 
@@ -55,6 +67,66 @@ class RuntimeData:
 
 
 type TerraLyraConfigEntry = ConfigEntry[RuntimeData]
+
+
+async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
+    """Register explicit, response-only diagnostic actions."""
+
+    async def async_probe_msg_iodc(call: ServiceCall) -> ServiceResponse:
+        entry_id = call.data[ATTR_CONFIG_ENTRY_ID]
+        entry = hass.config_entries.async_get_entry(entry_id)
+        if entry is None or entry.domain != DOMAIN:
+            raise ServiceValidationError(
+                "The selected TerraLyra entry was not found"
+            )
+        if entry.state is not ConfigEntryState.LOADED:
+            raise ServiceValidationError("The selected TerraLyra entry is not loaded")
+        username = entry.data.get(CONF_USERNAME)
+        password = entry.data.get(CONF_PASSWORD)
+        if not username or not password:
+            raise ServiceValidationError(
+                "The selected TerraLyra entry has no LSA SAF credentials"
+            )
+        try:
+            async with asyncio.timeout(60):
+                filename, payload = await async_fetch_latest_list_product(
+                    async_get_clientsession(hass), username, password
+                )
+            schema = await hass.async_add_executor_job(
+                inspect_list_product_schema, filename, payload
+            )
+        except TimeoutError as err:
+            raise ServiceValidationError(
+                "The MSG-IODC compatibility check timed out"
+            ) from err
+        except MsgIodcAuthenticationError as err:
+            raise ServiceValidationError(
+                "LSA SAF rejected the saved credentials"
+            ) from err
+        except MsgIodcUnavailableError as err:
+            raise ServiceValidationError(
+                "No current MSG-IODC List Product could be retrieved"
+            ) from err
+        except MsgIodcSchemaError as err:
+            raise ServiceValidationError(
+                "The MSG-IODC product did not pass the bounded schema check"
+            ) from err
+        return {
+            "status": "compatible",
+            "provider": "EUMETSAT LSA SAF",
+            "satellite": "Meteosat-9",
+            "product": "MSG-IODC FRP-PIXEL List Product",
+            "schema": schema,
+        }
+
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_PROBE_MSG_IODC,
+        async_probe_msg_iodc,
+        schema=vol.Schema({vol.Required(ATTR_CONFIG_ENTRY_ID): str}),
+        supports_response=SupportsResponse.ONLY,
+    )
+    return True
 
 
 async def async_migrate_entry(

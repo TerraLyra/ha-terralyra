@@ -574,6 +574,16 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   equal-source health, timestamps and local incident-confirmation counts
 - submit TerraLyra artwork to the upstream Home Assistant brands repository
 
+### MSG-IODC compatibility check
+
+The runtime-disabled Meteosat-9 source can be inspected without exposing the
+saved LSA SAF password. In **Developer tools → Actions**, run
+**TerraLyra: Inspect MSG-IODC compatibility** and select the TerraLyra
+configuration. The explicit action downloads at most one small current List
+Product, keeps it in memory, reads only bounded HDF5 metadata and returns the
+sanitized schema in the action response. It does not enable MSG-IODC, retain
+the upstream file or read fire-observation array values.
+
 ### Multi-source detection and incident verification
 
 - NASA FIRMS can be enabled as an optional equal active-fire source with the

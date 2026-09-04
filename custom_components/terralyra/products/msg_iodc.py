@@ -13,6 +13,7 @@ import math
 import re
 from typing import Any
 
+from aiohttp import BasicAuth, ClientError, ClientSession, ClientTimeout
 import h5py
 import numpy as np
 
@@ -30,10 +31,77 @@ MAX_DATASET_ELEMENTS = 5_000_000
 MAX_ATTRIBUTES_PER_OBJECT = 128
 MAX_ATTRIBUTE_ELEMENTS = 64
 MAX_TEXT_LENGTH = 512
+TIMEOUT = ClientTimeout(total=30, connect=5, sock_read=25)
+USER_AGENT = "ha-terralyra/msg-iodc-schema-probe"
 
 
 class MsgIodcSchemaError(Exception):
     """An MSG-IODC schema probe failed a bounded validation rule."""
+
+
+class MsgIodcAuthenticationError(MsgIodcSchemaError):
+    """The configured LSA SAF credentials were rejected."""
+
+
+class MsgIodcUnavailableError(MsgIodcSchemaError):
+    """The bounded probe could not obtain a current List Product."""
+
+
+async def async_fetch_latest_list_product(
+    session: ClientSession,
+    username: str,
+    password: str,
+    *,
+    now: datetime | None = None,
+    lookback_slots: int = 32,
+) -> tuple[str, bytes]:
+    """Fetch one bounded List Product without following redirects."""
+    if not username or not password:
+        raise MsgIodcAuthenticationError("LSA SAF credentials are not configured")
+    auth = BasicAuth(username, password)
+    try:
+        for filename, url in candidate_list_products(
+            now or datetime.now(UTC), lookback_slots=lookback_slots
+        ):
+            async with session.get(
+                url,
+                auth=auth,
+                headers={"User-Agent": USER_AGENT},
+                allow_redirects=False,
+                timeout=TIMEOUT,
+            ) as response:
+                if response.status == 404:
+                    continue
+                if response.status in (401, 403):
+                    raise MsgIodcAuthenticationError(
+                        "LSA SAF credentials were rejected"
+                    )
+                if response.status != 200:
+                    raise MsgIodcUnavailableError(
+                        f"LSA SAF returned HTTP {response.status}"
+                    )
+                if (
+                    response.content_length is not None
+                    and response.content_length > MAX_DOWNLOAD_BYTES
+                ):
+                    raise MsgIodcSchemaError(
+                        "MSG-IODC response exceeds the probe size limit"
+                    )
+                payload = bytearray()
+                async for chunk in response.content.iter_chunked(64 * 1024):
+                    payload.extend(chunk)
+                    if len(payload) > MAX_DOWNLOAD_BYTES:
+                        raise MsgIodcSchemaError(
+                            "MSG-IODC response exceeds the probe size limit"
+                        )
+                return filename, bytes(payload)
+    except MsgIodcSchemaError:
+        raise
+    except (ClientError, TimeoutError) as err:
+        raise MsgIodcUnavailableError("LSA SAF service is unavailable") from err
+    raise MsgIodcUnavailableError(
+        "No MSG-IODC List Product was found in the bounded lookback"
+    )
 
 
 def parse_list_product_filename(filename: str) -> datetime:

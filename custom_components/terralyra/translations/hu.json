@@ -385,5 +385,17 @@
         "name": "Tűzelőzmény időablaka"
       }
     }
+  },
+  "services": {
+    "probe_msg_iodc": {
+      "name": "MSG-IODC kompatibilitás ellenőrzése",
+      "description": "A mentett LSA SAF-fiókkal letölt egy aktuális, méretkorlátos MSG-IODC List Product fájlt, és kizárólag metaadatokat ad vissza. Nem kapcsolja be a forrást, nem őrzi meg a fájlt, és nem olvassa ki a tűzészlelési értékeket.",
+      "fields": {
+        "config_entry_id": {
+          "name": "TerraLyra-konfiguráció",
+          "description": "Az a konfigurációs bejegyzés, amelynek mentett LSA SAF hozzáférését az ellenőrzés használja."
+        }
+      }
+    }
   }
 }

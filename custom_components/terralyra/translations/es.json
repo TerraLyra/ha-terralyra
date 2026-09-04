@@ -385,5 +385,17 @@
         "name": "Ventana del historial de incendios"
       }
     }
+  },
+  "services": {
+    "probe_msg_iodc": {
+      "name": "Comprobar la compatibilidad de MSG-IODC",
+      "description": "Descarga con la cuenta LSA SAF guardada un List Product MSG-IODC actual y de tamaño limitado, y devuelve solo sus metadatos. No activa la fuente, no conserva el archivo ni lee valores de observación de incendios.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Configuración de TerraLyra",
+          "description": "Entrada de configuración cuyas credenciales LSA SAF guardadas se utilizan."
+        }
+      }
+    }
   }
 }

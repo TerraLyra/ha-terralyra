@@ -385,5 +385,17 @@
         "name": "Finestra dello storico incendi"
       }
     }
+  },
+  "services": {
+    "probe_msg_iodc": {
+      "name": "Verifica compatibilità MSG-IODC",
+      "description": "Scarica con l’account LSA SAF salvato un List Product MSG-IODC corrente e con dimensione limitata, restituendo solo i metadati. Non abilita la sorgente, non conserva il file e non legge i valori delle osservazioni degli incendi.",
+      "fields": {
+        "config_entry_id": {
+          "name": "Configurazione TerraLyra",
+          "description": "Voce di configurazione di cui vengono usate le credenziali LSA SAF salvate."
+        }
+      }
+    }
   }
 }

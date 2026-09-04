@@ -19,6 +19,10 @@ Directory listings alone are not a safe parser contract. The development-only
 `tools/probe_msg_iodc.py` utility retrieves one recent product using credentials
 from process environment variables, keeps it only in memory, reads metadata but
 not science-array values, and emits bounded JSON suitable for schema review.
+The response-only `terralyra.probe_msg_iodc` Home Assistant action applies the
+same limits using the credentials already stored in the selected TerraLyra
+configuration entry. It returns the sanitized schema to the caller without
+persisting either the product or the result.
 
 ## Verified access characteristics
 
@@ -52,9 +56,9 @@ They may be equal observing feeds without being statistically independent.
 
 ## Required next implementation slice
 
-1. Run the bounded schema probe for one current, representative List Product
-   using the user's existing LSA SAF account; do not commit its output until the
-   metadata has been reviewed for safe redistribution.
+1. Run **TerraLyra: Inspect MSG-IODC compatibility** from Home Assistant's
+   Developer tools for one current, representative List Product; do not commit
+   its output until the metadata has been reviewed for safe redistribution.
 2. Create a tiny synthetic HDF5 fixture containing only the required schema.
 3. Implement a bounded decoder that reads only List Products and rejects
    redirects, oversized files, unknown filenames, missing datasets and unsafe

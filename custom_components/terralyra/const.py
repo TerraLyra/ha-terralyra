@@ -6,6 +6,8 @@ from datetime import timedelta
 DOMAIN = "terralyra"
 NAME = "TerraLyra"
 MANUFACTURER = "TerraLyra open-source project"
+SERVICE_PROBE_MSG_IODC = "probe_msg_iodc"
+ATTR_CONFIG_ENTRY_ID = "config_entry_id"
 
 CONF_USERNAME = "username"
 CONF_PASSWORD = "password"
