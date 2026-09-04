@@ -118,6 +118,7 @@ async def test_diagnostics_are_bounded_and_redacted(hass) -> None:
         "uncovered_location_count": 0,
         "provider_assignment_counts": {
             "eumetsat_lsa_saf": 1,
+            "eumetsat_lsa_saf_iodc": 1,
             "noaa_goes": 0,
             "nasa_firms": 1,
         },

@@ -25,6 +25,7 @@ PROVIDER = "eumetsat_lsa_saf"
 SATELLITE = "mtg"
 PRODUCT = "MTFRPPixel"
 SOURCE_RESOLUTION_KM = 1.0
+SOURCE_FAMILY = "lsa_saf_frp_pixel"
 DELAY_THRESHOLD = timedelta(minutes=60)
 
 
@@ -73,6 +74,7 @@ class MtgActiveFireProvider:
                     if pixel.abs_line is not None and pixel.abs_samp is not None
                     else None
                 ),
+                source_family=SOURCE_FAMILY,
             )
             for pixel in product.pixels
         )

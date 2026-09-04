@@ -8,9 +8,11 @@ from dataclasses import dataclass
 from .const import (
     ACTIVE_FIRE_PROVIDER_GOES,
     ACTIVE_FIRE_PROVIDER_LSA_SAF,
+    ACTIVE_FIRE_PROVIDER_MSG_IODC,
 )
 from .monitoring import MonitoredLocation
 from .providers.goes import select_goes_satellite
+from .providers.msg_iodc import select_msg_iodc_satellite
 
 MTG_SUB_SATELLITE_LONGITUDE = 0.0
 MAX_SAFE_MTG_CENTRAL_ANGLE_DEGREES = 78.0
@@ -19,6 +21,7 @@ NASA_FIRMS_SATELLITES = "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS"
 
 SOURCE_DISPLAY_NAMES = {
     ACTIVE_FIRE_PROVIDER_LSA_SAF: "EUMETSAT LSA SAF",
+    ACTIVE_FIRE_PROVIDER_MSG_IODC: "EUMETSAT LSA SAF IODC",
     ACTIVE_FIRE_PROVIDER_GOES: "NOAA GOES",
     NASA_FIRMS_PROVIDER: "NASA FIRMS",
 }
@@ -100,6 +103,10 @@ def plan_location_sources(
     ):
         providers.append(ACTIVE_FIRE_PROVIDER_LSA_SAF)
         satellites.append("MTG")
+    iodc = select_msg_iodc_satellite(location.latitude, location.longitude)
+    if lsa_saf_available and iodc is not None:
+        providers.append(ACTIVE_FIRE_PROVIDER_MSG_IODC)
+        satellites.append(iodc.satellite)
     goes = select_goes_satellite(location.latitude, location.longitude)
     if goes is not None:
         providers.append(ACTIVE_FIRE_PROVIDER_GOES)
@@ -146,6 +153,10 @@ def assess_location_coverage(
             <= MAX_SAFE_MTG_CENTRAL_ANGLE_DEGREES
         )
         satellite = "MTG" if covered else None
+    elif provider == ACTIVE_FIRE_PROVIDER_MSG_IODC:
+        iodc = select_msg_iodc_satellite(location.latitude, location.longitude)
+        covered = iodc is not None
+        satellite = iodc.satellite if iodc else None
     else:
         covered = False
 

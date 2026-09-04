@@ -10,6 +10,7 @@ from aiohttp import ClientSession
 from ..const import (
     ACTIVE_FIRE_PROVIDER_GOES,
     ACTIVE_FIRE_PROVIDER_LSA_SAF,
+    ACTIVE_FIRE_PROVIDER_MSG_IODC,
 )
 from ..coverage import NASA_FIRMS_SATELLITES, plan_location_sources
 from ..monitoring import MonitoredLocation
@@ -18,6 +19,7 @@ from ..products.firms import FirmsClient
 from .base import ActiveFireProvider
 from .firms import FirmsMultiAreaProvider, monitoring_bounds
 from .goes_active import GoesActiveFireProvider
+from .msg_iodc import MsgIodcActiveFireProvider
 from .mtg import MtgActiveFireProvider
 from .pool import MultiProviderPool, ProviderBinding
 
@@ -85,6 +87,27 @@ def build_provider_pool(
                 mtg_location_ids,
                 MtgActiveFireProvider(
                     ActiveFireClient(session, str(username), str(password))
+                ),
+            )
+        )
+
+    iodc_location_ids = tuple(
+        plan.location_id
+        for plan in plans
+        if ACTIVE_FIRE_PROVIDER_MSG_IODC in plan.providers
+    )
+    if iodc_location_ids:
+        bindings.append(
+            ProviderBinding(
+                ACTIVE_FIRE_PROVIDER_MSG_IODC,
+                "EUMETSAT LSA SAF IODC",
+                "Meteosat-9 IODC",
+                iodc_location_ids,
+                MsgIodcActiveFireProvider(
+                    session,
+                    run_in_executor,
+                    username=str(username),
+                    password=str(password),
                 ),
             )
         )

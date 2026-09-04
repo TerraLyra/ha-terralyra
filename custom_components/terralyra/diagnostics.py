@@ -96,6 +96,7 @@ async def async_get_config_entry_diagnostics(
                     )
                     for provider in (
                         "eumetsat_lsa_saf",
+                        "eumetsat_lsa_saf_iodc",
                         "noaa_goes",
                         "nasa_firms",
                     )

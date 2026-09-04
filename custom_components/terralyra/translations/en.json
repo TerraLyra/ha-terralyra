@@ -389,7 +389,7 @@
   "services": {
     "probe_msg_iodc": {
       "name": "Inspect MSG-IODC compatibility",
-      "description": "Downloads one current, size-limited MSG-IODC List Product using the saved LSA SAF account and returns metadata only. It does not enable the source, retain the file, or read fire-observation values.",
+      "description": "Downloads one current, size-limited MSG-IODC List Product using the saved LSA SAF account and returns metadata only. It does not change automatic source assignment, retain the file, or read fire-observation values.",
       "fields": {
         "config_entry_id": {
           "name": "TerraLyra configuration",

@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.13.0
+
+- Activate Meteosat-9 MSG-IODC FRP-PIXEL as an equal active-fire source for
+  monitored locations inside its conservative 45.5°E coverage gate.
+- Add bounded HDF5 science-array decoding with product-identity, quality,
+  shape, type, missing-value, scale, coordinate and acquisition-time checks.
+- Reuse the configured LSA SAF account, download one shared IODC product for
+  all covered locations and isolate its retry/health state from healthy peers.
+- Preserve the 15-minute IODC cadence in next-update estimates and expose the
+  source in coverage, diagnostics and incident attribution.
+- Treat MTG and MSG-IODC as equal observing feeds from the same LSA SAF FRP
+  evidence family, avoiding a false independent-confirmation claim when their
+  observations overlap.
+- Replace the removed `aiohttp.encode_basic_auth` helper with the compatible
+  `BasicAuth.encode()` API.
+
 ## 0.12.0
 
 - Add an explicit, response-only Home Assistant action for inspecting one

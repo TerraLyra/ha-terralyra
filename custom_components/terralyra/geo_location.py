@@ -198,6 +198,7 @@ def _provider_attribution(providers: tuple[str, ...]) -> str:
     """Return a stable, human-readable attribution for one incident."""
     labels = {
         "eumetsat_lsa_saf": "LSA SAF",
+        "eumetsat_lsa_saf_iodc": "LSA SAF IODC",
         "noaa_goes": "NOAA GOES",
         "nasa_firms": "NASA FIRMS",
     }

@@ -7,6 +7,7 @@ import pytest
 from custom_components.terralyra.const import (
     ACTIVE_FIRE_PROVIDER_GOES,
     ACTIVE_FIRE_PROVIDER_LSA_SAF,
+    ACTIVE_FIRE_PROVIDER_MSG_IODC,
     LOCATION_SOURCE_MANUAL,
 )
 from custom_components.terralyra.coverage import (
@@ -65,6 +66,22 @@ def test_goes_covers_california_but_not_europe() -> None:
     assert budapest.recommended_provider == ACTIVE_FIRE_PROVIDER_LSA_SAF
 
 
+def test_msg_iodc_coverage_is_reported_directly() -> None:
+    kampala = assess_location_coverage(
+        ACTIVE_FIRE_PROVIDER_MSG_IODC,
+        _location("kampala", "Kampala", 0.3476, 32.5825),
+    )
+    california = assess_location_coverage(
+        ACTIVE_FIRE_PROVIDER_MSG_IODC,
+        _location("california", "California", 38.5618, -121.6263),
+    )
+
+    assert kampala.covered is True
+    assert kampala.satellite == "Meteosat-9 IODC"
+    assert california.covered is False
+    assert california.recommended_provider == ACTIVE_FIRE_PROVIDER_GOES
+
+
 def test_sources_are_automatically_assigned_as_equal_peers() -> None:
     europe = plan_location_sources(
         _location("europe", "Europe", 47.0, 19.0),
@@ -77,9 +94,14 @@ def test_sources_are_automatically_assigned_as_equal_peers() -> None:
         firms_available=True,
     )
 
-    assert europe.providers == ("eumetsat_lsa_saf", "nasa_firms")
+    assert europe.providers == (
+        "eumetsat_lsa_saf",
+        "eumetsat_lsa_saf_iodc",
+        "nasa_firms",
+    )
     assert europe.satellites == (
         "MTG",
+        "Meteosat-9 IODC",
         "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS",
     )
     assert california.providers == ("noaa_goes", "nasa_firms")
@@ -88,7 +110,11 @@ def test_sources_are_automatically_assigned_as_equal_peers() -> None:
         "NOAA-20/NOAA-21 VIIRS + Terra/Aqua MODIS",
     )
     assert summarize_source_plans((europe, california)) == "covered"
-    assert europe.attrs()["source_names"] == ["EUMETSAT LSA SAF", "NASA FIRMS"]
+    assert europe.attrs()["source_names"] == [
+        "EUMETSAT LSA SAF",
+        "EUMETSAT LSA SAF IODC",
+        "NASA FIRMS",
+    ]
     assert california.attrs()["source_names"] == ["NOAA GOES", "NASA FIRMS"]
     assert california.attrs()["relationship"] == "equal_peers"
 

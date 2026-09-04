@@ -8,12 +8,14 @@ from .base import (
     ProviderUnavailableError,
 )
 from .firms import FirmsActiveFireProvider
+from .msg_iodc import MsgIodcActiveFireProvider
 from .mtg import MtgActiveFireProvider
 
 __all__ = [
     "ActiveFireProvider",
-    "FirmsActiveFireProvider",
     "ActiveFireProviderError",
+    "FirmsActiveFireProvider",
+    "MsgIodcActiveFireProvider",
     "MtgActiveFireProvider",
     "ProviderAuthenticationError",
     "ProviderNoDataError",

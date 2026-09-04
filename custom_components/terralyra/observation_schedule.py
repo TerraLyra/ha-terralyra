@@ -9,6 +9,7 @@ from typing import Any
 from .models import ProviderStatus
 
 GEOSTATIONARY_REFRESH = timedelta(minutes=10)
+MSG_IODC_REFRESH = timedelta(minutes=15)
 FIRMS_REFRESH = timedelta(minutes=15)
 VIIRS_WINDOW_HALF_WIDTH = timedelta(minutes=45)
 _POLAR_LOCAL_SOLAR_TIMES = (
@@ -72,8 +73,17 @@ def location_update_estimates(
         item = _matching_health(provider, satellite, plan.location_id, health)
         status = item.status if item is not None else ProviderStatus.INITIALIZING
         received_at = getattr(item, "received_timestamp", None)
-        if provider in {"eumetsat_lsa_saf", "noaa_goes"}:
-            expected = _next_refresh(received_at, current, GEOSTATIONARY_REFRESH)
+        if provider in {
+            "eumetsat_lsa_saf",
+            "eumetsat_lsa_saf_iodc",
+            "noaa_goes",
+        }:
+            cadence = (
+                MSG_IODC_REFRESH
+                if provider == "eumetsat_lsa_saf_iodc"
+                else GEOSTATIONARY_REFRESH
+            )
+            expected = _next_refresh(received_at, current, cadence)
             estimates.append(
                 SourceUpdateEstimate(
                     provider,
@@ -82,7 +92,7 @@ def location_update_estimates(
                     status.value,
                     expected,
                     "product_refresh_cadence",
-                    10,
+                    int(cadence.total_seconds() // 60),
                 )
             )
             continue

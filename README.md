@@ -2,9 +2,10 @@
 
 A HACS-compatible environmental monitoring and early-warning integration for
 Home Assistant. TerraLyra automatically assigns every geographically relevant
-active-fire source to each monitored location: **EUMETSAT LSA SAF MTG** in its
-safe coverage area, **NOAA GOES-18/19** in the Western Hemisphere, and optional
-**NASA FIRMS** global observations. Assigned sources are equal peers: none is
+active-fire source to each monitored location: **EUMETSAT LSA SAF MTG** and
+**Meteosat-9 MSG-IODC** in their safe coverage areas, **NOAA GOES-18/19** in
+the Western Hemisphere, and optional **NASA FIRMS** global observations.
+Assigned sources are equal peers: none is
 labelled primary or secondary, and independent observations can corroborate
 the same incident. TerraLyra also includes additional LSA SAF environmental
 products.
@@ -34,6 +35,7 @@ not relabel third-party data as its own.
 | Product | Source / ID | Resolution / cadence | Integration status |
 |---|---|---|---|
 | MTG Fire Radiative Power Pixel | LSA-509 / MTFRPPIXEL | ~1 km / 10 min | **Implemented** |
+| MSG-IODC Fire Radiative Power Pixel | LSA-502 / FRPPixel | ~3.1 km / 15 min | **Implemented, coverage-gated** |
 | GOES ABI Fire/Hot Spot Characterization | ABI-L2-FDCF | ~2 km / 10 min full disk | **Implemented, coverage-gated** |
 | Fire Risk Map v3 Forecast | FRMv3 | Europe / daily, day 0…9 | **Implemented** |
 | MTG Land Surface Temperature | LSA-007 / MTLST | ~2 km / 10 min; up to 60 min publication delay | **Implemented, optional** |
@@ -69,6 +71,15 @@ For EUMETSAT installations, the integration reads the compressed CSV
 ListProduct from:
 
 `MTG / MTFRPPixel / NATIVE`
+
+When the same LSA SAF account has a monitored location inside the conservative
+IODC coverage gate, TerraLyra also reads the bounded HDF5 List Product from:
+
+`MSG-IODC / FRP-PIXEL / HDF5`
+
+The Meteosat-9 and MTG feeds are equal operational sources, but both belong to
+the LSA SAF FRP-Pixel evidence family. Their overlap is therefore deduplicated
+without being presented as two scientifically independent confirmations.
 
 For covered Western Hemisphere locations, NOAA GOES uses the public
 ABI-L2-FDCF full-disk product without provider credentials. Every assigned
@@ -303,7 +314,8 @@ other integrations.
 4. Go to **Settings → Devices & services → Add integration → TerraLyra**.
 5. Keep **Home** as the initial monitored location or manage additional named
    locations in the integration options.
-6. Optionally enter LSA SAF Data Service credentials to add MTG observations
+6. Optionally enter LSA SAF Data Service credentials to add geographically
+   relevant MTG and Meteosat-9 MSG-IODC observations
    where its safe footprint covers a location.
 7. TerraLyra automatically adds GOES-18/19 where geographically relevant and
    optional NASA FIRMS observations when a personal MAP_KEY is configured.
@@ -527,6 +539,7 @@ custom_components/terralyra/
 │   ├── goes.py            # conservative GOES-18/19 coverage selection
 │   ├── goes_active.py     # GOES discovery/download/decoder provider adapter
 │   ├── goes_spike.py      # dependency-free GOES filename/timing validation
+│   ├── msg_iodc.py        # MSG-IODC coverage and active-fire provider
 │   └── mtg.py             # MTFRPPixel → FireDetection adapter
 └── products/
     ├── fire.py            # MTFRPPixel parser + client (implemented)
@@ -534,6 +547,7 @@ custom_components/terralyra/
     ├── firms.py           # bounded NASA FIRMS Area API client/parser
     ├── goes.py            # bounded NOAA GOES catalogue discovery
     ├── goes_decoder.py    # bounded stripe-based ABI-L2-FDCF decoder
+    ├── msg_iodc.py        # bounded MSG-IODC HDF5 retrieval/decoder
     └── lst.py             # optional MTLST WMS client/parser
 ```
 
@@ -558,12 +572,6 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   and access terms; a conservative, runtime-disabled coverage foundation and
   the remaining go/no-go gates are recorded in
   [`docs/HIMAWARI_TECHNICAL_SPIKE.md`](docs/HIMAWARI_TECHNICAL_SPIKE.md)
-- validate one current MSG-IODC FRP-PIXEL List Product with the bounded,
-  metadata-only schema probe, then implement the decoder and provider adapter;
-  its documented LSA SAF path, conservative runtime-disabled coverage selector,
-  evidence-family safeguard, safe probe and remaining activation gates are
-  recorded in
-  [`docs/MSG_IODC_TECHNICAL_SPIKE.md`](docs/MSG_IODC_TECHNICAL_SPIKE.md)
 - collect operational GOES-18/19 experience from covered installations while
   retaining the conservative pre-download coverage gate and product navigation
   checks; technical and resource details are in
@@ -576,13 +584,14 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### MSG-IODC compatibility check
 
-The runtime-disabled Meteosat-9 source can be inspected without exposing the
-saved LSA SAF password. In **Developer tools → Actions**, run
+The active Meteosat-9 source can also be inspected without exposing the saved
+LSA SAF password. In **Developer tools → Actions**, run
 **TerraLyra: Inspect MSG-IODC compatibility** and select the TerraLyra
 configuration. The explicit action downloads at most one small current List
 Product, keeps it in memory, reads only bounded HDF5 metadata and returns the
-sanitized schema in the action response. It does not enable MSG-IODC, retain
-the upstream file or read fire-observation array values.
+sanitized schema in the action response. This diagnostic action does not alter
+source assignment, retain the upstream file or read fire-observation values;
+normal source updates use the separately bounded production decoder.
 
 ### Multi-source detection and incident verification
 

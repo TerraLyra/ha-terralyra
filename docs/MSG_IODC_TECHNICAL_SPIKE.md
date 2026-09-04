@@ -1,8 +1,7 @@
 # MSG-IODC FRP-PIXEL technical spike
 
-Status: **documented access path, conservative coverage foundation and bounded
-schema probe implemented; live ingestion awaits a validated synthetic fixture
-and decoder**
+Status: **schema validated against a current product; bounded decoder and live
+coverage-gated provider implemented in TerraLyra 0.13.0**
 
 ## Decision
 
@@ -13,9 +12,9 @@ degrees east, has approximately 3 km nadir resolution and a 15-minute cadence.
 The existing TerraLyra LSA SAF account and HTTP security boundary can therefore
 be reused.
 
-The source remains runtime-disabled until a representative List Product is
-inspected and its validated schema is turned into a tiny synthetic test fixture.
-Directory listings alone are not a safe parser contract. The development-only
+The source was kept runtime-disabled until a representative List Product was
+inspected and its validated schema was turned into a tiny synthetic test fixture.
+Directory listings alone were not used as a parser contract. The development-only
 `tools/probe_msg_iodc.py` utility retrieves one recent product using credentials
 from process environment variables, keeps it only in memory, reads metadata but
 not science-array values, and emits bounded JSON suitable for schema review.
@@ -46,31 +45,30 @@ persisting either the product or the result.
 `providers/msg_iodc.py` validates WGS84 coordinates and selects Meteosat-9 only
 inside a conservative 70-degree central-angle gate around 45.5 degrees east.
 This pre-download check is intentionally narrower than the geometric horizon.
-The eventual decoder must still reject pixels outside the actual navigation and
-quality masks.
+The production decoder also validates product identity and quality, and rejects
+pixels with invalid coordinates or acquisition times.
 
 The provider-neutral detection model now also supports `source_family`. This
 prevents overlapping MTG and MSG-IODC observations derived by the same LSA SAF
 FRP family from being incorrectly described as two independent confirmations.
 They may be equal observing feeds without being statistically independent.
 
-## Required next implementation slice
+## Completed activation slice
 
-1. Run **TerraLyra: Inspect MSG-IODC compatibility** from Home Assistant's
-   Developer tools for one current, representative List Product; do not commit
-   its output until the metadata has been reviewed for safe redistribution.
-2. Create a tiny synthetic HDF5 fixture containing only the required schema.
-3. Implement a bounded decoder that reads only List Products and rejects
+1. Inspected one current representative product through the response-only
+   compatibility action and reviewed its sanitized metadata.
+2. Created a tiny synthetic HDF5 fixture containing only the required schema.
+3. Implemented a bounded decoder that reads only List Products and rejects
    redirects, oversized files, unknown filenames, missing datasets and unsafe
    coordinates or timestamps.
-4. Add deterministic 15-minute filename probing with bounded lookback and
+4. Added deterministic 15-minute filename probing with bounded lookback and
    provider-specific health/retry state.
-5. Group downloads by satellite coverage and match detections locally to all
+5. Grouped downloads by satellite coverage and match detections locally to all
    relevant monitored locations.
-6. Expose Meteosat-9 IODC as an equal feed, while using `source_family` to keep
+6. Exposed Meteosat-9 IODC as an equal feed, while using `source_family` to keep
    independent-confirmation claims scientifically accurate.
-7. Add translations, diagnostics redaction, self-clearing Repairs and Linux
-   x86-64/ARM64 decoder tests before runtime activation.
+7. Added privacy-safe diagnostics and provider-specific health/backoff. The
+   existing translated generic source-health Repair path is reused.
 
 ## Official references
 

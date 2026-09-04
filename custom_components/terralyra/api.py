@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import timedelta
 from urllib.parse import urlsplit
 
-from aiohttp import ClientSession, ClientTimeout, encode_basic_auth
+from aiohttp import BasicAuth, ClientSession, ClientTimeout
 
 ALLOWED_HOST = "datalsasaf.lsasvcs.ipma.pt"
 REQUEST_TIMEOUT = ClientTimeout(total=30, connect=10, sock_read=20)
@@ -56,7 +56,7 @@ class LsaSafApi:
 
     def __init__(self, session: ClientSession, username: str, password: str) -> None:
         self._session = session
-        self._headers = {"Authorization": encode_basic_auth(username, password)}
+        self._headers = {"Authorization": BasicAuth(username, password).encode()}
 
 
 def validate_service_url(url: str) -> None:

@@ -62,6 +62,30 @@ def test_refresh_estimate_advances_past_missed_intervals() -> None:
     assert estimates[0].expected_at == NOW + timedelta(minutes=30)
 
 
+def test_iodc_update_uses_fifteen_minute_product_cadence() -> None:
+    plan = LocationSourcePlan(
+        "home",
+        "Home",
+        ("eumetsat_lsa_saf_iodc",),
+        ("Meteosat-9 IODC",),
+    )
+    estimates = location_update_estimates(
+        plan,
+        SimpleNamespace(longitude=45.5),
+        (
+            _health(
+                "eumetsat_lsa_saf_iodc",
+                "Meteosat-9 IODC",
+                received=NOW - timedelta(minutes=4),
+            ),
+        ),
+        now=NOW,
+    )
+
+    assert estimates[0].cadence_minutes == 15
+    assert estimates[0].expected_at == NOW + timedelta(minutes=11)
+
+
 def test_unavailable_source_is_not_selected_as_next_update() -> None:
     plan = LocationSourcePlan(
         "home",

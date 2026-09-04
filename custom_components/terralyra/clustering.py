@@ -76,7 +76,7 @@ def cluster_detections(
         source_frp: dict[tuple[str, str], float] = {}
         source_counts: dict[tuple[str, str], int] = {}
         for item in group:
-            source = (item.provider, item.satellite)
+            source = _independent_source_key(item)
             source_frp[source] = source_frp.get(source, 0.0) + (
                 item.frp_mw or 0.0
             )
@@ -144,3 +144,10 @@ def _connection_radius_km(
     if left.provider != right.provider or left.satellite != right.satellite:
         return max(configured_radius_km, 5.0)
     return configured_radius_km
+
+
+def _independent_source_key(detection: FireDetection) -> tuple[str, str]:
+    """Group feeds from one algorithm family without merging FIRMS satellites."""
+    if detection.source_family is not None:
+        return detection.source_family, ""
+    return detection.provider, detection.satellite
