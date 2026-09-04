@@ -71,7 +71,10 @@ async def test_provider_normalizes_decoded_iodc_pixels() -> None:
         ),
     )
     provider = MsgIodcActiveFireProvider(
-        object(), _executor, username="account", password="credential"
+        object(),
+        _executor,
+        username="account",
+        password="credential",  # pragma: allowlist secret
     )
 
     with (
@@ -109,7 +112,10 @@ async def test_provider_normalizes_iodc_errors(
     source_error: Exception, provider_error: type[Exception]
 ) -> None:
     provider = MsgIodcActiveFireProvider(
-        object(), _executor, username="account", password="credential"
+        object(),
+        _executor,
+        username="account",
+        password="credential",  # pragma: allowlist secret
     )
     with (
         patch(
@@ -132,7 +138,7 @@ def test_pool_assigns_one_iodc_download_to_all_covered_locations() -> None:
             _location("california", 38.56, -121.63),
         ),
         username="account",
-        password="credential",
+        password="credential",  # pragma: allowlist secret
         firms_enabled=False,
         firms_map_key=None,
     )
