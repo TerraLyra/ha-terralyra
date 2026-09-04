@@ -558,8 +558,10 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
   and access terms; a conservative, runtime-disabled coverage foundation and
   the remaining go/no-go gates are recorded in
   [`docs/HIMAWARI_TECHNICAL_SPIKE.md`](docs/HIMAWARI_TECHNICAL_SPIKE.md)
-- evaluate MSG-IODC FRP-PIXEL in parallel because its documented LSA SAF data
-  path can reuse more of the existing authenticated FRP architecture
+- implement the bounded MSG-IODC FRP-PIXEL HDF5 decoder and provider adapter;
+  its documented LSA SAF path, conservative runtime-disabled coverage selector,
+  evidence-family safeguard and remaining activation gates are recorded in
+  [`docs/MSG_IODC_TECHNICAL_SPIKE.md`](docs/MSG_IODC_TECHNICAL_SPIKE.md)
 - collect operational GOES-18/19 experience from covered installations while
   retaining the conservative pre-download coverage gate and product navigation
   checks; technical and resource details are in
