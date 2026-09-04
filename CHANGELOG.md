@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.12.0
+
+- Add an explicit, response-only Home Assistant action for inspecting one
+  current MSG-IODC FRP-PIXEL List Product with the LSA SAF credentials already
+  stored in the selected TerraLyra configuration.
+- Keep the compatibility check runtime-disabled and privacy-safe: no redirects,
+  a 2 MiB download limit, a 60-second overall timeout, no retained upstream file
+  and no reads of fire-observation array values.
+- Return only bounded HDF5 structure and attribute metadata for review before a
+  synthetic fixture, decoder and live Meteosat-9 provider are implemented.
+- Add action names and descriptions in English, Hungarian, German, French,
+  Spanish and Italian, plus regression tests and user documentation.
+
 ## 0.11.0
 
 - Add NASA FIRMS Terra and Aqua MODIS near-real-time active-fire observations
