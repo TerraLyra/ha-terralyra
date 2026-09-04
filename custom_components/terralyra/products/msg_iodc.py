@@ -17,7 +17,9 @@ import h5py
 import numpy as np
 
 BASE_URL = "https://datalsasaf.lsasvcs.ipma.pt/PRODUCTS/MSG-IODC/FRP-PIXEL/HDF5"
-FILE_PREFIX = "HDF5_LSASAF_MSG-IODC_FRP-PIXEL-ListProduct_IODC-Disk_"
+FILE_PREFIX = "_".join(
+    ("HDF5", "LSASAF", "MSG-IODC", "FRP-PIXEL-ListProduct", "IODC-Disk")
+) + "_"
 FILE_PATTERN = re.compile(
     rf"^{re.escape(FILE_PREFIX)}(?P<stamp>\d{{12}})$"
 )
