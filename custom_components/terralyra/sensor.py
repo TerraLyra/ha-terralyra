@@ -34,6 +34,7 @@ from .entity import (
 )
 from .evidence import FireEvidenceAssessment, assess_fire_evidence
 from .models import ProviderStatus
+from .observation_schedule import location_update_estimates, next_usable_update
 from .products.fire_risk import WMS_URL
 from .products.lst import WMS_URL as LST_WMS_URL
 from .situation import MAX_PRODUCT_AGE
@@ -69,6 +70,14 @@ async def async_setup_entry(
     ]
     entities.extend(MonitoredLocationSourcesSensor(entry, plan) for plan in location_plans)
     entities.extend(MonitoredLocationStatusSensor(entry, plan) for plan in location_plans)
+    locations_by_id = {
+        location.id: location
+        for location in entry.runtime_data.coordinator.monitored_locations
+    }
+    entities.extend(
+        MonitoredLocationNextUpdateSensor(entry, plan, locations_by_id[plan.location_id])
+        for plan in location_plans
+    )
     if entry.options.get(
         CONF_ENABLE_LAND_SURFACE_TEMPERATURE,
         DEFAULT_ENABLE_LAND_SURFACE_TEMPERATURE,
@@ -87,6 +96,7 @@ def _remove_orphaned_location_entities(
     prefixes = (
         f"{entry.entry_id}_location_sources_",
         f"{entry.entry_id}_location_status_",
+        f"{entry.entry_id}_location_next_update_",
     )
     expected_unique_ids = {
         f"{prefix}{plan.location_id}" for prefix in prefixes for plan in plans
@@ -510,6 +520,61 @@ class MonitoredLocationStatusSensor(TerraLyraEntity, SensorEntity):
                 else None
             ),
             **incidents,
+        }
+
+
+class MonitoredLocationNextUpdateSensor(TerraLyraEntity, SensorEntity):
+    """Expose a qualified next-update estimate for one monitored location."""
+
+    _attr_translation_key = "monitored_location_next_update"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:satellite-variant"
+
+    def __init__(
+        self,
+        entry: TerraLyraConfigEntry,
+        plan: LocationSourcePlan,
+        location: Any,
+    ) -> None:
+        super().__init__(entry)
+        self._plan = plan
+        self._location = location
+        self._attr_unique_id = (
+            f"{entry.entry_id}_location_next_update_{plan.location_id}"
+        )
+        self._attr_translation_placeholders = {"location_name": plan.location_name}
+
+    @property
+    def available(self) -> bool:
+        return self.native_value is not None
+
+    def _estimates(self):
+        return location_update_estimates(
+            self._plan,
+            self._location,
+            tuple(
+                getattr(getattr(self.coordinator, "provider", None), "health", ())
+            ),
+        )
+
+    @property
+    def native_value(self) -> datetime | None:
+        estimate = next_usable_update(self._estimates())
+        return estimate.expected_at if estimate else None
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        estimates = self._estimates()
+        next_update = next_usable_update(estimates)
+        return {
+            "location_id": self._plan.location_id,
+            "location_name": self._plan.location_name,
+            "next_source": next_update.provider if next_update else None,
+            "next_source_name": next_update.name if next_update else None,
+            "next_satellite": next_update.satellite if next_update else None,
+            "estimate_type": next_update.estimate_type if next_update else None,
+            "sources": [item.attrs() for item in estimates],
+            "estimate_note": "estimated_not_guaranteed",
         }
 
 

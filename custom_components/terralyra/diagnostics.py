@@ -70,6 +70,16 @@ async def async_get_config_entry_diagnostics(
                     "retry_at": (
                         item.retry_at.isoformat() if item.retry_at else None
                     ),
+                    "product_timestamp": (
+                        item.product_timestamp.isoformat()
+                        if item.product_timestamp
+                        else None
+                    ),
+                    "received_timestamp": (
+                        item.received_timestamp.isoformat()
+                        if item.received_timestamp
+                        else None
+                    ),
                 }
                 for item in provider_health
             ],

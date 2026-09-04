@@ -310,7 +310,8 @@ other integrations.
 A free LSA SAF Data Service account is required only for the MTFRPPixel
 provider. GOES downloads the newest validated public NOAA full-disk product and
 therefore adds network, storage, decoder and memory cost. TerraLyra rejects
-GOES is assigned only to locations inside its conservative coverage gate.
+unsafe navigation results, and GOES is assigned only to locations inside its
+conservative coverage gate.
 
 ## Active fire options
 
@@ -359,6 +360,24 @@ Enabling the option sends each required monitoring-area bounding box and the
 user's MAP_KEY to the official NASA FIRMS service. Exact place names are not
 sent. The key is stored in the Home Assistant config entry, redacted from
 diagnostics and never logged.
+
+## Expected active-fire updates
+
+Every enabled monitored location has a **Next expected active-fire update**
+timestamp sensor. It selects the earliest currently usable equal source and
+keeps the complete source-by-source estimate in its attributes:
+
+- MTG and GOES use the official 10-minute product cadence, anchored to the
+  latest successfully received product.
+- NASA FIRMS uses TerraLyra's bounded 15-minute API refresh interval. Its
+  attributes also include a broad longitude-adjusted NOAA-20/21 VIIRS nominal
+  overpass window.
+
+These values are estimates, not service guarantees. Publication latency,
+clouds, scan-mode changes, maintenance and upstream outages can delay usable
+data. The VIIRS window intentionally avoids false minute-level precision; an
+exact orbital pass predictor would require current orbital elements from an
+additional external service.
 
 ## Example iPhone notification automation
 
@@ -529,9 +548,6 @@ empty temporarily or enter `terralyra` in the card's YAML as shown above.
 
 ### Next
 
-- expose an appropriate next-observation indicator in a later release:
-  predicted overpass timing for polar-orbiting VIIRS sources, and expected
-  product-refresh timing for geostationary MTG and GOES sources
 - collect operational GOES-18/19 experience from covered installations while
   retaining the conservative pre-download coverage gate and product navigation
   checks; technical and resource details are in

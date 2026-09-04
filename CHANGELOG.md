@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.0
+
+- Add a translated timestamp sensor for every enabled monitored location that
+  shows the next expected update from its earliest currently usable equal
+  active-fire source.
+- Estimate MTG and GOES updates from their 10-minute product cadence and NASA
+  FIRMS refreshes from its bounded 15-minute client cache.
+- Include a deliberately broad, longitude-adjusted NOAA-20/21 VIIRS nominal
+  overpass window without presenting it as an exact orbital prediction.
+- Preserve each provider's last successful product and receipt timestamps in
+  health details across temporary per-provider backoff periods.
+- Remove next-update entities automatically when their monitored location is
+  disabled or deleted, and add regression tests for scheduling and cleanup.
+
 ## 0.9.0
 
 - Add a common reliability layer for the equal-peer MTG, GOES and NASA FIRMS

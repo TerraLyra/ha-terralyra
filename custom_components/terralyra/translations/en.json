@@ -253,6 +253,9 @@
           "unavailable": "Unavailable"
         }
       },
+      "monitored_location_next_update": {
+        "name": "Next expected active-fire update for {location_name}"
+      },
       "provider_coverage": {
         "name": "Monitored-location source coverage",
         "state": {

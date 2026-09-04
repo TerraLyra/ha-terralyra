@@ -30,6 +30,10 @@ def test_remove_orphaned_location_source_entities(monkeypatch) -> None:
             entity_id="sensor.deleted_status",
         ),
         SimpleNamespace(
+            unique_id="entry_location_next_update_deleted",
+            entity_id="sensor.deleted_next_update",
+        ),
+        SimpleNamespace(
             unique_id="entry_location_sources_deleted_number",
             entity_id="number.unrelated",
         ),
@@ -50,6 +54,7 @@ def test_remove_orphaned_location_source_entities(monkeypatch) -> None:
     assert registry.async_remove.call_args_list == [
         call("sensor.deleted_sources"),
         call("sensor.deleted_status"),
+        call("sensor.deleted_next_update"),
     ]
 
 

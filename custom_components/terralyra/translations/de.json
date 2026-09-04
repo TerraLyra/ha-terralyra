@@ -253,6 +253,9 @@
           "unavailable": "Nicht verfügbar"
         }
       },
+      "monitored_location_next_update": {
+        "name": "Nächste erwartete Aktualisierung aktiver Brände für {location_name}"
+      },
       "provider_coverage": {
         "name": "Quellenabdeckung der überwachten Orte",
         "state": {

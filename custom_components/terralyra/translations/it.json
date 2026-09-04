@@ -253,6 +253,9 @@
           "unavailable": "Non disponibile"
         }
       },
+      "monitored_location_next_update": {
+        "name": "Prossimo aggiornamento previsto degli incendi attivi per {location_name}"
+      },
       "provider_coverage": {
         "name": "Copertura fonti delle località",
         "state": {

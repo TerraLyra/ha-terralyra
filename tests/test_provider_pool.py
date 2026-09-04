@@ -72,6 +72,8 @@ async def test_pool_merges_equal_sources() -> None:
     assert len(result.detections) == 2
     assert {item.provider for item in result.detections} == {"LSA SAF", "NASA FIRMS"}
     assert all(item.status is ProviderStatus.AVAILABLE for item in pool.health)
+    assert all(item.product_timestamp == NOW for item in pool.health)
+    assert all(item.received_timestamp == NOW for item in pool.health)
 
 
 @pytest.mark.asyncio
@@ -120,6 +122,7 @@ async def test_failed_peer_is_deferred_while_healthy_peer_continues() -> None:
     assert pool.health[0].consecutive_failures == 1
     assert pool.health[0].failure_type == "service_outage"
     assert pool.health[0].retry_at == NOW + timedelta(minutes=5)
+    assert pool.health[0].received_timestamp is None
 
 
 @pytest.mark.asyncio

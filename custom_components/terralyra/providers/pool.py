@@ -43,6 +43,8 @@ class ProviderHealth:
     failure_type: str | None = None
     consecutive_failures: int = 0
     retry_at: datetime | None = None
+    product_timestamp: datetime | None = None
+    received_timestamp: datetime | None = None
 
     def attrs(self) -> dict[str, Any]:
         return {
@@ -54,6 +56,12 @@ class ProviderHealth:
             "failure_type": self.failure_type,
             "consecutive_failures": self.consecutive_failures,
             "retry_at": self.retry_at.isoformat() if self.retry_at else None,
+            "product_timestamp": (
+                self.product_timestamp.isoformat() if self.product_timestamp else None
+            ),
+            "received_timestamp": (
+                self.received_timestamp.isoformat() if self.received_timestamp else None
+            ),
         }
 
 
@@ -80,6 +88,7 @@ class MultiProviderPool:
         self._failure_counts: dict[str, int] = {}
         self._retry_at: dict[str, datetime] = {}
         self._last_errors: dict[str, ActiveFireProviderError] = {}
+        self._last_successes: dict[str, ProviderSnapshot] = {}
         self.health: tuple[ProviderHealth, ...] = tuple(
             ProviderHealth(
                 binding.provider_id,
@@ -108,6 +117,7 @@ class MultiProviderPool:
                 status = self._status_for_error(error)
             failure_count = self._failure_counts.get(binding.provider_id, 0)
             last_error = self._last_errors.get(binding.provider_id)
+            last_success = self._last_successes.get(binding.provider_id)
             health.append(
                 ProviderHealth(
                     binding.provider_id,
@@ -118,6 +128,8 @@ class MultiProviderPool:
                     last_error.failure_type if last_error else None,
                     failure_count,
                     self._retry_at.get(binding.provider_id),
+                    last_success.product_timestamp if last_success else None,
+                    last_success.received_timestamp if last_success else None,
                 )
             )
         self.health = tuple(health)
@@ -211,6 +223,7 @@ class MultiProviderPool:
         self._failure_counts.pop(binding.provider_id, None)
         self._retry_at.pop(binding.provider_id, None)
         self._last_errors.pop(binding.provider_id, None)
+        self._last_successes[binding.provider_id] = snapshot
         return snapshot
 
     def _record_failure(

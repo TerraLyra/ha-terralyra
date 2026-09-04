@@ -22,7 +22,6 @@ from ..api import (
     LsaSafTimeoutError,
     validate_service_url,
 )
-from ..clustering import haversine_km
 from .http import parse_retry_after
 
 

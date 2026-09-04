@@ -32,7 +32,6 @@ from custom_components.terralyra.providers.base import (
     ProviderNoDataError,
     ProviderRateLimitError,
     ProviderTimeoutError,
-    ProviderUnavailableError,
 )
 from custom_components.terralyra.providers.mtg import (
     PRODUCT,

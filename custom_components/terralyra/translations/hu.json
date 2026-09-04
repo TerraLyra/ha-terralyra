@@ -253,6 +253,9 @@
           "unavailable": "Nem érhető el"
         }
       },
+      "monitored_location_next_update": {
+        "name": "{location_name} következő várható aktívtűz-frissítése"
+      },
       "provider_coverage": {
         "name": "Figyelt helyek forráslefedettsége",
         "state": {

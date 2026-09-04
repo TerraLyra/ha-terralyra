@@ -253,6 +253,9 @@
           "unavailable": "Indisponible"
         }
       },
+      "monitored_location_next_update": {
+        "name": "Prochaine mise à jour attendue des feux actifs pour {location_name}"
+      },
       "provider_coverage": {
         "name": "Couverture des sources par lieu",
         "state": {
