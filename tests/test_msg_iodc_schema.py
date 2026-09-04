@@ -62,7 +62,7 @@ def test_candidate_names_are_newest_first_and_bounded() -> None:
         "../product",
         f"{FILE_PREFIX}202609041817",
         f"{FILE_PREFIX}202613041815",
-        "HDF5_LSASAF_MSG-IODC_FRP-PIXEL-QualityProduct_IODC-Disk_202609041815",
+        f"{FILE_PREFIX.replace('ListProduct', 'QualityProduct')}202609041815",
     ],
 )
 def test_rejects_unknown_or_invalid_filename(filename: str) -> None:
